@@ -6,6 +6,9 @@ __Leonardo de Oliveira Martins<sup>1</sup>__
 <br>
 <sub>1. Quadram Institute Bioscience, Norwich Research Park, NR4 7UQ, UK</sub>
 
+## Name
+Tatajuba (_Bagassa guianensis_) is a South American tree, also known as Tatajubá, Tatajuva, Garrote, Totajuba.
+If I'm not mistaken it means "yellow fire" in [Tupi](https://en.wikipedia.org/wiki/Tupi_language).
 
 ## License
 SPDX-License-Identifier: GPL-3.0-or-later
