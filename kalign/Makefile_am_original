@@ -1,0 +1,11 @@
+# Build the library in the hand subdirectory first.
+ACLOCAL_AMFLAGS = -I m4
+
+AM_CFLAGS =  @SIMD_FLAGS@ @OPENMP_CFLAGS@ 
+# top_builddir = @top_builddir@
+AM_LDFLAGS = @DEAD_STRIP@
+AM_LDFLAGS += -Wno-undef
+LIBS =  -lpthread -lm -lrt
+AM_CPPFLAGS=
+bin_PROGRAMS = kalign
+
