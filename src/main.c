@@ -1,5 +1,5 @@
-#include <kalign.h>
-#include "kseq.h"
+#include "tatajuba.h"
+
 KSEQ_INIT(gzFile, gzread)
 
 typedef struct
