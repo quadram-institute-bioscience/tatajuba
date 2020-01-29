@@ -17,7 +17,7 @@ new_hopo_counter_from_file (char *filename)
   gzFile fp = gzopen (filename, "r");
   kseq_t *seq = kseq_init (fp);
   hopo_counter hc = new_hopo_counter ();
-  while ((i = kseq_read (seq)) >= 0) update_hopo_counter_from_seq (hc, seq->seq.s); // seq->name.s, seq->seq.l, seq->qual.l
+  while ((i = kseq_read (seq)) >= 0) update_hopo_counter_from_seq (hc, seq->seq.s, seq->seq.l, 3); // seq->name.s, seq->seq.l, seq->qual.l
   kseq_destroy(seq);
   gzclose(fp);
   return hc;
@@ -57,7 +57,17 @@ initialize_dna_to_bit_tables (void)
 }
 
 void
-update_hopo_counter_from_seq (hopo_counter hc, char *seq)
+update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int kmer_size)
 {
+  int i, j, *freq, count_same = 0, start_mono = -1;
+  uint8_t prev = 5; // dna_in_2_bits[][] goes from 0 to 4
+  char prev_char = '$';
+
+  count_same = 0;
+  for (i = 0; i < seq_length; i++) {
+    if (seq[i] == prev_char) {
+      count_same++;
+      if ((count_same > 2) && (start_mono > kmer_size) && (i < (seq_length-kmer_size-1))) // do something //STOPHERE 
+  }
 
 }
