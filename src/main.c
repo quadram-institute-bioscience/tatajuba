@@ -1,12 +1,10 @@
-#include "tatajuba.h"
-
-KSEQ_INIT(gzFile, gzread)
+#include "hopo_counter.h"
 
 typedef struct
 {
   struct arg_lit  *help;
   struct arg_lit  *version;
-  struct arg_file *fasta;
+  struct arg_file *fastq;
   struct arg_end  *end;
   void **argtable;
 } arg_parameters;
@@ -21,10 +19,10 @@ get_parameters_from_argv (int argc, char **argv)
   arg_parameters params = {
     .help    = arg_litn("h","help",0, 1, "print a longer help and exit"),
     .version = arg_litn("v","version",0, 1, "print version and exit"),
-    .fasta   = arg_filen(NULL, NULL, NULL, 1, 1, "fasta file"),
+    .fastq   = arg_filen(NULL, NULL, NULL, 1, 2, "fasta or fastq file"),
     .end     = arg_end(10) // max number of errors it can store (o.w. shows "too many errors")
   };
-  void* argtable[] = {params.help, params.version, params.fasta, params.end};
+  void* argtable[] = {params.help, params.version, params.fastq, params.end};
   params.argtable = argtable; 
   /* actual parsing: */
   if (arg_nullcheck(params.argtable)) biomcmc_error ("Problem allocating memory for the argtable (command line arguments) structure");
@@ -38,7 +36,7 @@ del_arg_parameters (arg_parameters params)
 {
   if (params.help) free (params.help);
   if (params.version) free (params.version);
-  if (params.fasta) free (params.fasta);
+  if (params.fastq) free (params.fastq);
   if (params.end) free (params.end);
 }
 
@@ -69,31 +67,17 @@ main (int argc, char **argv)
 {
   int i;
   clock_t time0, time1;
-  char_vector seqname = new_char_vector (1);
-  char_vector dna = new_char_vector (1);
-  char_vector align = NULL;
+  hopo_counter hc;
 
   time0 = clock ();
   arg_parameters params = get_parameters_from_argv (argc, argv);
 
-  gzFile fp = gzopen((char*) params.fasta->filename[0], "r");
-  kseq_t *seq = kseq_init(fp);
-  while ((i = kseq_read(seq)) >= 0) {
-    char_vector_add_string (seqname, seq->name.s);
-    char_vector_add_string (dna, seq->seq.s);
+  for (i = 0; i < params.fastq->count; i++) {
+    hc = new_hopo_counter_from_file (params.fastq->filename[i]);
+    del_hopo_counter (hc);
   }
-  kseq_destroy(seq);
-  gzclose(fp);
   time1 = clock (); fprintf (stderr, "read in  %lf secs\n",  (double)(time1-time0)/(double)(CLOCKS_PER_SEC)); fflush(stderr); 
 
-  align = kalign3_from_char_vector (dna);
-
-  time1 = clock (); fprintf (stderr, "finished in  %lf secs\n",  (double)(time1-time0)/(double)(CLOCKS_PER_SEC)); fflush(stderr); 
-  for (i= 0; i < align->nstrings; i++) printf (">%s\n%s\n", seqname->string[i], align->string[i]);
-
-  del_char_vector (dna);
-  del_char_vector (align);
-  del_char_vector (seqname);
   del_arg_parameters (params);
   return EXIT_SUCCESS;
 }

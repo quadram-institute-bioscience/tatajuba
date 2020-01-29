@@ -108,7 +108,7 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_tatajuba_OBJECTS = main.$(OBJEXT)
+am_tatajuba_OBJECTS = main.$(OBJEXT) hopo_counter.$(OBJEXT)
 tatajuba_OBJECTS = $(am_tatajuba_OBJECTS)
 am__DEPENDENCIES_1 =
 am__DEPENDENCIES_2 = ../kalign/libkalign.la \
@@ -318,7 +318,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CPPFLAGS = $(GTKDEPS_CFLAGS) -I$(srcdir)/../kalign -I$(srcdir)/../@BIOMCMCLIB@/lib @OPENMP_CPPFLAGS@  @ZLIB_LIBS@ 
 LDADD = $(GTKDEPS_LIBS) @CHECK_LIBS@  ../kalign/libkalign.la ../biomcmc-lib/lib/libbiomcmc.la @ZLIB_LIBS@  $(AM_LDFLAGS)
-tatajuba_SOURCES = tatajuba.h main.c kseq.h
+tatajuba_SOURCES = main.c kseq.h hopo_counter.c hopo_counter.h
 tatajuba_LDADD = $(LDADD)
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
@@ -429,6 +429,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hopo_counter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/main.Po@am__quote@
 
 .c.o:

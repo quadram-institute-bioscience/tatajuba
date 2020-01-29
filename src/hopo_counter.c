@@ -9,9 +9,11 @@ KSEQ_INIT(gzFile, gzread);
 
 static uint8_t dna_in_2_bits[256][2] = {{0xff}};
 static void initialize_dna_to_bit_tables (void);
+hopo_counter new_hopo_counter (void);
+void update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int kmer_size);
 
 hopo_counter
-new_hopo_counter_from_file (char *filename)
+new_hopo_counter_from_file (const char *filename)
 {
   int i;
   gzFile fp = gzopen (filename, "r");
@@ -23,7 +25,7 @@ new_hopo_counter_from_file (char *filename)
   return hc;
 }
 
-hopo_coutner
+hopo_counter
 new_hopo_counter (void)
 {
   hopo_counter hc = (hopo_counter) biomcmc_malloc (sizeof (struct hopo_counter_struct));
@@ -63,11 +65,20 @@ update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int km
   uint8_t prev = 5; // dna_in_2_bits[][] goes from 0 to 4
   char prev_char = '$';
 
+  printf ("DBG:: %s\n", seq);
   count_same = 0;
-  for (i = 0; i < seq_length; i++) {
+  for (i = 0; i < (seq_length - kmer_size); i++) {
     if (seq[i] == prev_char) {
       count_same++;
-      if ((count_same > 2) && (start_mono > kmer_size) && (i < (seq_length-kmer_size-1))) // do something //STOPHERE 
-  }
-
+      if ((count_same > 2) && (start_mono > kmer_size)) {
+        while (i < (seq_length-kmer_size-1) && (seq[i+1] == prev_char)) { i++; count_same++; }
+        for (j=start_mono; j <= i; j++) printf ("%c", seq[j]);
+        printf ("\n");
+      } // if (count_same>2) [i.e. we found valid homopolymer]
+    } else {
+      count_same = 1;
+      prev_char = seq[i];
+      start_mono = i;
+    } // else (seq[i] == prev_char)
+  } // for (i in seq[])
 }
