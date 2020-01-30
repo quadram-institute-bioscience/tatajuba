@@ -1,10 +1,11 @@
 2020.01.27
 	* first version: maintain kalign; assume histogram per sample (must be normalised)
 	* Desiderata: 
-		- use location information (relies on BAM/reference)
+		- use location information (relies on BAM/reference): not possible now, but keep in mind that we'll need to locate these changes on reference genome
 		- consider canonical form
 		- single k-mer may represent error (think Bloom filter); does QC remove these reads?
 		- alternative to location information can be flanking k-mers
 		- exclude reads beginning or ending with homopolymer (since true size may span another read)
 		- therefore it can limit to homopolymers between two 4mers;
+
 		
