@@ -13,8 +13,17 @@
 
 typedef struct hopo_counter_struct* hopo_counter;
 
+typedef struct
+{
+  uint64_t context; // in future I may have vect[3] to help memory alignment
+  uint8_t base; 
+  int base_size;
+} hopo_element;
+
 struct hopo_counter_struct
 {
+  hopo_element *elem;
+  int n_elem, n_alloc;
   int ref_counter;
 };
 
