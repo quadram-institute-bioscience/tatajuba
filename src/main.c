@@ -19,7 +19,7 @@ get_parameters_from_argv (int argc, char **argv)
   arg_parameters params = {
     .help    = arg_litn("h","help",0, 1, "print a longer help and exit"),
     .version = arg_litn("v","version",0, 1, "print version and exit"),
-    .fastq   = arg_filen(NULL, NULL, NULL, 1, 2, "fasta or fastq file"),
+    .fastq   = arg_filen(NULL, NULL, NULL, 1, 0xffff, "fasta or fastq file"),
     .end     = arg_end(10) // max number of errors it can store (o.w. shows "too many errors")
   };
   void* argtable[] = {params.help, params.version, params.fastq, params.end};
@@ -74,6 +74,8 @@ main (int argc, char **argv)
 
   for (i = 0; i < params.fastq->count; i++) {
     hc = new_hopo_counter_from_file (params.fastq->filename[i]);
+//    printf ("\t%s\n", params.fastq->filename[i]);
+    print_debug_hopo_counter (hc);
     del_hopo_counter (hc);
   }
   time1 = clock (); fprintf (stderr, "read in  %lf secs\n",  (double)(time1-time0)/(double)(CLOCKS_PER_SEC)); fflush(stderr); 

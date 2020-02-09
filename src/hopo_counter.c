@@ -8,11 +8,15 @@
 KSEQ_INIT(gzFile, gzread);
 
 static uint8_t dna_in_2_bits[256][2] = {{0xff}};
-static char bit_2_dna[] = {'A', 'C', 'G', 'T'};
+//static char bit_2_dna[] = {'A', 'C', 'G', 'T'};
+
 static void initialize_dna_to_bit_tables (void);
+int compare_hopo_element_decreasing (const void *a, const void *b);
 hopo_counter new_hopo_counter (void);
 void update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int kmer_size, int min_hopo_size);
 void add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, int context_size, uint8_t hopo_base_int, int hopo_size);
+void finalise_hopo_counter (hopo_counter hc);
+void estimate_coverage_hopo_counter (hopo_counter hc);
 
 int
 compare_hopo_element_decreasing (const void *a, const void *b)
@@ -24,8 +28,6 @@ compare_hopo_element_decreasing (const void *a, const void *b)
   return ((hopo_element *)b)->base_size - ((hopo_element *)a)->base_size; // same context and homopolymer base, thus sort by tract length
 } 
 
-//STOPHERE
-
 hopo_counter
 new_hopo_counter_from_file (const char *filename)
 {
@@ -33,7 +35,8 @@ new_hopo_counter_from_file (const char *filename)
   gzFile fp = gzopen (filename, "r");
   kseq_t *seq = kseq_init (fp);
   hopo_counter hc = new_hopo_counter ();
-  while ((i = kseq_read (seq)) >= 0) update_hopo_counter_from_seq (hc, seq->seq.s, seq->seq.l, 5, 3); // seq_l, kmer_size, min_homopol_size 
+  while ((i = kseq_read (seq)) >= 0) update_hopo_counter_from_seq (hc, seq->seq.s, seq->seq.l, 5, 4); // seq_l, kmer_size, min_homopol_size 
+  finalise_hopo_counter (hc);
   kseq_destroy(seq); // other kseq_t parameters: seq->name.s, seq->seq.l, seq->qual.l
   gzclose(fp);
   return hc;
@@ -44,7 +47,7 @@ new_hopo_counter (void)
 {
   hopo_counter hc = (hopo_counter) biomcmc_malloc (sizeof (struct hopo_counter_struct));
   hc->n_alloc = 32;
-  hc->n_elem = 0;
+  hc->n_elem = hc->coverage[0] = hc->coverage[1] = 0;
   hc->elem = (hopo_element*) biomcmc_malloc (hc->n_alloc * sizeof (hopo_element));
   hc->ref_counter = 1;
   if (dna_in_2_bits[0][0] == 0xff) initialize_dna_to_bit_tables (); 
@@ -81,14 +84,14 @@ update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int km
   int i, j, k, count_same = 0, start_mono = -1;
   uint8_t context[2 * kmer_size]; 
   char prev_char = '$';
-  printf ("\nDBG:: %s (%d)\n", seq, seq_length);
+  // printf ("\nDBG:: %s (%d)\n", seq, seq_length);
   count_same = 0;
   for (i = 0; i < (seq_length - kmer_size); i++) {
     if (seq[i] == prev_char) {
       count_same++;
       if ((count_same > min_hopo_size) && (start_mono >= kmer_size)) {
         while (i < (seq_length-kmer_size-1) && (seq[i+1] == prev_char)) { i++; count_same++; }
-        for (j=start_mono; j <= i; j++) printf ("%c", seq[j]); //DEBUG
+        // for (j=start_mono; j <= i; j++) printf ("%c", seq[j]); //DEBUG
         if (dna_in_2_bits[(int)prev_char][0] < dna_in_2_bits[(int)prev_char][1]) { // A or C : forward strand
           k = 0;
           for (j = start_mono - kmer_size; j < start_mono; j++) context[k++] = dna_in_2_bits[ (int)seq[j] ][0]; 
@@ -101,7 +104,7 @@ update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int km
           for (j = start_mono - 1; j >= start_mono - kmer_size; j--) context[k++] = dna_in_2_bits[ (int)seq[j] ][1]; 
           add_kmer_to_hopo_counter (hc, context, 2 * kmer_size, dna_in_2_bits[(int)prev_char][1], count_same);
         } // elsif (dna[0] > dna[1]); notice that if dna[0] == dna[1] then do nothing (not an unambiguous base)
-        for (j=0; j < 2*kmer_size; j++) printf ("%c", bit_2_dna[ context[j] ]); //DEBUG
+        // for (j=0; j < 2*kmer_size; j++) printf ("%c", bit_2_dna[ context[j] ]); //DEBUG
       } // if (count_same>2) [i.e. we found valid homopolymer]
     } else { 
       count_same = 1;
@@ -119,10 +122,68 @@ add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, int context_size, u
     hc->n_alloc *= 2;
     hc->elem = (hopo_element*) biomcmc_realloc ((hopo_element*)hc->elem, hc->n_alloc * sizeof (hopo_element));
   }
-  hc->elem[hc->n_elem]->base      = hopo_base_int; // zero (AT) or one (CG)
-  hc->elem[hc->n_elem]->base_size = hopo_size;     // homopolymer track length, in bases
+  hc->elem[hc->n_elem].base      = hopo_base_int; // zero (AT) or one (CG)
+  hc->elem[hc->n_elem].base_size = hopo_size;     // homopolymer track length, in bases
+  hc->elem[hc->n_elem].count     = 1;
   // if (context_size < 32)  // assuming kmer < 16 bases, otherwise we need to create hash function
-  hc->elem[hc->n_elem]->context   = context[0];
-  for (i = 1; i < context_size; i++) hc->elem[hc->n_elem]->context |= (context[i] << (2 * i));
+  hc->elem[hc->n_elem].context   = context[0];
+  for (i = 1; i < context_size; i++) hc->elem[hc->n_elem].context |= (context[i] << (2 * i));
   hc->n_elem++;
+}
+
+void
+finalise_hopo_counter (hopo_counter hc)
+{
+  hopo_element *pivot, *efreq;
+  int i, n1 = 0;
+  qsort (hc->elem, hc->n_elem, sizeof (hopo_element), compare_hopo_element_decreasing);
+  efreq = (hopo_element*) biomcmc_malloc (hc->n_alloc * sizeof (hopo_element));
+  efreq[0].base      = hc->elem[0].base;
+  efreq[0].base_size = hc->elem[0].base_size;
+  efreq[0].context   = hc->elem[0].context;
+  efreq[0].count = 1; n1 = 0;
+  for (i=1; i < hc->n_elem; i++) {
+    if (compare_hopo_element_decreasing ((const void*) &(hc->elem[i-1]), (const void*) &(hc->elem[i]))) {
+      efreq[++n1].base   = hc->elem[i].base;
+      efreq[n1].base_size = hc->elem[i].base_size;
+      efreq[n1].context   = hc->elem[i].context;
+      efreq[n1].count = 1;
+    } 
+    else efreq[n1].count++;
+  }
+  pivot = hc->elem;
+  hc->n_alloc = hc->n_elem = n1 + 1;
+  hc->elem = (hopo_element*) biomcmc_realloc ((hopo_element*) efreq, hc->n_alloc * sizeof (hopo_element));
+  free (pivot);
+
+  estimate_coverage_hopo_counter (hc);
+}
+
+void
+estimate_coverage_hopo_counter (hopo_counter hc)
+{
+  int sum_count = 0, i, *kmer, *count;
+  empfreq ef;
+  kmer  = (int*) biomcmc_malloc (hc->n_elem * sizeof (int));
+  count = (int*) biomcmc_malloc (hc->n_elem * sizeof (int));
+  for (i=0; i < hc->n_elem; i++) { // several elements may share (integer version of) context
+    kmer[i]  = (int) (hc->elem[i].context & ((1ULL << 31) -1)); // use 30 bits
+    count[i] = hc->elem[i].count;
+    sum_count += count[i];
+  }
+  ef = new_empfreq_from_int_weighted (kmer, hc->n_elem, count);
+  hc->coverage[0] = ef->i[0].freq;
+  //hc->coverage[1] = (int)((double)(sum_count)/(double)(ef->n));
+  hc->coverage[1] = sum_count;
+  if (kmer) free (kmer);
+  if (count) free (count);
+  del_empfreq (ef);
+}
+
+void
+print_debug_hopo_counter (hopo_counter hc)
+{
+  int i;
+  for (i = 0; i < 4; i++) printf ("%3d %5d | ", hc->elem[i].base_size, hc->elem[i].count);
+  printf ("%12d %12d\n", hc->coverage[0], hc->coverage[1]);
 }
