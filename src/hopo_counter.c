@@ -12,6 +12,7 @@ static uint8_t dna_in_2_bits[256][2] = {{0xff}};
 
 static void initialize_dna_to_bit_tables (void);
 int compare_hopo_element_decreasing (const void *a, const void *b);
+int compare_hopo_context (hopo_element a, hopo_element b);
 hopo_counter new_hopo_counter (void);
 void update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int kmer_size, int min_hopo_size);
 void add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, int context_size, uint8_t hopo_base_int, int hopo_size);
@@ -27,6 +28,14 @@ compare_hopo_element_decreasing (const void *a, const void *b)
   if (result) return result; // sort second by kmers 
   return ((hopo_element *)b)->base_size - ((hopo_element *)a)->base_size; // same context and homopolymer base, thus sort by tract length
 } 
+
+int
+compare_hopo_context (hopo_element a, hopo_element b)
+{
+  int result = b.base - a.base;
+  if (result) return result;
+  return b.context - a.context;
+}
 
 hopo_counter
 new_hopo_counter_from_file (const char *filename)
@@ -47,9 +56,10 @@ new_hopo_counter (void)
 {
   hopo_counter hc = (hopo_counter) biomcmc_malloc (sizeof (struct hopo_counter_struct));
   hc->n_alloc = 32;
-  hc->n_elem = hc->coverage[0] = hc->coverage[1] = 0;
+  hc->n_idx = hc->n_elem = hc->coverage[0] = hc->coverage[1] = 0;
   hc->elem = (hopo_element*) biomcmc_malloc (hc->n_alloc * sizeof (hopo_element));
   hc->ref_counter = 1;
+  hc->idx = NULL;
   if (dna_in_2_bits[0][0] == 0xff) initialize_dna_to_bit_tables (); 
 
   return hc;
@@ -61,6 +71,7 @@ del_hopo_counter (hopo_counter hc)
   if (!hc) return;
   if (--hc->ref_counter) return;
   if (hc->elem) free (hc->elem);
+  if (hc->idx) free (hc->idx);
   free (hc);
   return;
 }
@@ -137,24 +148,35 @@ finalise_hopo_counter (hopo_counter hc)
   hopo_element *pivot, *efreq;
   int i, n1 = 0;
   qsort (hc->elem, hc->n_elem, sizeof (hopo_element), compare_hopo_element_decreasing);
-  efreq = (hopo_element*) biomcmc_malloc (hc->n_alloc * sizeof (hopo_element));
+  efreq = (hopo_element*) biomcmc_malloc (hc->n_elem * sizeof (hopo_element));
   efreq[0].base      = hc->elem[0].base;
   efreq[0].base_size = hc->elem[0].base_size;
   efreq[0].context   = hc->elem[0].context;
-  efreq[0].count = 1; n1 = 0;
+  efreq[0].count = 1; n1 = 0; hc->n_idx = 0;
+
+  /* frequency of each polymer, in context, into efreq[] vector of elements  */
   for (i=1; i < hc->n_elem; i++) {
     if (compare_hopo_element_decreasing ((const void*) &(hc->elem[i-1]), (const void*) &(hc->elem[i]))) {
       efreq[++n1].base   = hc->elem[i].base;
       efreq[n1].base_size = hc->elem[i].base_size;
       efreq[n1].context   = hc->elem[i].context;
       efreq[n1].count = 1;
-    } 
+    }
     else efreq[n1].count++;
   }
+  /* new efreq[] becomes hc->elem[] */
   pivot = hc->elem;
   hc->n_alloc = hc->n_elem = n1 + 1;
   hc->elem = (hopo_element*) biomcmc_realloc ((hopo_element*) efreq, hc->n_alloc * sizeof (hopo_element));
   free (pivot);
+
+  /* idx[] will have indices of distinct contexts (i.e. histogram of polymer lengths */
+  hc->idx = (int*) biomcmc_malloc ((hc->n_elem + 1) * sizeof (int));
+  hc->idx[hc->n_idx++] = 0; 
+  for (i=1; i < hc->n_elem; i++) 
+    if ((hc->elem[i-1].base != hc->elem[i].base) || (hc->elem[i-1].context != hc->elem[i].context)) hc->idx[hc->n_idx++] = i;
+  hc->idx[hc->n_idx++] = i; // last element (plus one) is also on index (to avoid conditional checking */
+  hc->idx = (int*) biomcmc_realloc ((int*) hc->idx, hc->n_idx* sizeof (int));
 
   estimate_coverage_hopo_counter (hc);
 }
@@ -175,10 +197,30 @@ estimate_coverage_hopo_counter (hopo_counter hc)
   hc->coverage[0] = ef->i[0].freq;
   //hc->coverage[1] = (int)((double)(sum_count)/(double)(ef->n));
   hc->coverage[1] = sum_count;
+  assert (hc->coverage[0] > 0);
+  assert (hc->coverage[1] > 0);
   if (kmer) free (kmer);
   if (count) free (count);
   del_empfreq (ef);
 }
+
+void 
+compare_hopo_counters (hopo_counter hc1, hopo_counter hc2, double *result)
+{
+  int order, j1, j2;
+  double scale1[] = {hc1->coverage[0]/hc2->coverage[0], hc1->coverage[1]/hc2->coverage[1]};
+  double scale2[] = {1./scale1[0], 1./scale1[1]};
+  result[0] = result[1] = 0.;
+  for (j1 = j2 = 0; (j1 < hc1->n_idx-1) && (j2 < hc2->n_idx-1);) { // both are in decreasing order
+    order = compare_hopo_context (hc1->elem[ hc1->idx[j1] ], hc2->elem[ hc2->idx[j2] ]);
+    if (order < 0)      { bin_similarity_one (hc1, hc1->idx[j1], hc1->idx[j1+1], scale1, result); j1++; }
+    else if (order > 0) { bin_similarity_one (hc2, hc2->idx[j2], hc2->idx[j2+1], scale2, result); j2++; }
+    else {  bin_similarity_two (hc1, hc1->idx[j1], hc1->idx[j1+1], hc2, hc2->idx[j2], hc2->idx[j2+1], scale1, result); j1++; j2++;}
+  }
+  // for(j1) bin_one; for (j2) bin_one;
+}
+
+
 
 void
 print_debug_hopo_counter (hopo_counter hc)

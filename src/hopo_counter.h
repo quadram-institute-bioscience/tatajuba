@@ -25,6 +25,7 @@ struct hopo_counter_struct
 {
   hopo_element *elem;
   int n_elem, n_alloc, coverage[2];
+  int *idx, n_idx;
   int ref_counter;
 };
 
