@@ -16,8 +16,10 @@ int compare_hopo_context (hopo_element a, hopo_element b);
 hopo_counter new_hopo_counter (void);
 void update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int kmer_size, int min_hopo_size);
 void add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, int context_size, uint8_t hopo_base_int, int hopo_size);
-void finalise_hopo_counter (hopo_counter hc);
+void bin_similarity_one (hopo_counter hc, int start, double *result);
+void bin_similarity_two (hopo_counter hc1, int start1, hopo_counter hc2, int start2, double *result);
 void estimate_coverage_hopo_counter (hopo_counter hc);
+void estimate_variance_hopo_counter (hopo_counter hc);
 
 int
 compare_hopo_element_decreasing (const void *a, const void *b)
@@ -38,17 +40,23 @@ compare_hopo_context (hopo_element a, hopo_element b)
 }
 
 hopo_counter
-new_hopo_counter_from_file (const char *filename)
+new_or_append_hopo_counter_from_file (hopo_counter hc, const char *filename, int kmer_size, int min_hopo_size)
 {
   int i;
+  hopo_counter hc_local = hc;
+
   gzFile fp = gzopen (filename, "r");
   kseq_t *seq = kseq_init (fp);
-  hopo_counter hc = new_hopo_counter ();
-  while ((i = kseq_read (seq)) >= 0) update_hopo_counter_from_seq (hc, seq->seq.s, seq->seq.l, 5, 4); // seq_l, kmer_size, min_homopol_size 
-  finalise_hopo_counter (hc);
+  if (!hc) {
+    hc_local = new_hopo_counter ();
+    strncpy (hc_local->name, filename, MAXFILENAMELENGTH);
+    hc_local->name[MAXFILENAMELENGTH] = '\0'; // if filename is longer, then strncpy doesn't include null terminator
+  }
+  if (hc_local->idx) biomcmc_error ("This counter has been compared to another; cannot add more reads to it");
+  while ((i = kseq_read (seq)) >= 0) update_hopo_counter_from_seq (hc_local, seq->seq.s, seq->seq.l, kmer_size, min_hopo_size); 
   kseq_destroy(seq); // other kseq_t parameters: seq->name.s, seq->seq.l, seq->qual.l
   gzclose(fp);
-  return hc;
+  return hc_local;
 }
 
 hopo_counter
@@ -56,7 +64,9 @@ new_hopo_counter (void)
 {
   hopo_counter hc = (hopo_counter) biomcmc_malloc (sizeof (struct hopo_counter_struct));
   hc->n_alloc = 32;
-  hc->n_idx = hc->n_elem = hc->coverage[0] = hc->coverage[1] = 0;
+  hc->n_idx = hc->n_elem = 0;
+  hc->variance[0] = hc->variance[1] = 1.;
+  hc->coverage[0] = hc->coverage[1] = 0.;
   hc->elem = (hopo_element*) biomcmc_malloc (hc->n_alloc * sizeof (hopo_element));
   hc->ref_counter = 1;
   hc->idx = NULL;
@@ -179,6 +189,7 @@ finalise_hopo_counter (hopo_counter hc)
   hc->idx = (int*) biomcmc_realloc ((int*) hc->idx, hc->n_idx* sizeof (int));
 
   estimate_coverage_hopo_counter (hc);
+  estimate_variance_hopo_counter (hc); 
 }
 
 void
@@ -194,38 +205,79 @@ estimate_coverage_hopo_counter (hopo_counter hc)
     sum_count += count[i];
   }
   ef = new_empfreq_from_int_weighted (kmer, hc->n_elem, count);
-  hc->coverage[0] = ef->i[0].freq;
+  hc->coverage[0] = (double)(ef->i[0].freq);
   //hc->coverage[1] = (int)((double)(sum_count)/(double)(ef->n));
-  hc->coverage[1] = sum_count;
-  assert (hc->coverage[0] > 0);
-  assert (hc->coverage[1] > 0);
+  hc->coverage[1] = (double)(sum_count);
+  if (hc->coverage[0] < 1e-15) hc->coverage[0] = 1e-15;
+  if (hc->coverage[1] < 1e-15) hc->coverage[1] = 1e-15;
   if (kmer) free (kmer);
   if (count) free (count);
   del_empfreq (ef);
+}
+
+void
+estimate_variance_hopo_counter (hopo_counter hc)
+{
+  int i;
+  hc->variance[0] = hc->variance[1] = 0.;
+  for (i = 0; i < hc->n_idx -1; i++) bin_similarity_two (hc, i, hc, i, hc->variance);
+  if (hc->variance[0] < 1e-15) hc->variance[0] = 1e-15;
+  if (hc->variance[1] < 1e-15) hc->variance[1] = 1e-15;
+  hc->variance[0] = sqrt (hc->variance[0]);
+  hc->variance[1] = sqrt (hc->variance[1]);
 }
 
 void 
 compare_hopo_counters (hopo_counter hc1, hopo_counter hc2, double *result)
 {
   int order, j1, j2;
-  double scale1[] = {hc1->coverage[0]/hc2->coverage[0], hc1->coverage[1]/hc2->coverage[1]};
-  double scale2[] = {1./scale1[0], 1./scale1[1]};
-  result[0] = result[1] = 0.;
+
+  if (!hc1->idx) finalise_hopo_counter (hc1); 
+  if (!hc2->idx) finalise_hopo_counter (hc2); 
+
+  result[0] = result[1] = 0.; /* TODO: result should have distances for all contexts (i.e. hc1->n_idx + hc2->n_idx) */
   for (j1 = j2 = 0; (j1 < hc1->n_idx-1) && (j2 < hc2->n_idx-1);) { // both are in decreasing order
-    order = compare_hopo_context (hc1->elem[ hc1->idx[j1] ], hc2->elem[ hc2->idx[j2] ]);
-    if (order < 0)      { bin_similarity_one (hc1, hc1->idx[j1], hc1->idx[j1+1], scale1, result); j1++; }
-    else if (order > 0) { bin_similarity_one (hc2, hc2->idx[j2], hc2->idx[j2+1], scale2, result); j2++; }
-    else {  bin_similarity_two (hc1, hc1->idx[j1], hc1->idx[j1+1], hc2, hc2->idx[j2], hc2->idx[j2+1], scale1, result); j1++; j2++;}
+    order = compare_hopo_context (hc1->elem[ hc1->idx[j1] ], hc2->elem[ hc2->idx[j2] ]); // 0 = they're the same; o.w. which comes first
+    if      (order < 0) { bin_similarity_one (hc1, j1, result); j1++; }
+    else if (order > 0) { bin_similarity_one (hc2, j2, result); j2++; }
+    else {  bin_similarity_two (hc1, j1, hc2, j2, result); j1++; j2++;}
   }
-  // for(j1) bin_one; for (j2) bin_one;
+  /* loop above ends when one of the two vectors finish; the other still has unmatched contexts */
+  for (;j1 < hc1->n_idx-1; j1++) bin_similarity_one (hc1, j1, result);
+  for (;j2 < hc2->n_idx-1; j2++) bin_similarity_one (hc2, j2, result);
+  result[0] = fabs(result[0] / (hc1->variance[0] * hc2->variance[0]) - 1.);
+  result[1] = fabs(result[1] / (hc1->variance[1] * hc2->variance[1]) - 1.);
 }
 
+void
+bin_similarity_one (hopo_counter hc, int start, double *result)
+{ // alternatives: find closest context (hard); assume unseen bin < min_tract_length (easier) (TRUE bin_simi_matrices dont have this issue) 
+  int i;
+  for (i = hc->idx[start]; i < hc->idx[start+1]; i++) {
+    result[0] += (1 + hc->elem[i].base_size) * (double)(hc->elem[i].count)/hc->coverage[0]; 
+    result[1] += (1 + hc->elem[i].base_size) * (double)(hc->elem[i].count)/hc->coverage[1]; 
+  }
+}
 
+void
+bin_similarity_two (hopo_counter hc1, int start1, hopo_counter hc2, int start2, double *result)
+{
+  int i1, i2;
+  double x, y;
+  /* bin_hist = srqt[ t(P-Q) A (P-Q) ] where A=1/cov_mat but we just calculate a 'weighted' Euclidean distance */
+  for (i1 = hc1->idx[start1]; i1 < hc1->idx[start1+1]; i1++)  for (i2 = hc2->idx[start2]; i2 < hc2->idx[start2+1]; i2++) {
+    x = (double)(1 + abs (hc1->elem[i1].base_size - hc2->elem[i2].base_size)); // absolute distance between hist bins plus one 
+    y = (double)(hc1->elem[i1].count)/hc1->coverage[0] - (double)(hc2->elem[i2].count)/hc2->coverage[0]; 
+    result[0] += x * fabs(y);
+    y = (double)(hc1->elem[i1].count)/hc1->coverage[1] - (double)(hc2->elem[i2].count)/hc2->coverage[1]; 
+    result[1] += x * fabs(y);
+  }
+}
 
 void
 print_debug_hopo_counter (hopo_counter hc)
 {
   int i;
   for (i = 0; i < 4; i++) printf ("%3d %5d | ", hc->elem[i].base_size, hc->elem[i].count);
-  printf ("%12d %12d\n", hc->coverage[0], hc->coverage[1]);
+  printf ("%9.4lf %9.4lf %9.4lf %9.4lf\n", hc->coverage[0], hc->coverage[1], hc->variance[0], hc->variance[1]);
 }
