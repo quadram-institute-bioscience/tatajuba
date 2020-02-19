@@ -1,3 +1,9 @@
+2020.02.19
+	* Andrew's hints:
+		1. if program is slow, we can first map context-mers to a reference and exclude those not in homopolymer tracts; 
+		2. check Illumina limits for homopolymers, it might exclude > 10 or something
+		3. indeed good idea to exclude unique context-mers (Bloom filter)
+		4. Always aim at "one-click" software: run without options and get a useful, interpretable result
 2020.01.27
 	* first version: maintain kalign; assume histogram per sample (must be normalised)
 	* Desiderata: 
