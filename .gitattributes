@@ -1,2 +1,14 @@
 autom4te.cache/*  linguist-vendored=true
 m4/*              linguist-vendored=true
+doxygen/*         linguist-vendored=true
+build/*           linguist-vendored=true
+config.guess      linguist-vendored=true
+config.sub        linguist-vendored=true
+ar-lib            linguist-vendored=true
+compile           linguist-vendored=true
+depcomp           linguist-vendored=true
+install-sh        linguist-vendored=true
+ltmain.sh         linguist-vendored=true
+missing           linguist-vendored=true
+test-driver       linguist-vendored=true
+Makefile*         linguist-vendored=true
