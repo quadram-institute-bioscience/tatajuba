@@ -18,7 +18,7 @@ typedef struct hopo_counter_struct* hopo_counter;
 typedef struct
 { // in future I may have vect[3] to help memory alignment
   uint64_t context; // flanking kmers (bitstring or hashed)
-  uint8_t base;     // 0=AT 1=CG (forward or reverse, we use canonical)  
+  uint8_t base;     // 0=AT 1=CG (forward or reverse, we use canonical which is A side or C side)  
   int base_size;    // length of homopolymeric tract (in bases)
   int count;          // frequency of homopolymer in this context (due to coverage)
 } hopo_element;
