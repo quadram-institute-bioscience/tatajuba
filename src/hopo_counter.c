@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
- * Copyright (C) 2019-today  Leonardo de Oliveira Martins [ leomrtns at gmail.com;  http://www.leomartins.org ]
+ * Copyright (C) 2020-today  Leonardo de Oliveira Martins [ leomrtns at gmail.com;  http://leomrtns.github.io ]
  */
 
 #include "hopo_counter.h"
@@ -8,7 +8,7 @@
 KSEQ_INIT(gzFile, gzread);
 
 static uint8_t dna_in_2_bits[256][2] = {{0xff}};
-//static char bit_2_dna[] = {'A', 'C', 'G', 'T'};
+static char bit_2_dna[] = {'A', 'C', 'G', 'T'};
 
 static void initialize_dna_to_bit_tables (void);
 int compare_hopo_element_decreasing (const void *a, const void *b);
@@ -99,20 +99,21 @@ initialize_dna_to_bit_tables (void)
   dna_in_2_bits['U'][0] = dna_in_2_bits['u'][0] = 3; dna_in_2_bits['U'][1] = dna_in_2_bits['u'][1] = 0;  /*  U  <-> A  */
 }
 
+// check if doesnt handle overlapping hopos (e.g. TGACCCAAAATGC -> CCC and AAAA)
 void
 update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int kmer_size, int min_hopo_size)
 {
   int i, j, k, count_same = 0, start_mono = -1;
   uint8_t context[2 * kmer_size]; 
   char prev_char = '$';
-  // printf ("\nDBG:: %s (%d)\n", seq, seq_length);
-  count_same = 0;
+  printf ("\nDBG:: %s (%d)\n", seq, seq_length); // DEBUG
+  count_same = 0; // zero because previous is "$" 
   for (i = 0; i < (seq_length - kmer_size); i++) {
     if (seq[i] == prev_char) {
       count_same++;
       if ((count_same > min_hopo_size) && (start_mono >= kmer_size)) {
         while (i < (seq_length-kmer_size-1) && (seq[i+1] == prev_char)) { i++; count_same++; }
-        // for (j=start_mono; j <= i; j++) printf ("%c", seq[j]); //DEBUG
+        for (j=start_mono; j <= i; j++) printf ("%c", seq[j]); //DEBUG
         if (dna_in_2_bits[(int)prev_char][0] < dna_in_2_bits[(int)prev_char][1]) { // A or C : forward strand
           k = 0;
           for (j = start_mono - kmer_size; j < start_mono; j++) context[k++] = dna_in_2_bits[ (int)seq[j] ][0]; 
@@ -125,7 +126,9 @@ update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int km
           for (j = start_mono - 1; j >= start_mono - kmer_size; j--) context[k++] = dna_in_2_bits[ (int)seq[j] ][1]; 
           add_kmer_to_hopo_counter (hc, context, 2 * kmer_size, dna_in_2_bits[(int)prev_char][1], count_same);
         } // elsif (dna[0] > dna[1]); notice that if dna[0] == dna[1] then do nothing (not an unambiguous base)
-        // for (j=0; j < 2*kmer_size; j++) printf ("%c", bit_2_dna[ context[j] ]); //DEBUG
+        printf ("\t : ");
+        for (j=0; j < 2*kmer_size; j++) printf ("%c", bit_2_dna[context[j]]); //DEBUG
+        printf ("\n");
       } // if (count_same>2) [i.e. we found valid homopolymer]
     } else { 
       count_same = 1;
@@ -143,7 +146,7 @@ add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, int context_size, u
     hc->n_alloc *= 2;
     hc->elem = (hopo_element*) biomcmc_realloc ((hopo_element*)hc->elem, hc->n_alloc * sizeof (hopo_element));
   }
-  hc->elem[hc->n_elem].base      = hopo_base_int; // zero (AT) or one (CG)
+  hc->elem[hc->n_elem].base      = hopo_base_int; // zero (AT) or one (CG) but always store direction with A or C
   hc->elem[hc->n_elem].base_size = hopo_size;     // homopolymer track length, in bases
   hc->elem[hc->n_elem].count     = 1;
   // if (context_size < 32)  // assuming kmer < 16 bases, otherwise we need to create hash function
