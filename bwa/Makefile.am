@@ -1,11 +1,67 @@
-AM_CPPFLAGS = $(GTKDEPS_CFLAGS)  @OPENMP_CPPFLAGS@
-AM_CFLAGS = @AM_CFLAGS@  @OPENMP_CFLAGS@ -lz -D_FILE_OFFSET_BITS=64 -fsigned-char -w 
-LDADD = $(GTKDEPS_LIBS) $(AM_LDFLAGS)
+AM_CPPFLAGS = $(GTKDEPS_CFLAGS) -I$(srcdir)/../kalign -I$(srcdir)/../@BIOMCMCLIB@/lib @OPENMP_CPPFLAGS@  @ZLIB_LIBS@ 
+AM_CFLAGS = @AM_CFLAGS@ @OPENMP_CFLAGS@ @CHECK_CFLAGS@ -lz -D_FILE_OFFSET_BITS=64 -fsigned-char -w 
+LDADD = $(GTKDEPS_LIBS) @CHECK_LIBS@  ../kalign/libkalign.la ../biomcmc-lib/lib/libbiomcmc_static.la @ZLIB_LIBS@  $(AM_LDFLAGS)
 
-common_headers =  bseq.h kalloc.h kdq.h ketopt.h khash.h kseq.h ksort.h ksw2.h kthread.h kvec.h minimap.h mmpriv.h sdust.h
+original_headers = \
+	bntseq.h \
+	bwa.h \
+	bwamem.h \
+	bwase.h \
+	bwtaln.h \
+	bwtgap.h \
+	bwt.h \
+	bwt_lite.h \
+	bwtsw2.h \
+	kbtree.h \
+	kseq.h \
+	khash.h \
+	ksort.h \
+	ksort.h \
+	kstring.h \
+	ksw.h \
+	kvec.h \
+	bamlite.h \
+	malloc_wrap.h \
+	QSufSort.h \
+	rle.h \
+	rope.h \
+	utils.h 
                  
-common_src =  align.c bseq.c chain.c esterr.c example.c format.c hit.c index.c kalloc.c ksw2_dispatch.c ksw2_extd2_sse.c \
-		ksw2_exts2_sse.c ksw2_extz2_sse.c ksw2_ll_sse.c kthread.c main.c map.c misc.c options.c pe.c sdust.c sketch.c splitidx.c
+original_src = \
+	bwa.c \
+	bamlite.c \
+	bntseq.c \
+	bwamem.c \
+	bwamem_extra.c \
+	bwamem_pair.c \
+	bwape.c \
+	bwase.c \
+	bwaseqio.c \
+	bwashm.c \
+	bwtaln.c \
+	bwt.c \
+	bwtgap.c \
+	bwt_gen.c \
+	bwtindex.c \
+	bwt_lite.c \
+	bwtsw2_aux.c \
+	bwtsw2_chain.c \
+	bwtsw2_core.c \
+	bwtsw2_main.c \
+	bwtsw2_pair.c \
+	fastmap.c \
+	is.c \
+	kopen.c \
+	kthread.c \
+	kstring.c \
+	ksw.c \
+	malloc_wrap.c \
+	maxk.c \
+	pemerge.c \
+	QSufSort.c \
+	rle.c \
+	rope.c \
+	utils.c 
 
-noinst_LTLIBRARIES = libminimap2.la # convenience lib (not installed globally)
-libminimap2_la_SOURCES = $(common_src) $(common_headers) 
+noinst_LTLIBRARIES = libbwa.la # convenience lib (not installed globally)
+libbwa_la_SOURCES = $(original_src) $(original_headers) wrapper_bwa.c wrapper_bwa.h 

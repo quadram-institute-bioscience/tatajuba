@@ -260,6 +260,7 @@ int bwa_idx_build(const char *fa, const char *prefix, int algo_type, int block_s
 	clock_t t;
 	int64_t l_pac;
 
+  printf ("|%s|  |%s|\n", fa, prefix);
 	str  = (char*)calloc(strlen(prefix) + 10, 1);
 	str2 = (char*)calloc(strlen(prefix) + 10, 1);
 	str3 = (char*)calloc(strlen(prefix) + 10, 1);

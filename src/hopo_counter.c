@@ -5,7 +5,7 @@
 #include "hopo_counter.h"
 #include "kseq.h"
 
-KSEQ_INIT(gzFile, gzread);
+BMC2_KSEQ_INIT(gzFile, gzread);
 
 static uint8_t dna_in_2_bits[256][2] = {{0xff}};
 static char bit_2_dna[] = {'A', 'C', 'G', 'T'};
@@ -46,15 +46,15 @@ new_or_append_hopo_counter_from_file (hopo_counter hc, const char *filename, int
   hopo_counter hc_local = hc;
 
   gzFile fp = gzopen (filename, "r");
-  kseq_t *seq = kseq_init (fp);
+  bmc2_kseq_t *seq = bmc2_kseq_init (fp);
   if (!hc) {
     hc_local = new_hopo_counter ();
     strncpy (hc_local->name, filename, MAXFILENAMELENGTH);
     hc_local->name[MAXFILENAMELENGTH] = '\0'; // if filename is longer, then strncpy doesn't include null terminator
   }
   if (hc_local->idx) biomcmc_error ("This counter has been compared to another; cannot add more reads to it");
-  while ((i = kseq_read (seq)) >= 0) update_hopo_counter_from_seq (hc_local, seq->seq.s, seq->seq.l, kmer_size, min_hopo_size); 
-  kseq_destroy(seq); // other kseq_t parameters: seq->name.s, seq->seq.l, seq->qual.l
+  while ((i = bmc2_kseq_read (seq)) >= 0) update_hopo_counter_from_seq (hc_local, seq->seq.s, seq->seq.l, kmer_size, min_hopo_size); 
+  bmc2_kseq_destroy(seq); // other kseq_t parameters: seq->name.s, seq->seq.l, seq->qual.l
   gzclose(fp);
   return hc_local;
 }
