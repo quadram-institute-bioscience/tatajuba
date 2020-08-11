@@ -319,3 +319,59 @@ int bwa_aln(int argc, char *argv[])
 	free(opt); free(prefix);
 	return 0;
 }
+
+/** added by leomrtns: bwt_t must be called outside this function, as well as opt_init(); other params may come from
+ * biomcmc's char_vector() */
+void bwa_aln_from_vector (bwt_t *bwt, char **seqname, char **dnaseq, char **qual, size_t *seq_len, int n_dnaseq, const gap_opt_t *opt) // BIOMCMC
+{
+	int i, n_seqs;
+	long long tot_seqs = 0;
+	bwa_seq_t *seqs;
+	clock_t t;
+
+	// core loop
+	err_fwrite(SAI_MAGIC, 1, 4, stdout);
+	err_fwrite(opt, sizeof(gap_opt_t), 1, stdout);
+
+  // FIXME: may need a for loop for blocks of 0x40000 reads
+  seqs = bwa_read_seq_from_vector (seqname, dnaseq, qual, seq_len, n_dnaseq, opt->trim_qual); 
+  t = clock();
+
+  fprintf(stderr, "[bwa_aln_core] calculate SA coordinate... ");
+
+#ifdef HAVE_PTHREAD
+  if (opt->n_threads <= 1) { // no multi-threading at all
+    bwa_cal_sa_reg_gap (0, bwt, n_seqs, seqs, opt);
+  } else {
+    pthread_t *tid;
+    pthread_attr_t attr;
+    thread_aux_t *data;
+    int j;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+    data = (thread_aux_t*)calloc(opt->n_threads, sizeof(thread_aux_t));
+    tid = (pthread_t*)calloc(opt->n_threads, sizeof(pthread_t));
+    for (j = 0; j < opt->n_threads; ++j) {
+      data[j].tid = j; data[j].bwt = bwt;
+      data[j].n_seqs = n_seqs; data[j].seqs = seqs; data[j].opt = opt;
+      pthread_create(&tid[j], &attr, worker, data + j);
+    }
+    for (j = 0; j < opt->n_threads; ++j) pthread_join(tid[j], 0);
+    free(data); free(tid);
+  }
+#else
+  bwa_cal_sa_reg_gap (0, bwt, n_seqs, seqs, opt);
+#endif
+
+  fprintf(stderr, "%.2f sec\n", (float)(clock() - t) / CLOCKS_PER_SEC);
+
+  t = clock();
+  fprintf(stderr, "[bwa_aln_core] write to the disk... ");
+  for (i = 0; i < n_dnaseq; ++i) {
+    bwa_seq_t *p = seqs + i;
+    err_fwrite(&p->n_aln, 4, 1, stdout);
+    if (p->n_aln) err_fwrite (p->aln, sizeof(bwt_aln1_t), p->n_aln, stdout);
+  }
+  fprintf(stderr, "%.2f sec\n", (float)(clock() - t) / CLOCKS_PER_SEC);
+  bwa_free_read_seq(n_seqs, seqs);
+}

@@ -140,11 +140,13 @@ extern "C" {
 	void seq_reverse(int len, ubyte_t *seq, int is_comp);
 	bwa_seq_t *bwa_read_seq(bwa_seqio_t *seq, int n_needed, int *n, int mode, int trim_qual);
 	void bwa_free_read_seq(int n_seqs, bwa_seq_t *seqs);
-
 	int bwa_cal_maxdiff(int l, double err, double thres);
 	void bwa_cal_sa_reg_gap(int tid, bwt_t *const bwt, int n_seqs, bwa_seq_t *seqs, const gap_opt_t *opt);
 
 	void bwa_cs2nt_core(bwa_seq_t *p, bwtint_t l_pac, ubyte_t *pac);
+  // added by leomrtns
+  bwa_seq_t *bwa_read_seq_from_vector (char **seqname, char **dnaseq, char **qual, size_t *seq_len, int n_dnaseq, int trim_qual);
+  void bwa_aln_from_vector (bwt_t *bwt, char **seqname, char **dnaseq, char **qual, size_t *seq_len, int n_dnaseq, const gap_opt_t *opt);
 
 #ifdef __cplusplus
 }

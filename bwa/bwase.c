@@ -505,7 +505,7 @@ void bwase_initialize()
 }
 
 void bwa_sai2sam_se_core(const char *prefix, const char *fn_sa, const char *fn_fa, int n_occ, const char *rg_line)
-{
+{ // leo: prefix, sai, fastq
 	extern bwa_seqio_t *bwa_open_reads(int mode, const char *fn_fa);
 	int i, n_seqs, m_aln;
 	long long tot_seqs = 0;
@@ -550,7 +550,7 @@ void bwa_sai2sam_se_core(const char *prefix, const char *fn_sa, const char *fn_f
 			}
 			err_fread_noeof(aln, sizeof(bwt_aln1_t), n_aln, fp_sa);
 			bwa_aln2seq_core(n_aln, aln, p, 1, n_occ);
-		}
+		}// leo: I think bwa_aln() adds aln to p so this loop is not needed 
 
 		fprintf(stderr, "[bwa_aln_core] convert to sequence coordinate... ");
 		bwa_cal_pac_pos(bns, prefix, n_seqs, seqs, opt.max_diff, opt.fnr); // forward bwt will be destroyed here
