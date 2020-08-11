@@ -12,8 +12,8 @@
 https://github.com/attractivechaos/klib
 */
 
-#ifndef AC_KSEQ_H
-#define AC_KSEQ_H
+#ifndef biomcmc_AC_KSEQ_H
+#define biomcmc_AC_KSEQ_H
 
 #include <zlib.h>
 #include <ctype.h>
