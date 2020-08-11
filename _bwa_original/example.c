@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 		ar = mem_align1(opt, idx->bwt, idx->bns, idx->pac, ks->seq.l, ks->seq.s); // get all the hits
 		for (i = 0; i < ar.n; ++i) { // traverse each hit
 			mem_aln_t a;
-			if (ar.a[i].secondary >= 0) continue; // skip secondary alignments
+//			if (ar.a[i].secondary >= 0) continue; // skip secondary alignments
 			a = mem_reg2aln(opt, idx->bns, idx->pac, ks->seq.l, ks->seq.s, &ar.a[i]); // get forward-strand position and CIGAR
 			// print alignment
 			printf("%s\t%c\t%s\t%ld\t%d\t", ks->name.s, "+-"[a.is_rev], idx->bns->anns[a.rid].name, (long)a.pos, a.mapq);
