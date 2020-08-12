@@ -142,11 +142,16 @@ extern "C" {
 	void bwa_free_read_seq(int n_seqs, bwa_seq_t *seqs);
 	int bwa_cal_maxdiff(int l, double err, double thres);
 	void bwa_cal_sa_reg_gap(int tid, bwt_t *const bwt, int n_seqs, bwa_seq_t *seqs, const gap_opt_t *opt);
-
 	void bwa_cs2nt_core(bwa_seq_t *p, bwtint_t l_pac, ubyte_t *pac);
-  // added by leomrtns
+
+  /*  added by leomrtns */
+  /*! \brief replaces kseq_read(); defined in bwaseqio.c */
   bwa_seq_t *bwa_read_seq_from_vector (char **seqname, char **dnaseq, char **qual, size_t *seq_len, int n_dnaseq, int trim_qual);
-  void bwa_aln_from_vector (bwt_t *bwt, char **seqname, char **dnaseq, char **qual, size_t *seq_len, int n_dnaseq, const gap_opt_t *opt);
+  /*! \brief returns bwa_seq_t with bwt_aln1_t struct from "bwa aln" instead of saving it to file "sai". Defined in bwtaln.c
+   * seqs must be created beforehand, with bwa_read_seq() above.  */
+  bwa_seq_t *bwa_aln_from_vector (const char *prefix, bwa_seq_t *seqs, int n_dnaseq, const gap_opt_t *opt);
+  /*! Refine alignments from bwa_aln above. Uses several index files so better to give prefix. Defined in bwase.c  */
+  bwa_seq_t *bwa_sai2sam_se_from_vector (const char *prefix, bwa_seq_t *seqs, int n_dnaseq, int n_occ, gap_opt_t *opt);
 
 #ifdef __cplusplus
 }

@@ -237,7 +237,7 @@ bwa_seq_t *bwa_read_seq_from_vector (char **seqname, char **dnaseq, char **qual,
   int n_seqs = 0, j, i;
   long n_trimmed = 0, n_tot = 0;
 
-  seqs = (bwa_seq_t*)calloc(n_dnaseq, sizeof(bwa_seq_t));
+  seqs = (bwa_seq_t*) calloc (n_dnaseq, sizeof(bwa_seq_t));
   for (j = 0; j < n_dnaseq; j++) {
     p = &seqs[j];
     p->bc[0] = 0;
@@ -246,7 +246,7 @@ bwa_seq_t *bwa_read_seq_from_vector (char **seqname, char **dnaseq, char **qual,
     p->full_len = p->clip_len = p->len = seq_len[j];
     n_tot += p->full_len;
     p->seq = (ubyte_t*) calloc (p->full_len, 1);
-    for (i = 0; i != p->full_len; ++i) p->seq[i] = nst_nt4_table[ (int)dnaseq[j][i] ];
+    for (i = 0; i != p->full_len; ++i) p->seq[i] = nst_nt4_table[ (int) dnaseq[j][i] ];
     if (qual) { // copy quality
       p->qual = (ubyte_t*) strdup ((char*) qual[j]);
       if (trim_qual > 0) n_trimmed += bwa_trim_read (trim_qual, p);
@@ -254,7 +254,7 @@ bwa_seq_t *bwa_read_seq_from_vector (char **seqname, char **dnaseq, char **qual,
     p->rseq = (ubyte_t*) calloc(p->full_len, 1);
     memcpy (p->rseq, p->seq, p->len);
     seq_reverse (p->len, p->seq, 0); // *IMPORTANT*: will be reversed back in bwa_refine_gapped()
-    seq_reverse (p->len, p->rseq, is_comp);
+    seq_reverse (p->len, p->rseq, BWA_MODE_COMPREAD);
     p->name = strdup ((const char*) seqname[j]);
      { // trim /[12]$
       int t = strlen (p->name);

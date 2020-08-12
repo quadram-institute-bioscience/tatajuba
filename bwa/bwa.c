@@ -420,8 +420,7 @@ void bwa_print_sam_hdr(const bntseq_t *bns, const char *hdr_line)
 			if (bns->anns[i].is_alt) err_printf("\tAH:*\n");
 			else err_fputc('\n', stdout);
 		}
-	} else if (n_SQ != bns->n_seqs && bwa_verbose >= 2)
-		fprintf(stderr, "[W::%s] %d @SQ lines provided with -H; %d sequences in the index. Continue anyway.\n", __func__, n_SQ, bns->n_seqs);
+	} else if (n_SQ != bns->n_seqs && bwa_verbose >= 2) fprintf(stderr, "[W::%s] %d @SQ lines provided with -H; %d sequences in the index. Continue anyway.\n", __func__, n_SQ, bns->n_seqs);
 	if (hdr_line) err_printf("%s\n", hdr_line);
 	if (bwa_pg) err_printf("%s\n", bwa_pg);
 }

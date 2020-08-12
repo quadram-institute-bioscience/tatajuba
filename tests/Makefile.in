@@ -87,7 +87,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-check_PROGRAMS = check_bwa$(EXEEXT)
+check_PROGRAMS = check_bwa$(EXEEXT) debug_bwa$(EXEEXT)
 subdir = tests
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
@@ -115,6 +115,11 @@ AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
+debug_bwa_SOURCES = debug_bwa.c
+debug_bwa_OBJECTS = debug_bwa.$(OBJEXT)
+debug_bwa_LDADD = $(LDADD)
+debug_bwa_DEPENDENCIES = ../kalign/libkalign.la ../bwa/libbwa.la \
+	../biomcmc-lib/lib/libbiomcmc_static.la $(am__DEPENDENCIES_1)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -149,8 +154,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = check_bwa.c
-DIST_SOURCES = check_bwa.c
+SOURCES = check_bwa.c debug_bwa.c
+DIST_SOURCES = check_bwa.c debug_bwa.c
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -570,6 +575,10 @@ check_bwa$(EXEEXT): $(check_bwa_OBJECTS) $(check_bwa_DEPENDENCIES) $(EXTRA_check
 	@rm -f check_bwa$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(check_bwa_OBJECTS) $(check_bwa_LDADD) $(LIBS)
 
+debug_bwa$(EXEEXT): $(debug_bwa_OBJECTS) $(debug_bwa_DEPENDENCIES) $(EXTRA_debug_bwa_DEPENDENCIES) 
+	@rm -f debug_bwa$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(debug_bwa_OBJECTS) $(debug_bwa_LDADD) $(LIBS)
+
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
 
@@ -577,6 +586,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/check_bwa.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/debug_bwa.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -801,6 +811,13 @@ recheck: all $(check_PROGRAMS)
 check_bwa.log: check_bwa$(EXEEXT)
 	@p='check_bwa$(EXEEXT)'; \
 	b='check_bwa'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+debug_bwa.log: debug_bwa$(EXEEXT)
+	@p='debug_bwa$(EXEEXT)'; \
+	b='debug_bwa'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \

@@ -252,7 +252,7 @@ int bwa_index(int argc, char *argv[]) // the "index" command
 	return 0;
 }
 
-int bwa_idx_build(const char *fa, const char *prefix, int algo_type, int block_size)
+int bwa_idx_build (const char *fa, const char *prefix, int algo_type, int block_size)
 {
 	extern void bwa_pac_rev_core(const char *fn, const char *fn_rev);
 
@@ -269,7 +269,7 @@ int bwa_idx_build(const char *fa, const char *prefix, int algo_type, int block_s
 		t = clock();
 		if (bwa_verbose >= 3) fprintf(stderr, "[bwa_index] Pack FASTA... ");
 		l_pac = bns_fasta2bntseq(fp, prefix, 0);
-		if (bwa_verbose >= 3) fprintf(stderr, "%.2f sec\n", (float)(clock() - t) / CLOCKS_PER_SEC);
+		if (bwa_verbose >= 3) fprintf(stderr, "%.5f sec\n", (float)(clock() - t) / CLOCKS_PER_SEC);
 		err_gzclose(fp);
 	}
 	if (algo_type == 0) algo_type = l_pac > 50000000? 2 : 3; // set the algorithm for generating BWT
@@ -285,7 +285,7 @@ int bwa_idx_build(const char *fa, const char *prefix, int algo_type, int block_s
 			bwt_dump_bwt(str2, bwt);
 			bwt_destroy(bwt);
 		}
-		if (bwa_verbose >= 3) fprintf(stderr, "[bwa_index] %.2f seconds elapse.\n", (float)(clock() - t) / CLOCKS_PER_SEC);
+		if (bwa_verbose >= 3) fprintf(stderr, "[bwa_index] %.5f seconds elapse.\n", (float)(clock() - t) / CLOCKS_PER_SEC);
 	}
 	{
 		bwt_t *bwt;
@@ -296,14 +296,14 @@ int bwa_idx_build(const char *fa, const char *prefix, int algo_type, int block_s
 		bwt_bwtupdate_core(bwt);
 		bwt_dump_bwt(str, bwt);
 		bwt_destroy(bwt);
-		if (bwa_verbose >= 3) fprintf(stderr, "%.2f sec\n", (float)(clock() - t) / CLOCKS_PER_SEC);
+		if (bwa_verbose >= 3) fprintf(stderr, "%.5f sec\n", (float)(clock() - t) / CLOCKS_PER_SEC);
 	}
 	{
 		gzFile fp = xzopen(fa, "r");
 		t = clock();
 		if (bwa_verbose >= 3) fprintf(stderr, "[bwa_index] Pack forward-only FASTA... ");
 		l_pac = bns_fasta2bntseq(fp, prefix, 1);
-		if (bwa_verbose >= 3) fprintf(stderr, "%.2f sec\n", (float)(clock() - t) / CLOCKS_PER_SEC);
+		if (bwa_verbose >= 3) fprintf(stderr, "%.5f sec\n", (float)(clock() - t) / CLOCKS_PER_SEC);
 		err_gzclose(fp);
 	}
 	{
@@ -316,7 +316,7 @@ int bwa_idx_build(const char *fa, const char *prefix, int algo_type, int block_s
 		bwt_cal_sa(bwt, 32);
 		bwt_dump_sa(str3, bwt);
 		bwt_destroy(bwt);
-		if (bwa_verbose >= 3) fprintf(stderr, "%.2f sec\n", (float)(clock() - t) / CLOCKS_PER_SEC);
+		if (bwa_verbose >= 3) fprintf(stderr, "%.5f sec\n", (float)(clock() - t) / CLOCKS_PER_SEC);
 	}
 	free(str3); free(str2); free(str);
 	return 0;
