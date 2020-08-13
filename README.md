@@ -1,4 +1,4 @@
-![Tatajuba](recipe/tatajuba-text.png)
+<img src="recipe/tatajuba-text.png" height="100" alt="Tatajuba">
 Distribution of homopolymeric tracts
 
 
