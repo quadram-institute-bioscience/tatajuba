@@ -344,7 +344,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 EXTRA_DIST = recipe 
 ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = @BIOMCMCLIB@ kalign src 
+SUBDIRS = @BIOMCMCLIB@ bwa kalign src tests 
 all: all-recursive
 
 .SUFFIXES:
