@@ -115,7 +115,7 @@ void bwa_cal_sa_reg_gap (int tid, bwt_t *const bwt, int n_seqs, bwa_seq_t *seqs,
 		p->aln = bwt_match_gap(bwt, p->len, p->seq, w, p->len <= opt->seed_len? 0 : seed_w, &local_opt, &p->n_aln, stack);
 		// clean up the unused data in the record
 		/* free(p->name); free(p->seq); free(p->rseq); free(p->qual);
-       p->name = 0; p->seq = p->rseq = p->qual = 0; */ // leo: why o why?
+       p->name = 0; p->seq = p->rseq = p->qual = 0; */ // leo: we need those 
 	}
 	free(seed_w); free(w);
 	gap_destroy_stack(stack);
@@ -354,7 +354,6 @@ bwa_seq_t *bwa_aln_from_vector (const char *prefix, bwa_seq_t *seqs, int n_dnase
   bwa_cal_sa_reg_gap (0, bwt, n_dnaseq, seqs, opt);
 #endif
   fprintf(stderr, "%.5f sec\n", (float)(clock() - t) / CLOCKS_PER_SEC);
-
 
 	bwt_destroy(bwt);
   return seqs;

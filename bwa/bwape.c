@@ -691,8 +691,7 @@ void bwa_sai2sam_pe_core(const char *prefix, char *const fn_sa[2], char *const f
 		fprintf(stderr, "[bwa_sai2sam_pe_core] time elapses: %.2f sec\n", (float)(clock() - t) / CLOCKS_PER_SEC); t = clock();
 
 		fprintf(stderr, "[bwa_sai2sam_pe_core] refine gapped alignments... ");
-		for (j = 0; j < 2; ++j)
-			bwa_refine_gapped(bns, n_seqs, seqs[j], pacseq);
+		for (j = 0; j < 2; ++j) bwa_refine_gapped(bns, n_seqs, seqs[j], pacseq, 1); // "1"=reverse_needed, added by leo
 		fprintf(stderr, "%.2f sec\n", (float)(clock() - t) / CLOCKS_PER_SEC); t = clock();
 		if (pac == 0) free(pacseq);
 

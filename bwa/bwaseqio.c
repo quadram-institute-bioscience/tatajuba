@@ -148,7 +148,6 @@ static bwa_seq_t *bwa_read_bam(bwa_seqio_t *bs, int n_needed, int *n, int is_com
 
 #define BARCODE_LOW_QUAL 13
 
-// leo TODO: this function can be modified to read seqs from memory not disk
 bwa_seq_t *bwa_read_seq (bwa_seqio_t *bs, int n_needed, int *n, int mode, int trim_qual)
 {
   bwa_seq_t *seqs, *p;
@@ -253,8 +252,8 @@ bwa_seq_t *bwa_read_seq_from_vector (char **seqname, char **dnaseq, char **qual,
     }
     p->rseq = (ubyte_t*) calloc(p->full_len, 1);
     memcpy (p->rseq, p->seq, p->len);
-    seq_reverse (p->len, p->seq, 0); // *IMPORTANT*: will be reversed back in bwa_refine_gapped()
-    seq_reverse (p->len, p->rseq, BWA_MODE_COMPREAD);
+    seq_reverse (p->len, p->seq, 0); // *IMPORTANT*: originally reversed back in bwa_refine_gapped() but not here
+    seq_reverse (p->len, p->rseq, 1);
     p->name = strdup ((const char*) seqname[j]);
      { // trim /[12]$
       int t = strlen (p->name);

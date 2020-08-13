@@ -166,7 +166,7 @@ void bwa_cal_pac_pos(const bntseq_t *bns, const char *prefix, int n_seqs, bwa_se
 
 #define SW_BW 50
 
-bwa_cigar_t *bwa_refine_gapped_core(bwtint_t l_pac, const ubyte_t *pacseq, int len, ubyte_t *seq, int ref_shift, bwtint_t *_rb, int *n_cigar)
+bwa_cigar_t *bwa_refine_gapped_core (bwtint_t l_pac, const ubyte_t *pacseq, int len, ubyte_t *seq, int ref_shift, bwtint_t *_rb, int *n_cigar)
 {
   bwa_cigar_t *cigar = 0;
   uint32_t *cigar32 = 0;
@@ -284,7 +284,8 @@ void bwa_correct_trimmed(bwa_seq_t *s)
   s->len = s->full_len;
 }
 
-void bwa_refine_gapped (const bntseq_t *bns, int n_seqs, bwa_seq_t *seqs, ubyte_t *_pacseq)
+/* reverse_needed added by leo, since in our memory-based vector we dont need it */
+void bwa_refine_gapped (const bntseq_t *bns, int n_seqs, bwa_seq_t *seqs, ubyte_t *_pacseq, char reverse_needed) // BIOMCMC
 {
   ubyte_t *pacseq;
   int i, j, k;
@@ -297,19 +298,20 @@ void bwa_refine_gapped (const bntseq_t *bns, int n_seqs, bwa_seq_t *seqs, ubyte_
   } else pacseq = _pacseq;
   for (i = 0; i != n_seqs; ++i) {
     bwa_seq_t *s = seqs + i;
-    seq_reverse(s->len, s->seq, 0); // IMPORTANT: s->seq is reversed here!!!
+    if (reverse_needed == 0) seq_reverse (s->len, s->seq, 1); // leo's implementation 
+    else seq_reverse (s->len, s->seq, 0); // IMPORTANT: s->seq is reversed here!!!
     for (j = k = 0; j < s->n_multi; ++j) {
       bwt_multi1_t *q = s->multi + j;
       int n_cigar;
       if (q->gap) { // gapped alignment
-        q->cigar = bwa_refine_gapped_core(bns->l_pac, pacseq, s->len, q->strand? s->rseq : s->seq, q->ref_shift, &q->pos, &n_cigar);
+        q->cigar = bwa_refine_gapped_core (bns->l_pac, pacseq, s->len, q->strand? s->rseq : s->seq, q->ref_shift, &q->pos, &n_cigar);
         q->n_cigar = n_cigar;
         if (q->cigar) s->multi[k++] = *q;
       } else s->multi[k++] = *q;
     }
     s->n_multi = k; // this squeezes out gapped alignments which failed the CIGAR generation
     if (s->type == BWA_TYPE_NO_MATCH || s->type == BWA_TYPE_MATESW || s->n_gapo == 0) continue;
-    s->cigar = bwa_refine_gapped_core(bns->l_pac, pacseq, s->len, s->strand? s->rseq : s->seq, s->ref_shift, &s->pos, &s->n_cigar);
+    s->cigar = bwa_refine_gapped_core (bns->l_pac, pacseq, s->len, s->strand? s->rseq : s->seq, s->ref_shift, &s->pos, &s->n_cigar);
     if (s->cigar == 0) s->type = BWA_TYPE_NO_MATCH;
   }
   // generate MD tag
@@ -556,7 +558,7 @@ void bwa_sai2sam_se_core(const char *prefix, const char *fn_sa, const char *fn_f
     fprintf(stderr, "%.2f sec\n", (float)(clock() - t) / CLOCKS_PER_SEC); t = clock();
 
     fprintf(stderr, "[bwa_aln_core] refine gapped alignments... ");
-    bwa_refine_gapped(bns, n_seqs, seqs, 0);
+    bwa_refine_gapped (bns, n_seqs, seqs, 0, 1); // "1" -> reverse_needed, added by leo 
     fprintf(stderr, "%.2f sec\n", (float)(clock() - t) / CLOCKS_PER_SEC); t = clock();
 
     fprintf(stderr, "[bwa_aln_core] print alignments... ");
@@ -634,7 +636,7 @@ bwa_seq_t *bwa_sai2sam_se_from_vector (const char *prefix, bwa_seq_t *seqs, int 
   bwa_cal_pac_pos (bns, prefix, n_dnaseq, seqs, opt->max_diff, opt->fnr); // forward bwt will be destroyed here
   fprintf(stderr, "%.5f sec\n", (float)(clock() - t) / CLOCKS_PER_SEC); t = clock();
   fprintf(stderr, "[bwa_aln_from_vector] refine gapped alignments... ");
-  bwa_refine_gapped (bns, n_dnaseq, seqs, 0);
+  bwa_refine_gapped (bns, n_dnaseq, seqs, 0, 0); // last "0" -> reverse not needed , added by leo
   // for (i = 0; i < n_dnaseq; ++i) bwa_print_sam1(bns, seqs + i, 0, opt->mode, opt->max_top2);
   fprintf(stderr, "%.5f sec\n", (float)(clock() - t) / CLOCKS_PER_SEC); t = clock();
 
