@@ -14,10 +14,39 @@ If I'm not mistaken it means "yellow fire" in [Tupi](https://en.wikipedia.org/wi
 You should download this repository with `git clone --recursive` to ensure it also downloads
 [biomcmc-lib](https://github.com/quadram-institute-bioscience/biomcmc-lib).
 
-This sofware uses `autotools`, so you can install it with `configure` + `make`. I'll add more instructions later, but
-remember to define where you want it installed with `configure --prefix=DIR`. 
+This sofware uses `autotools`, so you can install it with `configure` + `make`. 
+You may need to define where you want it installed with `configure --prefix=DIR` which is where are your unix-like
+`include/`, `lib/`, and `bin/` directories. My favourite is `~/local`. 
+
 It will compile from the directories `biomcmc-lib`, `kalign`, and `bwa` before finally compiling `tatajuba`.
-Notice that this does **not** generate the usual executables for `kalign` or `bwa` (only their libraries are used here).
+Notice that this does **not** generate the usual executables for `kalign` or `bwa`: only their libraries are used by
+tatajubá.
+
+Here is an example of its installation, please modify to better suit your needs:
+
+```[bash]
+/home/simpson/$ git clone --recursive git@github.com:quadram-institute-bioscience/tatajuba.git
+/home/simpson/$ mkdir build && cd build
+/home/simpson/$ ../tatajuba/configure --prefix=${HOME}/local
+/home/simpson/$ make; make install
+/home/simpson/$ make check  # battery of unit and integration tests for both tatajuba and biomcmc-lib
+```
+
+If `configure` complains about a missing library (usually `libcheck` or `zlib`), you'll need to install them before 
+running `configure` again.
+If there is no `configure` file at all in the distribution, or it doesn't run, then you you need to install the
+`autotools` and rerun the configuration. 
+Both cases are shown below:
+
+```[bash]
+## install libraries possibly missing:
+/home/simpson/$ apt-get install zlib1g-dev check
+
+## 'bootstrap' the configuration files:
+/home/simpson/$ apt-get install automake autoconf libtool 
+/home/simpson/$ (cd tatajuba && autoreconf)  ## the parentheses avoid entering the directory afterwards
+```
+
 
 ## License
 SPDX-License-Identifier: GPL-3.0-or-later
