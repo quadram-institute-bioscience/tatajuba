@@ -11,22 +11,22 @@
 
 #include <kalign.h>
 
-# define MAXFILENAMELENGTH 64
-
 typedef struct hopo_counter_struct* hopo_counter;
 
 typedef struct
-{ // in future I may have vect[3] to help memory alignment
-  uint64_t context; // flanking kmers (bitstring or hashed)
-  uint8_t base;     // 0=AT 1=CG (forward or reverse, we use canonical which is A side or C side)  
-  int base_size;    // length of homopolymeric tract (in bases)
-  int count;          // frequency of homopolymer in this context (due to coverage)
+{ 
+  uint64_t context[2]; // flanking kmers (bitstring, not hashed)
+  /* bit fields below are signed to faciliate arithm comparisons, thus we lose one bit for signal */
+  int64_t base:2,    // base: 0=AT 1=CG (forward or reverse, we use canonical which is A side or C side)  
+          length:8,  // (former base_size) length of homopolymeric tract (in bases)
+          count:24,  // frequency of homopolymer in this context (due to coverage)
+          extra:30;  // unused |  7bit=128; 23bit=8mi 
 } hopo_element;
 
 struct hopo_counter_struct
 {
   hopo_element *elem;
-  char name[MAXFILENAMELENGTH+1];
+  char *name;
   int n_elem, n_alloc;
   double coverage[2], variance[2];
   int *idx, n_idx;

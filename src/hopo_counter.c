@@ -13,9 +13,12 @@ static char bit_2_dna[] = {'A', 'C', 'G', 'T'};
 static void initialize_dna_to_bit_tables (void);
 int compare_hopo_element_decreasing (const void *a, const void *b);
 int compare_hopo_context (hopo_element a, hopo_element b);
+int compare_hopo_context_within_distance (hopo_element a, hopo_element b, int max_distance);
+int distance_between_context_kmer (uint64_t *c1, uint64_t *c2, int max_dist);
 hopo_counter new_hopo_counter (void);
 void update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int kmer_size, int min_hopo_size);
 void add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, int context_size, uint8_t hopo_base_int, int hopo_size);
+void copy_hopo_element_start_count (hopo_element to, hopo_element from);
 void bin_similarity_one (hopo_counter hc, int start, double *result);
 void bin_similarity_two (hopo_counter hc1, int start1, hopo_counter hc2, int start2, double *result);
 void estimate_coverage_hopo_counter (hopo_counter hc);
@@ -26,17 +29,40 @@ compare_hopo_element_decreasing (const void *a, const void *b)
 {
   int result = ((hopo_element *)b)->base - ((hopo_element *)a)->base;
   if (result) return result; // sort first by homopolymer (A/T or G/C)
-  result = ((hopo_element *)b)->context - ((hopo_element *)a)->context;
+  result = ((hopo_element *)b)->context[0] - ((hopo_element *)a)->context[0];
   if (result) return result; // sort second by kmers 
-  return ((hopo_element *)b)->base_size - ((hopo_element *)a)->base_size; // same context and homopolymer base, thus sort by tract length
-} 
+  result = ((hopo_element *)b)->context[1] - ((hopo_element *)a)->context[1];
+  if (result) return result; // sort second by kmers 
+  return ((hopo_element *)b)->length - ((hopo_element *)a)->length; // same context and homopolymer base, thus sort by tract length
+}
 
 int
 compare_hopo_context (hopo_element a, hopo_element b)
 {
   int result = b.base - a.base;
   if (result) return result;
-  return b.context - a.context;
+  result = b.context[0] - a.context[0];
+  if (result) return result;
+  return b.context[1] - a.context[1];
+}
+
+int
+compare_hopo_context_within_distance (hopo_element a, hopo_element b, int max_distance)
+{ 
+  if ((b.base - a.base) != 0) return 2 * max_distance; // homopolymer tracts are different
+  int distance = distance_between_context_kmer (&(b.context[0]), &(a.context[0]), 2 * max_distance);
+  if (distance >= 2 * max_distance) return distance; 
+  return distance + distance_between_context_kmer (&(b.context[1]), &(a.context[1]), 2 * max_distance - distance);
+}
+
+/*! \brief max_dist must be positive, and is the max allowed distance _per_ flanking region */
+int
+distance_between_context_kmer (uint64_t *c1, uint64_t *c2, int max_dist)
+{
+  uint64_t d = *c1 ^ *c2; // XOR is one if bits are different, zero o.w. 
+  int dist = 0;
+  while (d && (dist < max_dist)) { if (d & 3) dist++; d >>= 2; } // every two bits, check if there is any difference  
+  return dist;
 }
 
 hopo_counter
@@ -49,8 +75,10 @@ new_or_append_hopo_counter_from_file (hopo_counter hc, const char *filename, int
   bmc2_kseq_t *seq = bmc2_kseq_init (fp);
   if (!hc) {
     hc_local = new_hopo_counter ();
-    strncpy (hc_local->name, filename, MAXFILENAMELENGTH);
-    hc_local->name[MAXFILENAMELENGTH] = '\0'; // if filename is longer, then strncpy doesn't include null terminator
+    name_length = strlen(filename);
+    hc_local->name = (char*) biomcmc_malloc (sizeof (char) * (name_length + 1));
+    strncpy (hc_local->name, filename, name_length);
+    hc_local->name[name_length] = '\0';
   }
   if (hc_local->idx) biomcmc_error ("This counter has been compared to another; cannot add more reads to it");
   while ((i = bmc2_kseq_read (seq)) >= 0) update_hopo_counter_from_seq (hc_local, seq->seq.s, seq->seq.l, kmer_size, min_hopo_size); 
@@ -69,7 +97,7 @@ new_hopo_counter (void)
   hc->coverage[0] = hc->coverage[1] = 0.;
   hc->elem = (hopo_element*) biomcmc_malloc (hc->n_alloc * sizeof (hopo_element));
   hc->ref_counter = 1;
-  hc->idx = NULL;
+  hc->name = hc->idx = NULL;
   if (dna_in_2_bits[0][0] == 0xff) initialize_dna_to_bit_tables (); 
 
   return hc;
@@ -81,6 +109,7 @@ del_hopo_counter (hopo_counter hc)
   if (!hc) return;
   if (--hc->ref_counter) return;
   if (hc->elem) free (hc->elem);
+  if (hc->name) free (hc->name);
   if (hc->idx) free (hc->idx);
   free (hc);
   return;
@@ -118,13 +147,13 @@ update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int km
           k = 0;
           for (j = start_mono - kmer_size; j < start_mono; j++) context[k++] = dna_in_2_bits[ (int)seq[j] ][0]; 
           for (j = i + 1; j <= i + kmer_size; j++) context[k++] = dna_in_2_bits[ (int)seq[j] ][0]; 
-          add_kmer_to_hopo_counter (hc, context, 2 * kmer_size, dna_in_2_bits[(int)prev_char][0], count_same);
+          add_kmer_to_hopo_counter (hc, context, kmer_size, dna_in_2_bits[(int)prev_char][0], count_same);
         }
         else if (dna_in_2_bits[(int)prev_char][0] > dna_in_2_bits[(int)prev_char][1]) { // T/U or G : reverse strand
           k = 0; // it would be easier to copy above, but with k--; however I wanna implement rolling hash in future
           for (j = i + kmer_size; j > i; j--) context[k++] = dna_in_2_bits[ (int)seq[j] ][1]; 
           for (j = start_mono - 1; j >= start_mono - kmer_size; j--) context[k++] = dna_in_2_bits[ (int)seq[j] ][1]; 
-          add_kmer_to_hopo_counter (hc, context, 2 * kmer_size, dna_in_2_bits[(int)prev_char][1], count_same);
+          add_kmer_to_hopo_counter (hc, context, kmer_size, dna_in_2_bits[(int)prev_char][1], count_same);
         } // elsif (dna[0] > dna[1]); notice that if dna[0] == dna[1] then do nothing (not an unambiguous base)
         printf ("\t : ");
         for (j=0; j < 2*kmer_size; j++) printf ("%c", bit_2_dna[context[j]]); //DEBUG
@@ -146,13 +175,24 @@ add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, int context_size, u
     hc->n_alloc *= 2;
     hc->elem = (hopo_element*) biomcmc_realloc ((hopo_element*)hc->elem, hc->n_alloc * sizeof (hopo_element));
   }
-  hc->elem[hc->n_elem].base      = hopo_base_int; // zero (AT) or one (CG) but always store direction with A or C
-  hc->elem[hc->n_elem].base_size = hopo_size;     // homopolymer track length, in bases
-  hc->elem[hc->n_elem].count     = 1;
-  // if (context_size < 32)  // assuming kmer < 16 bases, otherwise we need to create hash function
-  hc->elem[hc->n_elem].context   = context[0];
-  for (i = 1; i < context_size; i++) hc->elem[hc->n_elem].context |= (context[i] << (2 * i));
+  hc->elem[hc->n_elem].base   = hopo_base_int; // zero (AT) or one (CG) but always store direction with A or C
+  hc->elem[hc->n_elem].length = hopo_size;     // homopolymer track length, in bases
+  hc->elem[hc->n_elem].count  = 1;
+  hc->elem[hc->n_elem].context[0] = context[0]; // left context 
+  for (i = 1; i < context_size; i++) hc->elem[hc->n_elem].context[0] |= (context[i] << (2 * i));
+  hc->elem[hc->n_elem].context[1] = context[context_size]; // right context
+  for (i = 1; i < context_size; i++) hc->elem[hc->n_elem].context[1] |= (context[context_size + i] << (2 * i));
   hc->n_elem++;
+}
+
+void
+copy_hopo_element_start_count (hopo_element to, hopo_element from)
+{
+  to->base    =  from->base; 
+  to->length  =  from->length;
+  to->context[0] = from->context[0];
+  to->context[1] = from->context[1];
+  to->count = 1;
 }
 
 void
@@ -162,20 +202,14 @@ finalise_hopo_counter (hopo_counter hc)
   int i, n1 = 0;
   qsort (hc->elem, hc->n_elem, sizeof (hopo_element), compare_hopo_element_decreasing);
   efreq = (hopo_element*) biomcmc_malloc (hc->n_elem * sizeof (hopo_element));
-  efreq[0].base      = hc->elem[0].base;
-  efreq[0].base_size = hc->elem[0].base_size;
-  efreq[0].context   = hc->elem[0].context;
-  efreq[0].count = 1; n1 = 0; hc->n_idx = 0;
+  copy_hopo_element_start_count (&(efreq[0]), &(hc->elem[0]));
+  n1 = 0; hc->n_idx = 0;
 
   /* frequency of each polymer, in context, into efreq[] vector of elements  */
   for (i=1; i < hc->n_elem; i++) {
-    if (compare_hopo_element_decreasing ((const void*) &(hc->elem[i-1]), (const void*) &(hc->elem[i]))) {
-      efreq[++n1].base   = hc->elem[i].base;
-      efreq[n1].base_size = hc->elem[i].base_size;
-      efreq[n1].context   = hc->elem[i].context;
-      efreq[n1].count = 1;
-    }
-    else efreq[n1].count++;
+    if (compare_hopo_element_decreasing ((const void*) &(hc->elem[i-1]), (const void*) &(hc->elem[i]))) 
+      copy_hopo_element_start_count (&(efreq[++n1]), &(hc->elem[i]));
+    else efreq[n1].count++; // same context _and_tract length
   }
   /* new efreq[] becomes hc->elem[] */
   pivot = hc->elem;
@@ -183,31 +217,34 @@ finalise_hopo_counter (hopo_counter hc)
   hc->elem = (hopo_element*) biomcmc_realloc ((hopo_element*) efreq, hc->n_alloc * sizeof (hopo_element));
   free (pivot);
 
-  /* idx[] will have indices of distinct contexts (i.e. histogram of polymer lengths */
+  /* idx[] will have indices of distinct contexts (i.e. histogram of polymer lengths) */
   hc->idx = (int*) biomcmc_malloc ((hc->n_elem + 1) * sizeof (int));
   hc->idx[hc->n_idx++] = 0; 
-  for (i=1; i < hc->n_elem; i++) 
-    if ((hc->elem[i-1].base != hc->elem[i].base) || (hc->elem[i-1].context != hc->elem[i].context)) hc->idx[hc->n_idx++] = i;
+  for (i=1; i < hc->n_elem; i++) if (compare_hopo_context (hc->elem[i-1], hc->elem[i])) hc->idx[hc->n_idx++] = i;
   hc->idx[hc->n_idx++] = i; // last element (plus one) is also on index (to avoid conditional checking */
   hc->idx = (int*) biomcmc_realloc ((int*) hc->idx, hc->n_idx* sizeof (int));
 
+  // TODO: remove singletons
   estimate_coverage_hopo_counter (hc);
   estimate_variance_hopo_counter (hc); 
 }
 
+/* coverage is estimated through kmer frequency (kmer=each flanking region) */
 void
 estimate_coverage_hopo_counter (hopo_counter hc)
 {
   int sum_count = 0, i, *kmer, *count;
   empfreq ef;
-  kmer  = (int*) biomcmc_malloc (hc->n_elem * sizeof (int));
-  count = (int*) biomcmc_malloc (hc->n_elem * sizeof (int));
+  kmer  = (int*) biomcmc_malloc (2 * hc->n_elem * sizeof (int));
+  count = (int*) biomcmc_malloc (2 * hc->n_elem * sizeof (int));
   for (i=0; i < hc->n_elem; i++) { // several elements may share (integer version of) context
-    kmer[i]  = (int) (hc->elem[i].context & ((1ULL << 31) -1)); // use 30 bits
+    kmer[ i]  = (int) (hc->elem[i].context[0] & ((1ULL << 31) -1)); // use 30 bits
     count[i] = hc->elem[i].count;
+    kmer[ i + hc->n_elem] = (int) (hc->elem[i].context[1] & ((1ULL << 31) -1)); // use 30 bits
+    count[i + hc->n_elem] = hc->elem[i].count;
     sum_count += count[i];
   }
-  ef = new_empfreq_from_int_weighted (kmer, hc->n_elem, count);
+  ef = new_empfreq_from_int_weighted (kmer, 2 * hc->n_elem, count);
   hc->coverage[0] = (double)(ef->i[0].freq);
   //hc->coverage[1] = (int)((double)(sum_count)/(double)(ef->n));
   hc->coverage[1] = (double)(sum_count);
@@ -257,8 +294,8 @@ bin_similarity_one (hopo_counter hc, int start, double *result)
 { // alternatives: find closest context (hard); assume unseen bin < min_tract_length (easier) (TRUE bin_simi_matrices dont have this issue) 
   int i;
   for (i = hc->idx[start]; i < hc->idx[start+1]; i++) {
-    result[0] += (1 + hc->elem[i].base_size) * (double)(hc->elem[i].count)/hc->coverage[0]; 
-    result[1] += (1 + hc->elem[i].base_size) * (double)(hc->elem[i].count)/hc->coverage[1]; 
+    result[0] += (1 + hc->elem[i].length) * (double)(hc->elem[i].count)/hc->coverage[0]; 
+    result[1] += (1 + hc->elem[i].length) * (double)(hc->elem[i].count)/hc->coverage[1]; 
   }
 }
 
@@ -269,7 +306,7 @@ bin_similarity_two (hopo_counter hc1, int start1, hopo_counter hc2, int start2, 
   double x, y;
   /* bin_hist = srqt[ t(P-Q) A (P-Q) ] where A=1/cov_mat but we just calculate a 'weighted' Euclidean distance */
   for (i1 = hc1->idx[start1]; i1 < hc1->idx[start1+1]; i1++)  for (i2 = hc2->idx[start2]; i2 < hc2->idx[start2+1]; i2++) {
-    x = (double)(1 + abs (hc1->elem[i1].base_size - hc2->elem[i2].base_size)); // absolute distance between hist bins plus one 
+    x = (double)(1 + abs (hc1->elem[i1].length - hc2->elem[i2].length)); // absolute distance between hist bins plus one 
     y = (double)(hc1->elem[i1].count)/hc1->coverage[0] - (double)(hc2->elem[i2].count)/hc2->coverage[0]; 
     result[0] += x * fabs(y);
     y = (double)(hc1->elem[i1].count)/hc1->coverage[1] - (double)(hc2->elem[i2].count)/hc2->coverage[1]; 
@@ -281,6 +318,6 @@ void
 print_debug_hopo_counter (hopo_counter hc)
 {
   int i;
-  for (i = 0; i < 4; i++) printf ("%3d %5d | ", hc->elem[i].base_size, hc->elem[i].count);
+  for (i = 0; i < 4; i++) printf ("%3d %5d | ", hc->elem[i].length, hc->elem[i].count);
   printf ("%9.4lf %9.4lf %9.4lf %9.4lf\n", hc->coverage[0], hc->coverage[1], hc->variance[0], hc->variance[1]);
 }
