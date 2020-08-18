@@ -5,6 +5,10 @@
 #include "hopo_counter.h"
 #include "kseq.h"
 
+#define MIN_TRACT_LENGTH 2
+#define MAX_TRACT_LENGTH 34
+#define TRACT_LENGTH_RANGE 32  // (MAX_TRACT_LENGTH - MIN_TRACT_LENGTH)
+
 BMC2_KSEQ_INIT(gzFile, gzread);
 
 static uint8_t dna_in_2_bits[256][2] = {{0xff}};
@@ -320,4 +324,64 @@ print_debug_hopo_counter (hopo_counter hc)
   int i;
   for (i = 0; i < 4; i++) printf ("%3d %5d | ", hc->elem[i].length, hc->elem[i].count);
   printf ("%9.4lf %9.4lf %9.4lf %9.4lf\n", hc->coverage[0], hc->coverage[1], hc->variance[0], hc->variance[1]);
+}
+
+context_histogram_t
+new_context_histogram_from_hopo_elem (hopo_element he)
+{
+  context_histogram_t ch = (context_histogram) biomcmc_malloc (sizeof (struct context_histogram_struct));
+  ch->context = (uint64_t*) biomcmc_malloc (2 * sizeof (uint64_t));
+  ch->n_context = 1; // how many context pairs 
+  ch->count = (uint32_t*) biomcmc_malloc (TRACT_LENGTH_RANGE * sizeof (uint32_t));
+  for (int i = 0; i < TRACT_LENGTH_RANGE; i++) ch->count = 0;
+  ch->mode_context_id = 0; // location, in context[], of best context (the one with length of highest frequency)
+  ch->genome_location = -1; // bwa location
+  /* first context is best context: */
+  ch->base = he.base;
+  ch->l_1 = ch->l_2 = he.length - MIN_TRACT_LENGTH; 
+  ch->mode_context_count = he.count; // frequency of best context
+  ch->mode_context_length = he.length; // tract length of best context
+  ch->context[0] = he.context[0];
+  ch->context[1] = he.context[1];
+  ch->count[he.length - MIN_TRACT_LENGTH] = he.count;
+  return ch;
+}
+
+void
+del_context_histogram (context_histogram_t ch)
+{
+  if (!ch) return;
+  if (ch->context) free (ch->context);
+  if (ch->count) free (ch->count);
+  free (ch);
+}
+
+void
+context_histogram_update_if_close (context_histogram_t ch, hopo_element he)
+{
+  if (/* he is close to all */) context_histogram_add_hopo_elem (ch, he);
+}
+
+
+void
+context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he)
+{
+  int i, this_id = -1;
+  /* Check if context is already on ch */
+  for (i = 0; i < ch->n_context; i++) if ((he.context[0] == ch->context[2*i]) && (he.context[1] == ch->context[2*i+1])) {this_id = i; break; } 
+  if (this_id < 0) { // new context
+    ch->context = (uint64_t*) biomcmc_realloc ((uint64_t*) ch->context, (2 * (ch->n_context+1)) * sizeof (uint64_t));
+    this_id = ch->n_context++;
+    ch->context[2 * this_id]     = he.context[0];
+    ch->context[2 * this_id + 1] = he.context[1];
+  }
+  /* if context+tract more frequent than observed so far, then this context is best */
+  if (ch->mode_context_count < he.count) {
+    ch->mode_context_count = he.count;
+    ch->mode_context_length = he.length; // may be same length, diff context
+    ch->mode_context_id = this_id; 
+  }
+  if (ch->l_1 > (he.length - MIN_TRACT_LENGTH)) ch->l_1 = he.length - MIN_TRACT_LENGTH; 
+  if (ch->l_2 < (he.length - MIN_TRACT_LENGTH)) ch->l_2 = he.length - MIN_TRACT_LENGTH; 
+  ch->count[he.length - MIN_TRACT_LENGTH] += he.count;
 }

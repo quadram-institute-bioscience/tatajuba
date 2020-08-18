@@ -12,15 +12,15 @@
 #include <kalign.h>
 
 typedef struct hopo_counter_struct* hopo_counter;
+typedef struct context_histogram_struct* context_histogram_t;
 
 typedef struct
 { 
   uint64_t context[2]; // flanking kmers (bitstring, not hashed)
   /* bit fields below are signed to faciliate arithm comparisons, thus we lose one bit for signal */
   int64_t base:2,    // base: 0=AT 1=CG (forward or reverse, we use canonical which is A side or C side)  
-          length:8,  // (former base_size) length of homopolymeric tract (in bases)
-          count:24,  // frequency of homopolymer in this context (due to coverage)
-          extra:30;  // unused |  7bit=128; 23bit=8mi 
+          length:14,  // (former base_size) length of homopolymeric tract (in bases)
+          count:32;  // frequency of homopolymer in this context (due to coverage)
 } hopo_element;
 
 struct hopo_counter_struct
@@ -31,6 +31,17 @@ struct hopo_counter_struct
   double coverage[2], variance[2];
   int *idx, n_idx;
   int ref_counter;
+};
+
+struct context_histogram_struct
+{
+  uint64_t *context;
+  int n_context,
+      mode_context_count,
+      mode_context_id,
+      mode_context_length, 
+      genome_location;
+  uint8_t l_1, l_2, base;
 };
 
 hopo_counter new_or_append_hopo_counter_from_file (hopo_counter hc, const char *filename, int kmer_size, int min_hopo_size);
