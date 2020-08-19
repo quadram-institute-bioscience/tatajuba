@@ -16,7 +16,7 @@ new_hopo_set_from_files (const char **filenames, int n_filenames, bool paired_en
 
   if (paired_end) hs->n_hc /= 2;
   if (kmer_size < 2)  kmer_size = 2;
-  if (kmer_size > 15) kmer_size = 15; 
+  if (kmer_size > 16) kmer_size = 16; 
   if (min_hopo_size < 1)  min_hopo_size = 1;
   if (min_hopo_size > 32) min_hopo_size = 32; 
   

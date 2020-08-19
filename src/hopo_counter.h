@@ -21,7 +21,7 @@ typedef struct
   uint64_t context[2]; // flanking kmers (bitstring, not hashed)
   /* bit fields below are signed to faciliate arithm comparisons, thus we lose one bit for signal */
   int64_t base:2,    // base: 0=AT 1=CG (forward or reverse, we use canonical which is A side or C side)  
-          length:14,  // (former base_size) length of homopolymeric tract (in bases)
+          length:16, // (former base_size) length of homopolymeric tract (in bases)
           count:32;  // frequency of homopolymer in this context (due to coverage)
 } hopo_element;
 
@@ -45,7 +45,7 @@ struct context_histogram_struct
       mode_context_length,  /*! \brief tract length of best homopolymer+context */
       mode_context_id,      /*! \brief which context (from neighboUrhood) has best homopolymer+context */
       genome_location;      /*! \brief genomic location(s) of context */
-  uint8_t l_1, l_2, base;   /*! \brief min and max observed tract lengths, and homopolymer base (AT or CG) */
+  uint32_t l_1:15, l_2:15, base:2;   /*! \brief min and max observed tract lengths, and homopolymer base (AT or CG) */
 };
 
 struct genomic_context_list_struct
@@ -61,6 +61,6 @@ void compare_hopo_counters (hopo_counter hc1, hopo_counter hc2, double *result);
 void print_debug_hopo_counter (hopo_counter hc);
 
 genomic_context_list_t new_genomic_context_list (hopo_counter hc, int max_distance_per_flank, int min_coverage);
-void delete_genomic_context_list (genomic_context_list_t genome);
+void del_genomic_context_list (genomic_context_list_t genome);
 
 #endif

@@ -23,14 +23,14 @@ get_parameters_from_argv (int argc, char **argv)
     .help    = arg_litn("h","help",0, 1, "print a longer help and exit"),
     .version = arg_litn("v","version",0, 1, "print version and exit"),
     .paired  = arg_litn("p","paired", 0, 1, "paired end (pairs of) files"),
-    .kmer    = arg_int0("k","kmer","{2,...,15}", "kmer size flanking each side of homopolymer"),
+    .kmer    = arg_int0("k","kmer","{2,...,15}", "kmer size flanking each side of homopolymer (default=8)"),
     .minsize = arg_int0("m","minsize","{1,...,32}", "minimum homopolymer tract length to be compared"),
     .fastq   = arg_filen(NULL, NULL, NULL, 1, 0xffff, "fasta or fastq file"),
     .end     = arg_end(10) // max number of errors it can store (o.w. shows "too many errors")
   };
   void* argtable[] = {params.help, params.version, params.paired, params.kmer, params.minsize, params.fastq, params.end};
   params.argtable = argtable; 
-  params.kmer->ival[0]    = 4; // default values must be before parsing
+  params.kmer->ival[0]    = 8; // default values must be before parsing
   params.minsize->ival[0] = 3; // default values must be before parsing
   /* actual parsing: */
   if (arg_nullcheck(params.argtable)) biomcmc_error ("Problem allocating memory for the argtable (command line arguments) structure");
@@ -85,7 +85,7 @@ main (int argc, char **argv)
   arg_parameters params = get_parameters_from_argv (argc, argv);
 
   if (params.kmer->ival[0] < 2)  params.kmer->ival[0] = 2;
-  if (params.kmer->ival[0] > 15) params.kmer->ival[0] = 15; 
+  if (params.kmer->ival[0] > 16) params.kmer->ival[0] = 16; 
   if (params.minsize->ival[0] < 1)  params.minsize->ival[0] = 1;
   if (params.minsize->ival[0] > 32) params.minsize->ival[0] = 32; 
 
