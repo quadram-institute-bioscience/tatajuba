@@ -22,11 +22,17 @@ int distance_between_context_kmer (uint64_t *c1, uint64_t *c2, int max_dist);
 hopo_counter new_hopo_counter (void);
 void update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int kmer_size, int min_hopo_size);
 void add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, int context_size, uint8_t hopo_base_int, int hopo_size);
-void copy_hopo_element_start_count (hopo_element to, hopo_element from);
+void copy_hopo_element_start_count (hopo_element *to, hopo_element *from);
 void bin_similarity_one (hopo_counter hc, int start, double *result);
 void bin_similarity_two (hopo_counter hc1, int start1, hopo_counter hc2, int start2, double *result);
+int hopo_counter_hist_integral (hopo_counter hc, int start);
 void estimate_coverage_hopo_counter (hopo_counter hc);
 void estimate_variance_hopo_counter (hopo_counter hc);
+
+context_histogram_t new_context_histogram_from_hopo_elem (hopo_element he);
+void del_context_histogram (context_histogram_t ch);
+int  distance_between_context_histogram_and_hopo_context (context_histogram_t ch, hopo_element he, int max_distance, int *idx_match);
+void context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, int idx_match);
 
 int
 compare_hopo_element_decreasing (const void *a, const void *b)
@@ -74,6 +80,7 @@ new_or_append_hopo_counter_from_file (hopo_counter hc, const char *filename, int
 {
   int i;
   hopo_counter hc_local = hc;
+  size_t name_length;
 
   gzFile fp = gzopen (filename, "r");
   bmc2_kseq_t *seq = bmc2_kseq_init (fp);
@@ -101,7 +108,7 @@ new_hopo_counter (void)
   hc->coverage[0] = hc->coverage[1] = 0.;
   hc->elem = (hopo_element*) biomcmc_malloc (hc->n_alloc * sizeof (hopo_element));
   hc->ref_counter = 1;
-  hc->name = hc->idx = NULL;
+  hc->name = NULL; hc->idx = NULL;
   if (dna_in_2_bits[0][0] == 0xff) initialize_dna_to_bit_tables (); 
 
   return hc;
@@ -190,7 +197,7 @@ add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, int context_size, u
 }
 
 void
-copy_hopo_element_start_count (hopo_element to, hopo_element from)
+copy_hopo_element_start_count (hopo_element *to, hopo_element *from)
 {
   to->base    =  from->base; 
   to->length  =  from->length;
@@ -318,6 +325,13 @@ bin_similarity_two (hopo_counter hc1, int start1, hopo_counter hc2, int start2, 
   }
 }
 
+int hopo_counter_hist_integral (hopo_counter hc, int start)
+{
+  int i, cov = 0;
+  for (i = hc->idx[start]; i < hc->idx[start+1]; i++) cov += hc->elem[i].count;
+  return cov;
+}
+
 void
 print_debug_hopo_counter (hopo_counter hc)
 {
@@ -329,7 +343,7 @@ print_debug_hopo_counter (hopo_counter hc)
 context_histogram_t
 new_context_histogram_from_hopo_elem (hopo_element he)
 {
-  context_histogram_t ch = (context_histogram) biomcmc_malloc (sizeof (struct context_histogram_struct));
+  context_histogram_t ch = (context_histogram_t) biomcmc_malloc (sizeof (struct context_histogram_struct));
   ch->context = (uint64_t*) biomcmc_malloc (2 * sizeof (uint64_t));
   ch->n_context = 1; // how many context pairs 
   ch->count = (uint32_t*) biomcmc_malloc (TRACT_LENGTH_RANGE * sizeof (uint32_t));
@@ -344,6 +358,7 @@ new_context_histogram_from_hopo_elem (hopo_element he)
   ch->context[0] = he.context[0];
   ch->context[1] = he.context[1];
   ch->count[he.length - MIN_TRACT_LENGTH] = he.count;
+  ch->integral = he.count;
   return ch;
 }
 
@@ -356,32 +371,84 @@ del_context_histogram (context_histogram_t ch)
   free (ch);
 }
 
-void
-context_histogram_update_if_close (context_histogram_t ch, hopo_element he)
+genomic_context_list_t
+new_genomic_context_list (hopo_counter hc, int max_distance_per_flank, int min_coverage)
 {
-  if (/* he is close to all */) context_histogram_add_hopo_elem (ch, he);
+  int i1, i2, idx_match, j, distance, best_dist=0xffff, best_j=-1, coverage;
+  genomic_context_list_t genome = (genomic_context_list_t) biomcmc_malloc (sizeof (struct genomic_context_list_struct));
+  genome->hist = NULL;
+  genome->n_hist = 0;
+
+  for (i1 = 0; i1 < hc->n_idx - 1; i1++) {
+    coverage = hopo_counter_hist_integral (hc, i1);
+    if (coverage < min_coverage) continue; // too few reads, skip this context+homopolymer
+    idx_match = -1; // will become context element of j if contexts match exactly 
+    best_dist=0xffff; best_j=-1;
+    for (j = 0; (j < genome->n_hist) && (idx_match < 0); j++) {
+      distance = distance_between_context_histogram_and_hopo_context (genome->hist[j], hc->elem[hc->idx[i1]], max_distance_per_flank, &idx_match);
+      if (distance < best_dist) { best_dist = distance; best_j = j; } // even if distance = 0 we need best_j 
+    }
+    if (distance >= 2 * max_distance_per_flank) { // no similar context found
+      genome->hist = (context_histogram_t*) biomcmc_realloc ((context_histogram_t*) genome->hist, (genome->n_hist+1) * sizeof (context_histogram_t));
+      genome->hist[genome->n_hist] = new_context_histogram_from_hopo_elem (hc->elem[hc->idx[i1]]);
+      idx_match = 0; // he->idx gives list with same context so we dont need to compare until idx[i1+1]
+      best_j = genome->n_hist++; // outside if/else we need both idx_match, best_j, and i2
+      i2 = hc->idx[i1] + 1; // skip first element, which was used to create context_histogram_t 
+    }
+    else i2 = hc->idx[i1]; // do not skip first element, add it to context_histogram_t in for() loop below 
+
+    for (; i2 < hc->idx[i1+1]; i2++) context_histogram_add_hopo_elem (genome->hist[best_j], hc->elem[i2], idx_match);
+  }
+  return genome;
 }
 
+void
+delete_genomic_context_list (genomic_context_list_t genome)
+{
+  if (!genome) return;
+  for (int i = genome->n_hist-1; i >=0; i--) del_context_histogram (genome->hist[i]);
+  free (genome);
+}
+
+int
+distance_between_context_histogram_and_hopo_context (context_histogram_t ch, hopo_element he, int max_distance, int *idx_match)
+{ 
+  int distance = 0, this_max = 0, i;
+  *idx_match = -1;
+  if ((ch->base - he.base) != 0) return 2 * max_distance; // homopolymer tracts are different
+  for (i = 0; i < ch->n_context; i++) {
+    distance = distance_between_context_kmer (&(ch->context[2*i]), &(he.context[0]), 2 * max_distance);
+    if (distance >= 2 * max_distance) return distance;
+    distance += distance_between_context_kmer (&(ch->context[2*i + 1]), &(he.context[1]), 2 * max_distance - distance);
+    if (distance >= 2 * max_distance) return distance;
+    if (distance > this_max) this_max = distance;
+    if (distance == 0) {
+      *idx_match = i;
+      return 0;
+    }
+  }
+  return this_max;
+}
 
 void
-context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he)
+context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, int idx_match)
 {
-  int i, this_id = -1;
-  /* Check if context is already on ch */
-  for (i = 0; i < ch->n_context; i++) if ((he.context[0] == ch->context[2*i]) && (he.context[1] == ch->context[2*i+1])) {this_id = i; break; } 
-  if (this_id < 0) { // new context
+  /* Check if context is already on ch -- currently done at distance_between_context_()  */
+  // for (i = 0; i < ch->n_context; i++) if ((he.context[0] == ch->context[2*i]) && (he.context[1] == ch->context[2*i+1])) {this_id = i; break; } 
+  if (idx_match < 0) { // new context, but still within distance boundary
     ch->context = (uint64_t*) biomcmc_realloc ((uint64_t*) ch->context, (2 * (ch->n_context+1)) * sizeof (uint64_t));
-    this_id = ch->n_context++;
-    ch->context[2 * this_id]     = he.context[0];
-    ch->context[2 * this_id + 1] = he.context[1];
+    idx_match = ch->n_context++;
+    ch->context[2 * idx_match]     = he.context[0];
+    ch->context[2 * idx_match + 1] = he.context[1];
   }
   /* if context+tract more frequent than observed so far, then this context is best */
   if (ch->mode_context_count < he.count) {
     ch->mode_context_count = he.count;
     ch->mode_context_length = he.length; // may be same length, diff context
-    ch->mode_context_id = this_id; 
+    ch->mode_context_id = idx_match; 
   }
   if (ch->l_1 > (he.length - MIN_TRACT_LENGTH)) ch->l_1 = he.length - MIN_TRACT_LENGTH; 
   if (ch->l_2 < (he.length - MIN_TRACT_LENGTH)) ch->l_2 = he.length - MIN_TRACT_LENGTH; 
   ch->count[he.length - MIN_TRACT_LENGTH] += he.count;
+  ch->integral += he.count;
 }
