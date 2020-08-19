@@ -19,6 +19,9 @@
 
 int g_log_n[256];
 
+/*! store refined alignment info in Nx5 int matrix */ // Leo addition
+void update_bwa_list_hits_sam (const bntseq_t *bns, bwa_seq_t *p0, const int iter_p, int **match_list, int *n_matches);
+
 void bwa_aln2seq_core(int n_aln, const bwt_aln1_t *aln, bwa_seq_t *s, int set_main, int n_multi)
 {
   int i, cnt, best;
@@ -607,7 +610,8 @@ int bwa_sai2sam_se(int argc, char *argv[])
 }
 
 
-bwa_seq_t *bwa_sai2sam_se_from_vector (const char *prefix, bwa_seq_t *seqs, int n_dnaseq, int n_occ, gap_opt_t *opt) // BIOMCMC
+bwa_seq_t *bwa_sai2sam_se_from_vector (const char *prefix, bwa_seq_t *seqs, int n_dnaseq, int n_occ, gap_opt_t *opt,
+                                       int **match_list, int *n_matches) // BIOMCMC
 { // leo: prefix, sai (fn_sa), fastq (fn_fa); needs prefix since reads indices several times in different ways (cal_pac_pos())
   int i, j, m_aln = 0;
   long long tot_seqs = 0;
@@ -640,9 +644,50 @@ bwa_seq_t *bwa_sai2sam_se_from_vector (const char *prefix, bwa_seq_t *seqs, int 
   // for (i = 0; i < n_dnaseq; ++i) bwa_print_sam1(bns, seqs + i, 0, opt->mode, opt->max_top2);
   fprintf(stderr, "%.5f sec\n", (float)(clock() - t) / CLOCKS_PER_SEC); t = clock();
 
-  for (i = 0; i < n_dnaseq; ++i) bwa_print_sam1 (bns, seqs + i, 0, opt->mode, opt->max_top2);
+  if ((*n_matches) < 0) for (i = 0; i < n_dnaseq; ++i) bwa_print_sam1 (bns, seqs + i, 0, opt->mode, opt->max_top2);
+  else                  for (i = 0; i < n_dnaseq; ++i) update_bwa_list_hits_sam (bns, seqs, i, match_list, n_matches);
 
   // destroy
+  bns_destroy(bns);
   free(aln);
   return seqs;
+}
+
+void
+update_bwa_list_hits_sam (const bntseq_t *bns, bwa_seq_t *p0, const int iter_p, int **match_list, int *n_matches)
+{
+  bwa_seq_t *p = p0 + iter_p;
+  if (p->type == BWA_TYPE_NO_MATCH) return;
+  printf ("DBG:: %d, %p\n", *n_matches, *match_list);
+  int i, j,seqid, nn;
+  int this_match = 5 * (*n_matches); (*n_matches)++;
+
+  j = pos_end(p) - p->pos; // j is the length of the reference in the alignment
+  nn = bns_cnt_ambi(bns, p->pos, j, &seqid);  // get seqid
+
+  (*match_list) = (int*) realloc ((int*) (*match_list), (*n_matches * 5) * sizeof (int));
+  //printf ("DBG:1: %d, %p\n", *n_matches, *match_list);
+ 
+  (*match_list)[this_match]    = iter_p; // query number, name is  p->name
+  (*match_list)[this_match +1] = seqid;  // reference number , name is bns->anns[seqid].name)
+  (*match_list)[this_match +2] = p->pos - bns->anns[seqid].offset; //  ZERO-based leftmost position
+  //if (p->md) match_list[this_match +3] = p->md;  // MD:Z, number of matches to reference (excludes read insertions absent from ref) 
+  (*match_list)[this_match +3] = p->n_mm;  // XM (number of mismatches) --> "multi" only has mm 
+  (*match_list)[this_match +4] = p->n_gapo + p->n_gape;  // XO, XG (gap open, gap extension) --> "multi" only has gap
+  // print multiple hits
+  if (p->n_multi) for (i = 0; i < p->n_multi; ++i) { 
+    bwt_multi1_t *q = p->multi + i;
+    int k;
+    j = pos_end_multi(q, p->len) - q->pos;
+    nn = bns_cnt_ambi (bns, q->pos, j, &seqid);
+
+    (this_match) = 5 * (*n_matches); (*n_matches)++;
+    (*match_list) = (int*) realloc ((int*) (*match_list), (*n_matches * 5) * sizeof (int));
+    //printf ("DBG:2: %d, %p\n", *n_matches, *match_list);
+    (*match_list)[this_match]    = iter_p; // query number 
+    (*match_list)[this_match +1] = seqid;  // reference number
+    (*match_list)[this_match +2] = q->pos - bns->anns[seqid].offset; //  ZERO-based leftmost position
+    (*match_list)[this_match +3] = q->mm; 
+    (*match_list)[this_match +4] = q->gap;
+  }
 }

@@ -17,13 +17,15 @@ size_t prefix_size = strlen(TEST_FILE_DIR); // all modifications to filename[] c
 START_TEST(bwa_aln_bwase_function)
 {
   clock_t time0, time1;
+  int n_matches, *match_list;
   alignment aln;
 
   time0 = clock ();
   memcpy (filename + prefix_size, "reads.fa", 9);
   aln = read_alignment_from_file (filename);
   memcpy(filename + prefix_size, "small.fasta", 11);
-  bwa_aln_bwase (filename, aln->taxlabel->string, aln->character->string, NULL, aln->character->nchars, aln->ntax, 2);
+  n_matches = bwa_aln_bwase (filename, aln->taxlabel->string, aln->character->string, NULL, aln->character->nchars, aln->ntax, 2, &match_list, 0);
+  (void) n_matches;
   time1 = clock (); printf ("  time to read alignment: %.8f secs\n", (double)(time1-time0)/(double)CLOCKS_PER_SEC);
   del_alignment (aln);
   if (false) ck_abort_msg ("dummy");

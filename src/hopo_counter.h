@@ -9,7 +9,8 @@
 #ifndef _hopo_counter_h_
 #define _hopo_counter_h_
 
-#include <kalign.h>
+#include <kalign.h> // biomcmc is included here
+#include <wrapper_bwa.h>
 
 typedef struct hopo_counter_struct* hopo_counter;
 typedef struct context_histogram_struct* context_histogram_t;

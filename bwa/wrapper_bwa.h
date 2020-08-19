@@ -13,6 +13,6 @@
 #include <stddef.h>
 
 char *save_bwa_index (const char *genome_filename, const char *suffix, char overwrite);
-void bwa_aln_bwase (const char *index_filename, char **seqname, char **dnaseq, char **qual, size_t *seq_len, int n_dnaseq, int n_occurrences);
+int bwa_aln_bwase (const char *index_filename, char **seqname, char **dnaseq, char **qual, size_t *seq_len, int n_dnaseq, int n_occurrences, int **match_list, char print_to_stdout);
 
 #endif

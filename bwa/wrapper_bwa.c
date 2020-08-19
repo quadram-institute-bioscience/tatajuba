@@ -43,19 +43,21 @@ save_bwa_index (const char *genome_filename, const char *suffix, char overwrite)
   return prefix;
 }   
 
-void
-bwa_aln_bwase (const char *index_filename, char **seqname, char **dnaseq, char **qual, size_t *seq_len, int n_dnaseq, int n_occurrences)
+int
+bwa_aln_bwase (const char *index_filename, char **seqname, char **dnaseq, char **qual, size_t *seq_len, int n_dnaseq, int n_occurrences, int **match_list, char sam_to_stdout)
 {
   bwa_seq_t *seqs;
+  int n_matches = 0;
   gap_opt_t *opt = gap_init_opt();
   char *prefix = save_bwa_index (index_filename, NULL, true);
   if (n_occurrences < 1) n_occurrences = 1;
+  if (sam_to_stdout != 0) n_matches = -1; // bwa_sai2sam() will then print SAM to stdout instead of creating match_list[]
 
   seqs = bwa_read_seq_from_vector (seqname, dnaseq, qual, seq_len, n_dnaseq, opt->trim_qual);
   seqs = bwa_aln_from_vector (prefix, seqs, n_dnaseq, opt);
-  seqs = bwa_sai2sam_se_from_vector (prefix, seqs, n_dnaseq, n_occurrences, opt);
+  seqs = bwa_sai2sam_se_from_vector (prefix, seqs, n_dnaseq, n_occurrences, opt, match_list, &n_matches);
   bwa_free_read_seq (n_dnaseq, seqs);
   if (opt) free (opt);
   if (prefix) free (prefix);
-  return; // FIXME: should return hits etc
+  return n_matches; 
 }

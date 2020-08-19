@@ -22,6 +22,7 @@ extern "C" {
 	//
 	bwtint_t bwa_sa2pos(const bntseq_t *bns, const bwt_t *bwt, bwtint_t sapos, int len, int *strand);
 
+
 #ifdef __cplusplus
 }
 #endif
