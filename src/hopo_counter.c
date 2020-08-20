@@ -5,11 +5,6 @@
 #include "hopo_counter.h"
 #include "kseq.h"
 
-// FIXME: one tract can have length 222~227
-#define MIN_TRACT_LENGTH 2
-#define MAX_TRACT_LENGTH 258
-#define TRACT_LENGTH_RANGE 256  // (MAX_TRACT_LENGTH - MIN_TRACT_LENGTH)
-
 BMC2_KSEQ_INIT(gzFile, gzread);
 
 static uint8_t dna_in_2_bits[256][2] = {{0xff}};
@@ -37,7 +32,8 @@ int  distance_between_context_histogram_and_hopo_context (context_histogram_t ch
 void context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, int idx_match);
 
 char* context_histogram_tract_as_string (context_histogram_t ch, int kmer_size);
-void genomic_context_find_reference_location (genomic_context_list_t genome, const char *ref_genome_filename);
+char* context_histogram_generate_name (context_histogram_t ch, int kmer_size);
+void genomic_context_find_reference_location (genomic_context_list_t genome, const char *reference_genome_filename);
 
 int
 compare_hopo_element_decreasing (const void *a, const void *b)
@@ -239,15 +235,17 @@ finalise_hopo_counter (hopo_counter hc, const char *reference_genome_filename)
   hc->idx[hc->n_idx++] = i; // last element (plus one) is also on index (to avoid conditional checking */
   hc->idx = (int*) biomcmc_realloc ((int*) hc->idx, hc->n_idx* sizeof (int));
 
-  // TODO: remove singletons
   estimate_coverage_hopo_counter (hc);
   estimate_variance_hopo_counter (hc); 
 
   printf ("DBG::start_genomic_context\n");
   genomic_context_list_t genome = new_genomic_context_list (hc, 1, 1);
-  genomic_context_find_reference_location (genome, reference_genome_filename);
-  for (i=0; i < genome->n_hist; i++) printf ("DBG:: %5d %5d %5d sum = %6d location = %6d \n", genome->hist[i]->n_context, genome->hist[i]->l_1, genome->hist[i]->l_2, 
-                                             genome->hist[i]->integral, genome->hist[i]->location);
+  finalise_genomic_context_hist (genome, reference_genome_filename);
+  for (i=0; i < genome->n_hist; i++) 
+    printf ("DBG:: %4d minmax=(%4d, %4d) modal_tract_length= %-4d (with freq=%-3d) total_number_reads= %-6d location= %6d\t%s\n", 
+            genome->hist[i]->n_context, genome->hist[i]->h->min, genome->hist[i]->h->max, 
+            genome->hist[i]->h->i[0].idx,  genome->hist[i]->h->i[0].freq,  genome->hist[i]->integral, 
+            genome->hist[i]->location, genome->hist[i]->name);
   del_genomic_context_list (genome);
 }
 
@@ -357,19 +355,22 @@ new_context_histogram_from_hopo_elem (hopo_element he)
   context_histogram_t ch = (context_histogram_t) biomcmc_malloc (sizeof (struct context_histogram_struct));
   ch->context = (uint64_t*) biomcmc_malloc (2 * sizeof (uint64_t));
   ch->n_context = 1; // how many context pairs 
-  ch->count = (uint32_t*) biomcmc_malloc (TRACT_LENGTH_RANGE * sizeof (uint32_t));
-  for (int i = 0; i < TRACT_LENGTH_RANGE; i++) ch->count[i] = 0;
   ch->mode_context_id = 0; // location, in context[], of best context (the one with length of highest frequency)
-  ch->location = -1; // bwa location
+  ch->location = -1; // bwa location, calculate at the end
   /* since this is first context, it is best context: */
   ch->base = he.base;
-  ch->l_1 = ch->l_2 = he.length - MIN_TRACT_LENGTH; 
   ch->mode_context_count = he.count; // frequency of best context
   ch->mode_context_length = he.length; // tract length of best context
   ch->context[0] = he.context[0];
   ch->context[1] = he.context[1];
-  ch->count[he.length - MIN_TRACT_LENGTH] = he.count;
   ch->integral = he.count;
+  ch->name = NULL; // defined on finalise()
+  ch->h= NULL; // empfreq created at the end (finalise_genomic_context)
+  ch->n_tmp = 1;
+  ch->tmp_count  = (int*) biomcmc_malloc (sizeof (int));
+  ch->tmp_length = (int*) biomcmc_malloc (sizeof (int));
+  ch->tmp_count[0]  = he.count;
+  ch->tmp_length[0] = he.length;
   return ch;
 }
 
@@ -378,7 +379,10 @@ del_context_histogram (context_histogram_t ch)
 {
   if (!ch) return;
   if (ch->context) free (ch->context);
-  if (ch->count) free (ch->count);
+  if (ch->name)    free (ch->name);
+  if (ch->tmp_count)  free (ch->tmp_count);
+  if (ch->tmp_length) free (ch->tmp_length);
+  del_empfreq (ch->h);
   free (ch);
 }
 
@@ -420,10 +424,12 @@ context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, int id
     ch->mode_context_length = he.length; // may be same length, diff context
     ch->mode_context_id = idx_match; 
   }
-  if (ch->l_1 > (he.length - MIN_TRACT_LENGTH)) ch->l_1 = he.length - MIN_TRACT_LENGTH; 
-  if (ch->l_2 < (he.length - MIN_TRACT_LENGTH)) ch->l_2 = he.length - MIN_TRACT_LENGTH; 
-  ch->count[he.length - MIN_TRACT_LENGTH] += he.count;
   ch->integral += he.count;
+
+  ch->tmp_count  = (int*) biomcmc_realloc ((int*) ch->tmp_count,  (ch->n_tmp +1) * sizeof (int));
+  ch->tmp_length = (int*) biomcmc_realloc ((int*) ch->tmp_length, (ch->n_tmp +1) * sizeof (int));
+  ch->tmp_count [ch->n_tmp  ] = he.count;
+  ch->tmp_length[ch->n_tmp++] = he.length;
 }
 
 genomic_context_list_t
@@ -485,11 +491,26 @@ context_histogram_tract_as_string (context_histogram_t ch, int kmer_size)
   return s;
 }
 
+char*
+context_histogram_generate_name (context_histogram_t ch, int kmer_size)
+{
+  int i, j=0, length = 2 * kmer_size + 4;
+  char *s = (char*) biomcmc_malloc (sizeof (char) * length);
+  uint64_t ctx = ch->context[2 * ch->mode_context_id]; 
+
+  for (i = 0; i < kmer_size; i++) s[i] = bit_2_dna[ (ctx >> (2 * i)) & 3 ]; // left context
+  s[i++] = '-'; s[i++] = bit_2_dna[ch->base]; s[i++] = '-';// homopolymer tract represented as "-A-" or "-T-"
+  ctx = ch->context[2 * ch->mode_context_id + 1]; // right context
+  for (j = 0; j < kmer_size; j++, i++) s[i] =  bit_2_dna[ (ctx >> (2 * j)) & 3 ]; 
+  s[i] = '\0';
+  return s;
+}
+
 void
 genomic_context_find_reference_location (genomic_context_list_t genome, const char *ref_genome_filename)
 {
   char_vector readname, readseqs;
-  char *read, name[genome->kmer_size];
+  char *read;
   int i, j1, j2, n_matches, *match_list = NULL;
 
   readname = new_char_vector (genome->n_hist);
@@ -497,9 +518,9 @@ genomic_context_find_reference_location (genomic_context_list_t genome, const ch
 
   for (i = 0; i < genome->n_hist; i++) {
     read = context_histogram_tract_as_string (genome->hist[i], genome->kmer_size);
-    strncpy (name, read, genome->kmer_size); // could be anything since we don't use it; here it's just left context
     char_vector_link_string_at_position (readseqs, read, readseqs->next_avail); // just link 
-    char_vector_add_string (readname, name); // unlike above, this will alloc memory and copy name[]  
+    genome->hist[i]->name =  context_histogram_generate_name (genome->hist[i], genome->kmer_size);
+    char_vector_add_string (readname, genome->hist[i]->name); // unlike _link_ above, this will alloc memory and copy name[]  
   }
   // rightmost zero means to store in int[], instead of plotting SAM to stdout
   n_matches = bwa_aln_bwase (ref_genome_filename, readname->string, readseqs->string, NULL, readseqs->nchars, genome->n_hist, 1, &match_list, 0);
@@ -513,4 +534,21 @@ genomic_context_find_reference_location (genomic_context_list_t genome, const ch
   }
 
   if (match_list) free (match_list);
+}
+
+void
+finalise_genomic_context_hist (genomic_context_list_t genome,  const char *reference_genome_filename)
+{  
+  int i;
+  context_histogram_t ch;
+  /* 1. empirical frequency histogram of tract lengths */
+  for (i = 0; i < genome->n_hist; i++) {
+    ch = genome->hist[i];
+    ch->h = new_empfreq_from_int_weighted (ch->tmp_length, ch->n_tmp, ch->tmp_count); // histogram, from high to low count
+    if (ch->tmp_length) free (ch->tmp_length);
+    if (ch->tmp_count) free (ch->tmp_count);
+    ch->tmp_length = ch->tmp_count = NULL;
+  }
+  /* find reference location for each context */
+  genomic_context_find_reference_location (genome, reference_genome_filename);
 }

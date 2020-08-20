@@ -38,14 +38,16 @@ struct hopo_counter_struct
 struct context_histogram_struct
 {
   uint64_t *context; /*! \brief now a vector since we store all within distance */
-  uint32_t *count;   /*! \brief actual histogram from MIN_TRACT_LENGTH to MAX_TRACT_LENGTH */
+  int8_t base;       /*! \brief homopolymer base (AT or CG) */
+  char *name;        /*! \brief context name is flanking kmers with tract base in the middle */
   int n_context,     /*! \brief vector size (of neighbourhood) */
       integral,      /*! \brief sum of frequencies */
       location,      /*! \brief genomic location(s) of context */
       mode_context_count,   /*! \brief frequency of reads, defining "best homopolymer+context" */
       mode_context_length,  /*! \brief tract length of best homopolymer+context */
       mode_context_id;      /*! \brief which context (from neighboUrhood) has best homopolymer+context */
-  int32_t l_1:15, l_2:15, base:2;   /*! \brief min and max observed tract lengths, and homopolymer base (AT or CG) */
+  int *tmp_count, *tmp_length, n_tmp;
+  empfreq h;
 };
 
 struct genomic_context_list_struct
@@ -62,5 +64,6 @@ void print_debug_hopo_counter (hopo_counter hc);
 
 genomic_context_list_t new_genomic_context_list (hopo_counter hc, int max_distance_per_flank, int min_coverage);
 void del_genomic_context_list (genomic_context_list_t genome);
+void finalise_genomic_context_hist (genomic_context_list_t genome,  const char *reference_genome_filename);
 
 #endif
