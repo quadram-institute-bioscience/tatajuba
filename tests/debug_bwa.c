@@ -9,7 +9,7 @@
 int main (int argc, char **argv)
 {
   clock_t time0, time1;
-  int i, n_matches, *match_list;
+  int i, n_matches, *match_list = NULL;
   alignment aln;
 
   time0 = clock ();
@@ -19,7 +19,7 @@ int main (int argc, char **argv)
   aln = read_alignment_from_file (argv[2]);
   n_matches = bwa_aln_bwase (argv[1], aln->taxlabel->string, aln->character->string, NULL, aln->character->nchars, aln->ntax, 5, &match_list, 0);
 
-  for (i=0; i < n_matches; i++) printf ("%5d %5d %5d %5d %5d\n",
+  for (i=0; i < n_matches; i++) printf ("read:%5d ref:%5d position:%5d mismathces:%5d gaps:%5d\n",
                                         match_list[5 * i],
                                         match_list[5 * i + 1],
                                         match_list[5 * i + 2],

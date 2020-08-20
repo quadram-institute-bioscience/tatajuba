@@ -7,6 +7,7 @@ typedef struct
   struct arg_lit  *paired;
   struct arg_int  *kmer;
   struct arg_int  *minsize;
+  struct arg_file *ref;
   struct arg_file *fastq;
   struct arg_end  *end;
   void **argtable;
@@ -25,10 +26,11 @@ get_parameters_from_argv (int argc, char **argv)
     .paired  = arg_litn("p","paired", 0, 1, "paired end (pairs of) files"),
     .kmer    = arg_int0("k","kmer","{2,...,15}", "kmer size flanking each side of homopolymer (default=8)"),
     .minsize = arg_int0("m","minsize","{1,...,32}", "minimum homopolymer tract length to be compared"),
-    .fastq   = arg_filen(NULL, NULL, NULL, 1, 0xffff, "fasta or fastq file"),
+    .ref     = arg_file1("r", "ref", "<genome.fa|genome.fa.gz>", "reference genome file (bwa indices will be created if absent)"),
+    .fastq   = arg_filen(NULL, NULL, "<fastq files>", 1, 0xffff, "fasta or fastq file with reads"),
     .end     = arg_end(10) // max number of errors it can store (o.w. shows "too many errors")
   };
-  void* argtable[] = {params.help, params.version, params.paired, params.kmer, params.minsize, params.fastq, params.end};
+  void* argtable[] = {params.help, params.version, params.paired, params.kmer, params.minsize, params.ref, params.fastq, params.end};
   params.argtable = argtable; 
   params.kmer->ival[0]    = 8; // default values must be before parsing
   params.minsize->ival[0] = 3; // default values must be before parsing
@@ -47,6 +49,7 @@ del_arg_parameters (arg_parameters params)
   if (params.paired)  free (params.paired);
   if (params.kmer)    free (params.kmer);
   if (params.minsize) free (params.minsize);
+  if (params.ref)     free (params.ref);
   if (params.fastq)   free (params.fastq);
   if (params.end)     free (params.end);
 }
@@ -69,7 +72,7 @@ print_usage (arg_parameters params, char *progname)
   arg_print_glossary(stdout, params.argtable,"  %-32s %s\n");
   if (params.help->count) {
     printf ("'Context' is the pair of flanking k-mers. If you have paired end files, then their order should be strictly f1_R1, f1_R2, f2_R1 etc.\n");
-    printf ("that is, R1 and R2 should be consecutive. \n");
+    printf ("that is, R1 and R2 should be consecutive. A fasta reference genome must also be supplied, and bwa will create a series of index files. \n");
   }
   del_arg_parameters (params); exit (EXIT_SUCCESS);
 }
@@ -89,7 +92,7 @@ main (int argc, char **argv)
   if (params.minsize->ival[0] < 1)  params.minsize->ival[0] = 1;
   if (params.minsize->ival[0] > 32) params.minsize->ival[0] = 32; 
 
-  hs = new_hopo_set_from_files (params.fastq->filename, params.fastq->count, (bool) params.paired->count, params.kmer->ival[0], params.minsize->ival[0]);
+  hs = new_hopo_set_from_files (params.fastq->filename, params.fastq->count, (bool) params.paired->count, params.kmer->ival[0], params.minsize->ival[0], params.ref->filename[0]);
   dg = new_distance_generator_from_hopo_set (hs);
 
   time1 = clock (); fprintf (stderr, "overall time: %lf secs\n",  (double)(time1-time0)/(double)(CLOCKS_PER_SEC)); fflush(stderr); time0 = time1; 

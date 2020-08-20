@@ -17,7 +17,7 @@ size_t prefix_size = strlen(TEST_FILE_DIR); // all modifications to filename[] c
 START_TEST(bwa_aln_bwase_function)
 {
   clock_t time0, time1;
-  int n_matches, *match_list;
+  int n_matches, *match_list = NULL;
   alignment aln;
 
   time0 = clock ();

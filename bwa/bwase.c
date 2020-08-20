@@ -666,7 +666,7 @@ update_bwa_list_hits_sam (const bntseq_t *bns, bwa_seq_t *p0, const int iter_p, 
   nn = bns_cnt_ambi(bns, p->pos, j, &seqid);  // get seqid
 
   (*match_list) = (int*) realloc ((int*) (*match_list), (*n_matches * 5) * sizeof (int));
-  //printf ("DBG:1: %d, %p\n", *n_matches, *match_list);
+  printf ("DBG:1: %d, %p\n", *n_matches, *match_list);
  
   (*match_list)[this_match]    = iter_p; // query number, name is  p->name
   (*match_list)[this_match +1] = seqid;  // reference number , name is bns->anns[seqid].name)
@@ -677,13 +677,12 @@ update_bwa_list_hits_sam (const bntseq_t *bns, bwa_seq_t *p0, const int iter_p, 
   // print multiple hits
   if (p->n_multi) for (i = 0; i < p->n_multi; ++i) { 
     bwt_multi1_t *q = p->multi + i;
-    int k;
     j = pos_end_multi(q, p->len) - q->pos;
     nn = bns_cnt_ambi (bns, q->pos, j, &seqid);
 
     (this_match) = 5 * (*n_matches); (*n_matches)++;
     (*match_list) = (int*) realloc ((int*) (*match_list), (*n_matches * 5) * sizeof (int));
-    //printf ("DBG:2: %d, %p\n", *n_matches, *match_list);
+    printf ("DBG:2: %d, %p\n", *n_matches, *match_list);
     (*match_list)[this_match]    = iter_p; // query number 
     (*match_list)[this_match +1] = seqid;  // reference number
     (*match_list)[this_match +2] = q->pos - bns->anns[seqid].offset; //  ZERO-based leftmost position

@@ -22,7 +22,7 @@ struct hopo_set_struct
   int ref_counter;
 };
 
-hopo_set new_hopo_set_from_files (const char **filenames, int n_filenames, bool paired_end, int kmer_size, int min_hopo_size);
+hopo_set new_hopo_set_from_files (const char **filenames, int n_filenames, bool paired_end, int kmer_size, int min_hopo_size, const char *reference_genome_filename);
 void del_hopo_set (hopo_set hs);
 distance_generator new_distance_generator_from_hopo_set (hopo_set hs);
 

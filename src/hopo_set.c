@@ -7,7 +7,7 @@
 void hopo_set_distance_wrapper (void *data, int s1, int s2, double *result);
 
 hopo_set
-new_hopo_set_from_files (const char **filenames, int n_filenames, bool paired_end, int kmer_size, int min_hopo_size)
+new_hopo_set_from_files (const char **filenames, int n_filenames, bool paired_end, int kmer_size, int min_hopo_size, const char *reference_genome_filename)
 {
   clock_t time0, time1;
   int i;
@@ -30,7 +30,7 @@ new_hopo_set_from_files (const char **filenames, int n_filenames, bool paired_en
     hs->hc[i] = new_or_append_hopo_counter_from_file (NULL, filenames[i], kmer_size, min_hopo_size);
   }
   time1 = clock (); hs->secs_read = (double)(time1-time0)/(double)(CLOCKS_PER_SEC); time0 = time1; 
-  for (i = 0; i < hs->n_hc; i++) finalise_hopo_counter (hs->hc[i]); 
+  for (i = 0; i < hs->n_hc; i++) finalise_hopo_counter (hs->hc[i], reference_genome_filename); 
   time1 = clock (); hs->secs_finalise = (double)(time1-time0)/(double)(CLOCKS_PER_SEC);
 
   hs->secs_comparison = 0.;

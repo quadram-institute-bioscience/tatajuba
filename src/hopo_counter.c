@@ -13,16 +13,17 @@
 BMC2_KSEQ_INIT(gzFile, gzread);
 
 static uint8_t dna_in_2_bits[256][2] = {{0xff}};
-//static char bit_2_dna[] = {'A', 'C', 'G', 'T'};
+static char bit_2_dna[] = {'A', 'C', 'G', 'T'};
 
 static void initialize_dna_to_bit_tables (void);
 int compare_hopo_element_decreasing (const void *a, const void *b);
 int compare_hopo_context (hopo_element a, hopo_element b);
 int compare_hopo_context_within_distance (hopo_element a, hopo_element b, int max_distance);
 int distance_between_context_kmer (uint64_t *c1, uint64_t *c2, int max_dist);
-hopo_counter new_hopo_counter (void);
-void update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int kmer_size, int min_hopo_size);
-void add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, int context_size, uint8_t hopo_base_int, int hopo_size);
+
+hopo_counter new_hopo_counter (int kmer_size);
+void update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int min_hopo_size);
+void add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_int, int hopo_size);
 void copy_hopo_element_start_count (hopo_element *to, hopo_element *from);
 void bin_similarity_one (hopo_counter hc, int start, double *result);
 void bin_similarity_two (hopo_counter hc1, int start1, hopo_counter hc2, int start2, double *result);
@@ -34,6 +35,9 @@ context_histogram_t new_context_histogram_from_hopo_elem (hopo_element he);
 void del_context_histogram (context_histogram_t ch);
 int  distance_between_context_histogram_and_hopo_context (context_histogram_t ch, hopo_element he, int max_distance, int *idx_match);
 void context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, int idx_match);
+
+char* context_histogram_tract_as_string (context_histogram_t ch, int kmer_size);
+void genomic_context_find_reference_location (genomic_context_list_t genome, const char *ref_genome_filename);
 
 int
 compare_hopo_element_decreasing (const void *a, const void *b)
@@ -86,24 +90,25 @@ new_or_append_hopo_counter_from_file (hopo_counter hc, const char *filename, int
   gzFile fp = gzopen (filename, "r");
   bmc2_kseq_t *seq = bmc2_kseq_init (fp);
   if (!hc) {
-    hc_local = new_hopo_counter ();
+    hc_local = new_hopo_counter (kmer_size);
     name_length = strlen(filename);
     hc_local->name = (char*) biomcmc_malloc (sizeof (char) * (name_length + 1));
     strncpy (hc_local->name, filename, name_length);
     hc_local->name[name_length] = '\0';
   }
   if (hc_local->idx) biomcmc_error ("This counter has been compared to another; cannot add more reads to it");
-  while ((i = bmc2_kseq_read (seq)) >= 0) update_hopo_counter_from_seq (hc_local, seq->seq.s, seq->seq.l, kmer_size, min_hopo_size); 
+  while ((i = bmc2_kseq_read (seq)) >= 0) update_hopo_counter_from_seq (hc_local, seq->seq.s, seq->seq.l, min_hopo_size); 
   bmc2_kseq_destroy(seq); // other kseq_t parameters: seq->name.s, seq->seq.l, seq->qual.l
   gzclose(fp);
   return hc_local;
 }
 
 hopo_counter
-new_hopo_counter (void)
+new_hopo_counter (int kmer_size)
 {
   hopo_counter hc = (hopo_counter) biomcmc_malloc (sizeof (struct hopo_counter_struct));
   hc->n_alloc = 32;
+  hc->kmer_size = kmer_size;
   hc->n_idx = hc->n_elem = 0;
   hc->variance[0] = hc->variance[1] = 1.;
   hc->coverage[0] = hc->coverage[1] = 0.;
@@ -142,32 +147,32 @@ initialize_dna_to_bit_tables (void)
 
 // check if doesnt handle overlapping hopos (e.g. TGACCCAAAATGC -> CCC and AAAA)
 void
-update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int kmer_size, int min_hopo_size)
+update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int min_hopo_size)
 {
   int i, j, k, count_same = 0, start_mono = -1;
-  uint8_t context[2 * kmer_size]; 
+  uint8_t context[2 * hc->kmer_size]; 
   char prev_char = '$';
   //printf ("\nDBG:: %s (%d)\n", seq, seq_length); // DEBUG
   count_same = 0; // zero because previous is "$" 
-  for (i = 0; i < (seq_length - kmer_size); i++) {
+  for (i = 0; i < (seq_length - hc->kmer_size); i++) {
     if (seq[i] == prev_char) {
       count_same++;
-      if ((count_same > min_hopo_size) && (start_mono >= kmer_size)) {
-        while (i < (seq_length-kmer_size-1) && (seq[i+1] == prev_char)) { i++; count_same++; }
+      if ((count_same > min_hopo_size) && (start_mono >= hc->kmer_size)) {
+        while (i < (seq_length-hc->kmer_size-1) && (seq[i+1] == prev_char)) { i++; count_same++; }
         //for (j=start_mono; j <= i; j++) printf ("%c", seq[j]); //DEBUG
         if (dna_in_2_bits[(int)prev_char][0] < dna_in_2_bits[(int)prev_char][1]) { // A or C : forward strand
           k = 0;
-          for (j = start_mono - kmer_size; j < start_mono; j++) context[k++] = dna_in_2_bits[ (int)seq[j] ][0]; 
-          for (j = i + 1; j <= i + kmer_size; j++) context[k++] = dna_in_2_bits[ (int)seq[j] ][0]; 
-          add_kmer_to_hopo_counter (hc, context, kmer_size, dna_in_2_bits[(int)prev_char][0], count_same);
+          for (j = start_mono - hc->kmer_size; j < start_mono; j++) context[k++] = dna_in_2_bits[ (int)seq[j] ][0]; 
+          for (j = i + 1; j <= i + hc->kmer_size; j++) context[k++] = dna_in_2_bits[ (int)seq[j] ][0]; 
+          add_kmer_to_hopo_counter (hc, context, dna_in_2_bits[(int)prev_char][0], count_same);
         }
         else if (dna_in_2_bits[(int)prev_char][0] > dna_in_2_bits[(int)prev_char][1]) { // T/U or G : reverse strand
           k = 0; // it would be easier to copy above, but with k--; however I wanna implement rolling hash in future
-          for (j = i + kmer_size; j > i; j--) context[k++] = dna_in_2_bits[ (int)seq[j] ][1]; 
-          for (j = start_mono - 1; j >= start_mono - kmer_size; j--) context[k++] = dna_in_2_bits[ (int)seq[j] ][1]; 
-          add_kmer_to_hopo_counter (hc, context, kmer_size, dna_in_2_bits[(int)prev_char][1], count_same);
+          for (j = i + hc->kmer_size; j > i; j--) context[k++] = dna_in_2_bits[ (int)seq[j] ][1]; 
+          for (j = start_mono - 1; j >= start_mono - hc->kmer_size; j--) context[k++] = dna_in_2_bits[ (int)seq[j] ][1]; 
+          add_kmer_to_hopo_counter (hc, context, dna_in_2_bits[(int)prev_char][1], count_same);
         } // elsif (dna[0] > dna[1]); notice that if dna[0] == dna[1] then do nothing (not an unambiguous base)
-        // printf ("\t : "); for (j=0; j < 2*kmer_size; j++) { printf ("%c", bit_2_dna[context[j]]); } printf ("\n"); // DEBUG
+        // printf ("\t : "); for (j=0; j < 2*hc->kmer_size; j++) { printf ("%c", bit_2_dna[context[j]]); } printf ("\n"); // DEBUG
       } // if (count_same>2) [i.e. we found valid homopolymer]
     } else { 
       count_same = 1;
@@ -178,7 +183,7 @@ update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int km
 }
 
 void
-add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, int context_size, uint8_t hopo_base_int, int hopo_size)
+add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_int, int hopo_size)
 {
   int i;
   if (hc->n_elem == hc->n_alloc) {
@@ -189,9 +194,9 @@ add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, int context_size, u
   hc->elem[hc->n_elem].length = hopo_size;     // homopolymer track length, in bases
   hc->elem[hc->n_elem].count  = 1;
   hc->elem[hc->n_elem].context[0] = context[0]; // left context 
-  for (i = 1; i < context_size; i++) hc->elem[hc->n_elem].context[0] |= (context[i] << (2 * i));
-  hc->elem[hc->n_elem].context[1] = context[context_size]; // right context
-  for (i = 1; i < context_size; i++) hc->elem[hc->n_elem].context[1] |= (context[context_size + i] << (2 * i));
+  for (i = 1; i < hc->kmer_size; i++) hc->elem[hc->n_elem].context[0] |= (context[i] << (2 * i));
+  hc->elem[hc->n_elem].context[1] = context[hc->kmer_size]; // right context
+  for (i = 1; i < hc->kmer_size; i++) hc->elem[hc->n_elem].context[1] |= (context[hc->kmer_size + i] << (2 * i));
   hc->n_elem++;
 }
 
@@ -206,7 +211,7 @@ copy_hopo_element_start_count (hopo_element *to, hopo_element *from)
 }
 
 void
-finalise_hopo_counter (hopo_counter hc)
+finalise_hopo_counter (hopo_counter hc, const char *reference_genome_filename)
 {
   hopo_element *pivot, *efreq;
   int i, n1 = 0;
@@ -240,7 +245,9 @@ finalise_hopo_counter (hopo_counter hc)
 
   printf ("DBG::start_genomic_context\n");
   genomic_context_list_t genome = new_genomic_context_list (hc, 1, 1);
-  for (i=0; i < genome->n_hist; i++) printf ("DBG:: %5d %5d %5d sum = %6d\n", genome->hist[i]->n_context, genome->hist[i]->l_1, genome->hist[i]->l_2, genome->hist[i]->integral);
+  genomic_context_find_reference_location (genome, reference_genome_filename);
+  for (i=0; i < genome->n_hist; i++) printf ("DBG:: %5d %5d %5d sum = %6d location = %6d \n", genome->hist[i]->n_context, genome->hist[i]->l_1, genome->hist[i]->l_2, 
+                                             genome->hist[i]->integral, genome->hist[i]->location);
   del_genomic_context_list (genome);
 }
 
@@ -287,8 +294,8 @@ compare_hopo_counters (hopo_counter hc1, hopo_counter hc2, double *result)
 {
   int order, j1, j2;
 
-  if (!hc1->idx) finalise_hopo_counter (hc1); 
-  if (!hc2->idx) finalise_hopo_counter (hc2); 
+//  if (!hc1->idx) finalise_hopo_counter (hc1);  // FIXME: must refactor to include reference_genome_filename
+//  if (!hc2->idx) finalise_hopo_counter (hc2); 
 
   result[0] = result[1] = 0.; /* TODO: result should have distances for all contexts (i.e. hc1->n_idx + hc2->n_idx) */
   for (j1 = j2 = 0; (j1 < hc1->n_idx-1) && (j2 < hc2->n_idx-1);) { // both are in decreasing order
@@ -353,7 +360,7 @@ new_context_histogram_from_hopo_elem (hopo_element he)
   ch->count = (uint32_t*) biomcmc_malloc (TRACT_LENGTH_RANGE * sizeof (uint32_t));
   for (int i = 0; i < TRACT_LENGTH_RANGE; i++) ch->count[i] = 0;
   ch->mode_context_id = 0; // location, in context[], of best context (the one with length of highest frequency)
-  ch->genome_location = -1; // bwa location
+  ch->location = -1; // bwa location
   /* since this is first context, it is best context: */
   ch->base = he.base;
   ch->l_1 = ch->l_2 = he.length - MIN_TRACT_LENGTH; 
@@ -380,7 +387,7 @@ distance_between_context_histogram_and_hopo_context (context_histogram_t ch, hop
 { 
   int distance = 0, this_max = 0, i;
   *idx_match = -1;
-  if ((ch->base - he.base) != 0) return 2 * max_distance; // homopolymer tracts are different
+  if ((ch->base - he.base) != 0) return 2 * max_distance + 1; // homopolymer tracts are different
   for (i = 0; i < ch->n_context; i++) {
     distance = distance_between_context_kmer (&(ch->context[2*i]), &(he.context[0]), 2 * max_distance);
     if (distance >= 2 * max_distance) return distance;
@@ -426,6 +433,7 @@ new_genomic_context_list (hopo_counter hc, int max_distance_per_flank, int min_c
   genomic_context_list_t genome = (genomic_context_list_t) biomcmc_malloc (sizeof (struct genomic_context_list_struct));
   genome->hist = NULL;
   genome->n_hist = 0;
+  genome->kmer_size = hc->kmer_size; // size on each flanking region (i.e. < 32)
   if (min_coverage < 2) min_coverage = 2;
 
   for (i1 = 0; i1 < hc->n_idx - 1; i1++) {
@@ -460,4 +468,49 @@ del_genomic_context_list (genomic_context_list_t genome)
     free (genome->hist);
   }
   free (genome);
+}
+
+char*
+context_histogram_tract_as_string (context_histogram_t ch, int kmer_size)
+{
+  int i, j=0, length = 2 * kmer_size + ch->mode_context_length;
+  char *s = (char*) biomcmc_malloc (sizeof (char) * (length + 1));
+  uint64_t ctx = ch->context[2 * ch->mode_context_id]; 
+
+  for (i = 0; i < kmer_size; i++) s[i] = bit_2_dna[ (ctx >> (2 * i)) & 3 ]; // left context
+  for (; i < kmer_size + ch->mode_context_length; i++) s[i] = bit_2_dna[ch->base]; // homopolymer tract
+  ctx = ch->context[2 * ch->mode_context_id + 1]; // right context
+  for (j = 0; i < 2 * kmer_size + ch->mode_context_length; j++, i++) s[i] =  bit_2_dna[ (ctx >> (2 * j)) & 3 ]; // i,j not a typo 
+  s[i] = '\0';
+  return s;
+}
+
+void
+genomic_context_find_reference_location (genomic_context_list_t genome, const char *ref_genome_filename)
+{
+  char_vector readname, readseqs;
+  char *read, name[genome->kmer_size];
+  int i, j1, j2, n_matches, *match_list = NULL;
+
+  readname = new_char_vector (genome->n_hist);
+  readseqs = new_char_vector (genome->n_hist);
+
+  for (i = 0; i < genome->n_hist; i++) {
+    read = context_histogram_tract_as_string (genome->hist[i], genome->kmer_size);
+    strncpy (name, read, genome->kmer_size); // could be anything since we don't use it; here it's just left context
+    char_vector_link_string_at_position (readseqs, read, readseqs->next_avail); // just link 
+    char_vector_add_string (readname, name); // unlike above, this will alloc memory and copy name[]  
+  }
+  // rightmost zero means to store in int[], instead of plotting SAM to stdout
+  n_matches = bwa_aln_bwase (ref_genome_filename, readname->string, readseqs->string, NULL, readseqs->nchars, genome->n_hist, 1, &match_list, 0);
+  del_char_vector(readname);
+  del_char_vector(readseqs);
+
+  for (i = 0; i < n_matches; i++) {
+    j1 = match_list[5 * i]; // read index
+    j2 = match_list[5 * i + 2]; // location in reference
+    genome->hist[j1]->location = j2;
+  }
+
+  if (match_list) free (match_list);
 }
