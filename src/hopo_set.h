@@ -11,18 +11,18 @@
 
 #include "hopo_counter.h" 
 
-typedef struct hopo_set_struct* hopo_set;
+typedef struct genome_set_struct* genome_set_t;
 
-struct hopo_set_struct
+struct genome_set_struct 
 {
-  hopo_counter *hc;
-  int n_hc;
+  genomic_context_list_t *genome;
+  int n_genome;
   double secs_read, secs_finalise, secs_comparison;
   distance_generator generator;
   int ref_counter;
 };
 
-hopo_set new_hopo_set_from_files (const char **filenames, int n_filenames, bool paired_end, int kmer_size, int min_hopo_size, const char *reference_genome_filename);
+genome_set new_genome_set_from_files (const char **filenames, int n_filenames, bool paired_end, int kmer_size, int min_hopo_size, const char *reference_genome_filename);
 void del_hopo_set (hopo_set hs);
 distance_generator new_distance_generator_from_hopo_set (hopo_set hs);
 

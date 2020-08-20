@@ -254,7 +254,7 @@ int bwa_index(int argc, char *argv[]) // the "index" command
 
 int bwa_idx_build (const char *fa, const char *prefix, int algo_type, int block_size)
 {
-	extern void bwa_pac_rev_core(const char *fn, const char *fn_rev);
+	extern void bwa_pac_rev_core (const char *fn, const char *fn_rev);
 
 	char *str, *str2, *str3;
 	clock_t t;

@@ -6,47 +6,55 @@
   
 void hopo_set_distance_wrapper (void *data, int s1, int s2, double *result);
 
-hopo_set
-new_hopo_set_from_files (const char **filenames, int n_filenames, bool paired_end, int kmer_size, int min_hopo_size, const char *reference_genome_filename)
+genome_set_t
+new_genome_set_from_files (const char **filenames, int n_filenames, bool paired_end, int kmer_size, int min_tract_size, const char *reference_genome_filename)
 {
   clock_t time0, time1;
   int i;
-  hopo_set hs = (hopo_set) biomcmc_malloc (sizeof (struct hopo_set_struct));
-  hs->n_hc = n_filenames;
+  hopo_counter hc;
+  genome_set_t g = (genome_set_t) biomcmc_malloc (sizeof (struct genome_set_struct));
+  g->n_genomes = n_filenames;
 
-  if (paired_end) hs->n_hc /= 2;
+  if (paired_end) g->n_genome /= 2;
   if (kmer_size < 2)  kmer_size = 2;
-  if (kmer_size > 16) kmer_size = 16; 
-  if (min_hopo_size < 1)  min_hopo_size = 1;
-  if (min_hopo_size > 32) min_hopo_size = 32; 
+  if (kmer_size > 32) kmer_size = 32; 
+  if (min_tract_size < 2)  min_tract_size = 2;
+  if (min_tract_size > 32) min_tract_size = 32; 
   
   time0 = clock ();
-  hs->hc = (hopo_counter*) biomcmc_malloc (hs->n_hc * sizeof (hopo_counter));
-  if (paired_end) for (i = 0; i < hs->n_hc; i++) {
-    hs->hc[i] = new_or_append_hopo_counter_from_file (NULL,      filenames[2*i],   kmer_size, min_hopo_size);
-    hs->hc[i] = new_or_append_hopo_counter_from_file (hs->hc[i], filenames[2*i+1], kmer_size, min_hopo_size);
-  }
-  else for (i = 0; i < hs->n_hc; i++) {
-    hs->hc[i] = new_or_append_hopo_counter_from_file (NULL, filenames[i], kmer_size, min_hopo_size);
-  }
-  time1 = clock (); hs->secs_read = (double)(time1-time0)/(double)(CLOCKS_PER_SEC); time0 = time1; 
-  for (i = 0; i < hs->n_hc; i++) finalise_hopo_counter (hs->hc[i], reference_genome_filename); 
-  time1 = clock (); hs->secs_finalise = (double)(time1-time0)/(double)(CLOCKS_PER_SEC);
+  g->genome = (genomic_context_list_t*) biomcmc_malloc (g>n_genome * sizeof (genomic_context_list));
+  if (paired_end) for (i = 0; i < g->n_genome; i++) {
+    hc = new_or_append_hopo_counter_from_file (NULL, filenames[2*i],   kmer_size, min_tract_size);
+    hc = new_or_append_hopo_counter_from_file (hc,   filenames[2*i+1], kmer_size, min_tract_size);
+    time1 = clock (); g->secs_read = (double)(time1-time0)/(double)(CLOCKS_PER_SEC); time0 = time1; 
 
-  hs->secs_comparison = 0.;
-  hs->generator = NULL;
-  hs->ref_counter = 1;
+    g->genome[i] = new_genomic_context_list (hc, reference_genome_filename, max_distance_per_flank, min_coverage);
+    del_hopo_counter (hc); hc = NULL;
+    time1 = clock (); g->secs_finalise = (double)(time1-time0)/(double)(CLOCKS_PER_SEC);
+  }
+  else for (i = 0; i < g->n_genome; i++) {
+    hc = new_or_append_hopo_counter_from_file (NULL, filenames[i], kmer_size, min_tract_size);
+    time1 = clock (); g->secs_read = (double)(time1-time0)/(double)(CLOCKS_PER_SEC); time0 = time1; 
 
-  return hs;
+    g->genome[i] = new_genomic_context_list (hc, reference_genome_filename, max_distance_per_flank, min_coverage);
+    del_hopo_counter (hc); hc = NULL;
+    time1 = clock (); g->secs_finalise = (double)(time1-time0)/(double)(CLOCKS_PER_SEC);
+  }
+
+  g->secs_comparison = 0.;
+  g->generator = NULL;
+  g->ref_counter = 1;
+
+  return g;
 }
 
 void
-del_hopo_set (hopo_set hs)
+del_genome_set (genome_set_t g)
 {
   int i;
-  if (!hs) return;
-  if (--hs->ref_counter) return;
-  for (i = hs->n_hc - 1; i >= 0; i--) del_hopo_counter (hs->hc[i]);
+  if (!g) return;
+  if (--g->ref_counter) return;
+  for (i = g->n_genome - 1; i >= 0; i--) del_genomic_context_list (g->genome[i]);
   if (hs->hc) free (hs->hc);
   del_distance_generator (hs->generator);
   free (hs);

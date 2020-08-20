@@ -16,6 +16,7 @@ typedef struct hopo_counter_struct* hopo_counter;
 typedef struct context_histogram_struct* context_histogram_t;
 typedef struct genomic_context_list_struct* genomic_context_list_t;
 
+
 typedef struct
 { 
   uint64_t context[2]; // flanking kmers (bitstring, not hashed)
@@ -29,8 +30,7 @@ struct hopo_counter_struct
 {
   hopo_element *elem;
   char *name;
-  int n_elem, n_alloc, kmer_size;
-  double coverage[2], variance[2];
+  int n_elem, n_alloc, kmer_size, coverage;
   int *idx, n_idx;
   int ref_counter;
 };
@@ -53,16 +53,16 @@ struct context_histogram_struct
 struct genomic_context_list_struct
 {
   context_histogram_t *hist;
-  int n_hist, kmer_size;
+  char *name;
+  int n_hist, kmer_size, coverage;
 };
 
 hopo_counter new_or_append_hopo_counter_from_file (hopo_counter hc, const char *filename, int kmer_size, int min_hopo_size);
 void del_hopo_counter (hopo_counter hc);
-void finalise_hopo_counter (hopo_counter hc, const char *reference_genome_filename);
-void compare_hopo_counters (hopo_counter hc1, hopo_counter hc2, double *result);
 void print_debug_hopo_counter (hopo_counter hc);
 
-genomic_context_list_t new_genomic_context_list (hopo_counter hc, int max_distance_per_flank, int min_coverage);
+void print_debug_genomic_context_hist (genomic_context_hist_t genome);
+genomic_context_list_t  new_genomic_context_list (hopo_counter hc, const char *reference_genome_filename, int max_distance_per_flank, int min_coverage);
 void del_genomic_context_list (genomic_context_list_t genome);
 void finalise_genomic_context_hist (genomic_context_list_t genome,  const char *reference_genome_filename);
 
