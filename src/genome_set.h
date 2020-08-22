@@ -6,10 +6,10 @@
  *  \brief set of homopolymer counters (set of single end or paired end fastq files)
  */
 
-#ifndef _hopo_set_h_
-#define _hopo_set_h_
+#ifndef _genome_set_h_
+#define _genome_set_h_
 
-#include "hopo_counter.h" 
+#include "context_histogram.h" 
 
 typedef struct genome_set_struct* genome_set_t;
 
@@ -22,8 +22,8 @@ struct genome_set_struct
   int ref_counter;
 };
 
-genome_set new_genome_set_from_files (const char **filenames, int n_filenames, bool paired_end, int kmer_size, int min_hopo_size, const char *reference_genome_filename);
-void del_hopo_set (hopo_set hs);
-distance_generator new_distance_generator_from_hopo_set (hopo_set hs);
+genome_set_t new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_options_t opt);
+void del_genome_set (genome_set_t g);
+// distance_generator new_distance_generator_from_hopo_set (hopo_set hs);
 
 #endif

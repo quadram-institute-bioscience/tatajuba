@@ -551,3 +551,19 @@ finalise_genomic_context_hist (genomic_context_list_t genome,  const char *refer
   /* find reference location for each context */
   genomic_context_find_reference_location (genome, reference_genome_filename);
 }
+
+typedef struct {context_histogram_t ch; int location; int integral; } cont_hist_ptr_t;
+int
+compare_cont_hist_ptr_by_location (const void *a, const void *b) // increasing, resolve ties with integral (e.g. location==-1)
+{
+  int result = (int)(((cont_hist_ptr_t *)a)->location - ((cont_hist_ptr_t *)b)->location); // increasing
+  if (result) return result;
+  return (int)(((ch_ptr *)b)->integral - ((ch_ptr *)a)->integral);  // decreasing
+}
+void
+genomic_context_sort_context_histogram (genomic_context_list_t genome)
+{
+  int i; cont_hist_ptr_t *chp;
+  chp = (cont_hist_ptr_t*) biomcmc_malloc (genome->n_hist * sizeof (cont_hist_ptr_t));
+  for (i = 0; i < genome->n_hist; i++) chp[i] = {.ch = genome->hist[i], .location = genome->hist[i]->location, .integral = genome->hist[i]->integral};
+}

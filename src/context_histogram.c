@@ -2,13 +2,13 @@
  * Copyright (C) 2020-today  Leonardo de Oliveira Martins [ leomrtns at gmail.com;  http://leomrtns.github.io ]
  */
 
-#include "hopo_counter.h"
+#include "context_histogram.h"
 #include "kseq.h"
 
 BMC2_KSEQ_INIT(gzFile, gzread);
 
-static uint8_t dna_in_2_bits[256][2] = {{0xff}};
-static char bit_2_dna[] = {'A', 'C', 'G', 'T'};
+uint8_t dna_in_2_bits[256][2] = {{0xff}};
+char bit_2_dna[] = {'A', 'C', 'G', 'T'};
 
 static void initialize_dna_to_bit_tables (void);
 int compare_hopo_element_decreasing (const void *a, const void *b);
@@ -16,10 +16,10 @@ int compare_hopo_context (hopo_element a, hopo_element b);
 int distance_between_context_kmer (uint64_t *c1, uint64_t *c2, int max_dist);
 
 hopo_counter new_hopo_counter (int kmer_size);
-void update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int min_hopo_size);
+void update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int min_tract_size);
 void add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_int, int hopo_size);
 void copy_hopo_element_start_count (hopo_element *to, hopo_element *from);
-int hopo_counter_hist_integral (hopo_counter hc, int start);
+int hopo_counter_histogram_integral (hopo_counter hc, int start);
 void estimate_coverage_hopo_counter (hopo_counter hc);
 void finalise_hopo_counter (hopo_counter hc);
 
@@ -27,10 +27,24 @@ context_histogram_t new_context_histogram_from_hopo_elem (hopo_element he);
 void del_context_histogram (context_histogram_t ch);
 int  distance_between_context_histogram_and_hopo_context (context_histogram_t ch, hopo_element he, int max_distance, int *idx_match);
 void context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, int idx_match);
+int compare_context_histogram_for_qsort (const void *a, const void *b);
 
 char* context_histogram_tract_as_string (context_histogram_t ch, int kmer_size);
 char* context_histogram_generate_name (context_histogram_t ch, int kmer_size);
 void genomic_context_find_reference_location (genomic_context_list_t genome, const char *reference_genome_filename);
+
+void
+print_tatajuba_options (tatajuba_options_t opt)
+{
+  biomcmc_fprintf_colour (stderr, 0, 2, PACKAGE_STRING, "\n");
+  fprintf (stderr, "Reference genome file: %s\n", opt.reference_genome_filename);
+  fprintf (stderr, "Max distance per flanking k-mer: %6d\n", opt.max_distance_per_flank);
+  fprintf (stderr, "Flanking k-mer size (context):   %6d\n", opt.kmer_size);
+  fprintf (stderr, "Min tract length to consider:    %6d\n", opt.min_tract_size);
+  fprintf (stderr, "Min depth of tract lengths:      %6d\n", opt.min_coverage);
+  if (opt.paired_end) fprintf (stderr, "Assuming paired-end samples: their file names should be consecutive (no file name check is conducted)\n");
+  else fprintf (stderr, "Assuming single-end samples\n");
+}
 
 int
 compare_hopo_element_decreasing (const void *a, const void *b)
@@ -65,7 +79,7 @@ distance_between_context_kmer (uint64_t *c1, uint64_t *c2, int max_dist)
 }
 
 hopo_counter
-new_or_append_hopo_counter_from_file (hopo_counter hc, const char *filename, int kmer_size, int min_hopo_size)
+new_or_append_hopo_counter_from_file (hopo_counter hc, const char *filename, tatajuba_options_t opt)
 {
   int i;
   hopo_counter hc_local = hc;
@@ -74,14 +88,15 @@ new_or_append_hopo_counter_from_file (hopo_counter hc, const char *filename, int
   gzFile fp = gzopen (filename, "r");
   bmc2_kseq_t *seq = bmc2_kseq_init (fp);
   if (!hc) {
-    hc_local = new_hopo_counter (kmer_size);
+    hc_local = new_hopo_counter (opt.kmer_size);
     name_length = strlen(filename);
     hc_local->name = (char*) biomcmc_malloc (sizeof (char) * (name_length + 1));
     strncpy (hc_local->name, filename, name_length);
     hc_local->name[name_length] = '\0';
+    hc_local-> opt = opt;
   }
   if (hc_local->idx) biomcmc_error ("This counter has been compared to another; cannot add more reads to it");
-  while ((i = bmc2_kseq_read (seq)) >= 0) update_hopo_counter_from_seq (hc_local, seq->seq.s, seq->seq.l, min_hopo_size); 
+  while ((i = bmc2_kseq_read (seq)) >= 0) update_hopo_counter_from_seq (hc_local, seq->seq.s, seq->seq.l, opt.min_tract_size); 
   bmc2_kseq_destroy(seq); // other kseq_t parameters: seq->name.s, seq->seq.l, seq->qual.l
   gzclose(fp);
   return hc_local;
@@ -94,8 +109,7 @@ new_hopo_counter (int kmer_size)
   hc->n_alloc = 32;
   hc->kmer_size = kmer_size;
   hc->n_idx = hc->n_elem = 0;
-  hc->variance[0] = hc->variance[1] = 1.;
-  hc->coverage[0] = hc->coverage[1] = 0.;
+  hc->coverage = 0.;
   hc->elem = (hopo_element*) biomcmc_malloc (hc->n_alloc * sizeof (hopo_element));
   hc->ref_counter = 1;
   hc->name = NULL; hc->idx = NULL;
@@ -131,7 +145,7 @@ initialize_dna_to_bit_tables (void)
 
 // check if doesnt handle overlapping hopos (e.g. TGACCCAAAATGC -> CCC and AAAA)
 void
-update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int min_hopo_size)
+update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int min_tract_size)
 {
   int i, j, k, count_same = 0, start_mono = -1;
   uint8_t context[2 * hc->kmer_size]; 
@@ -140,7 +154,7 @@ update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int mi
   for (i = 0; i < (seq_length - hc->kmer_size); i++) {
     if (seq[i] == prev_char) {
       count_same++;
-      if ((count_same >= min_hopo_size) && (start_mono >= hc->kmer_size)) {
+      if ((count_same >= min_tract_size) && (start_mono >= hc->kmer_size)) {
         while (i < (seq_length-hc->kmer_size-1) && (seq[i+1] == prev_char)) { i++; count_same++; }
         if (dna_in_2_bits[(int)prev_char][0] < dna_in_2_bits[(int)prev_char][1]) { // A or C : forward strand
           k = 0;
@@ -192,7 +206,7 @@ copy_hopo_element_start_count (hopo_element *to, hopo_element *from)
 }
 
 void
-finalise_hopo_counter (hopo_counter hc, const char *reference_genome_filename)
+finalise_hopo_counter (hopo_counter hc)
 {
   hopo_element *pivot, *efreq;
   int i, n1 = 0;
@@ -221,17 +235,12 @@ finalise_hopo_counter (hopo_counter hc, const char *reference_genome_filename)
   hc->idx = (int*) biomcmc_realloc ((int*) hc->idx, hc->n_idx* sizeof (int));
 
   estimate_coverage_hopo_counter (hc);
-
-  // TODO next few lines
-  genomic_context_list_t genome = new_genomic_context_list (hc, 1, 1);
-  finalise_genomic_context_hist (genome, reference_genome_filename);
-  del_genomic_context_list (genome);
 }
 
 void
-print_debug_genomic_context_hist (genomic_context_hist_t genome)
+print_debug_genomic_context_hist (genomic_context_list_t genome)
 {
-  printf ("DBG::start_genomic_context::\n", genome->name);
+  printf ("DBG::start_genomic_context::%s\n", genome->name);
   for (int i=0; i < genome->n_hist; i++) 
     printf ("DBG:: %4d minmax=(%4d, %4d) modal_tract_length= %-4d (with freq=%-3d) total_number_reads= %-6d location= %6d\t%s\n", 
             genome->hist[i]->n_context, genome->hist[i]->h->min, genome->hist[i]->h->max, 
@@ -260,19 +269,11 @@ estimate_coverage_hopo_counter (hopo_counter hc)
   del_empfreq (ef);
 }
 
-int hopo_counter_hist_integral (hopo_counter hc, int start)
+int hopo_counter_histogram_integral (hopo_counter hc, int start)
 {
   int i, cov = 0;
   for (i = hc->idx[start]; i < hc->idx[start+1]; i++) cov += hc->elem[i].count;
   return cov;
-}
-
-void
-print_debug_hopo_counter (hopo_counter hc)
-{
-  int i;
-  for (i = 0; i < 4; i++) printf ("%3d %5d | ", hc->elem[i].length, hc->elem[i].count);
-  printf ("%9.4lf %9.4lf %9.4lf %9.4lf\n", hc->coverage[0], hc->coverage[1], hc->variance[0], hc->variance[1]);
 }
 
 context_histogram_t
@@ -356,36 +357,43 @@ context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, int id
   ch->tmp_length[ch->n_tmp++] = he.length;
 }
 
+int
+compare_context_histogram_for_qsort (const void *a, const void *b) // increasing, resolve ties with integral (e.g. location==-1)
+{
+  int result = (*(context_histogram_t*)a)->location - (*(context_histogram_t*)b)->location; // increasing
+  if (result) return result;
+  return (*(context_histogram_t*)b)->integral - (*(context_histogram_t*)a)->integral;  // decreasing
+}
+
 /*void 
 compare_context_histograms (context_histogram_t ch1, context_histogram_t ch2, double *result){}*/
 
 genomic_context_list_t
-new_genomic_context_list (hopo_counter hc, const char *reference_genome_filename, int max_distance_per_flank, int min_coverage)
+new_genomic_context_list (hopo_counter hc)
 {
   int i1, i2, idx_match, j, distance, best_dist=0xffff, best_h=-1, read_coverage;
   genomic_context_list_t genome = (genomic_context_list_t) biomcmc_malloc (sizeof (struct genomic_context_list_struct));
   genome->hist = NULL;
   genome->n_hist = 0;
-  if (min_coverage < 2) min_coverage = 2;
   
   /* 1. sort hopo_counter, calculate coverage etc. Remember that hopo_counter handles only identical contexts */
   finalise_hopo_counter (hc);
-  genome->kmer_size = hc->kmer_size; // size on each flanking region (i.e. < 32)
+  genome->opt = hc->opt;
   genome->coverage = hc->coverage;
   genome->name = hc->name;
   hc->name = NULL;
 
   /* 2. accumulate histograms of 'equivalent' (almost identical) contexts */
   for (i1 = 0; i1 < hc->n_idx - 1; i1++) {
-    read_coverage = hopo_counter_hist_integral (hc, i1);
-    if (read_coverage < min_coverage) continue; // too few reads, skip this context+homopolymer
+    read_coverage = hopo_counter_histogram_integral (hc, i1);
+    if (read_coverage < genome->opt.min_coverage) continue; // too few reads, skip this context+homopolymer
     idx_match = -1; // will become context element of j if contexts match exactly 
     best_dist=0xffff; distance = 0xffff; best_h=-1;
     for (j = 0; (j < genome->n_hist) && (idx_match < 0); j++) {
-      distance = distance_between_context_histogram_and_hopo_context (genome->hist[j], hc->elem[hc->idx[i1]], max_distance_per_flank, &idx_match);
+      distance = distance_between_context_histogram_and_hopo_context (genome->hist[j], hc->elem[hc->idx[i1]], genome->opt.max_distance_per_flank, &idx_match);
       if (distance < best_dist) { best_dist = distance; best_h = j; } // even if distance = 0 we need best_j 
     }
-    if (distance >= 2 * max_distance_per_flank) { // no similar context found (or first context ever)
+    if (distance >= 2 * genome->opt.max_distance_per_flank) { // no similar context found (or first context ever)
       genome->hist = (context_histogram_t*) biomcmc_realloc ((context_histogram_t*) genome->hist, (genome->n_hist+1) * sizeof (context_histogram_t));
       genome->hist[genome->n_hist] = new_context_histogram_from_hopo_elem (hc->elem[hc->idx[i1]]);
       idx_match = 0; // he->idx gives list with same context so we dont need to compare until idx[i1+1]
@@ -398,12 +406,12 @@ new_genomic_context_list (hopo_counter hc, const char *reference_genome_filename
   }
 
   /* 3. generate empfreq histograms, name each histogram and find location in ref genome */
-  finalise_genomic_context_hist (genome, reference_genome_filename);
+  finalise_genomic_context_hist (genome);
   return genome;
 }
 
 void
-finalise_genomic_context_hist (genomic_context_list_t genome,  const char *reference_genome_filename)
+finalise_genomic_context_hist (genomic_context_list_t genome)
 {  
   int i;
   context_histogram_t ch;
@@ -415,8 +423,19 @@ finalise_genomic_context_hist (genomic_context_list_t genome,  const char *refer
     if (ch->tmp_count) free (ch->tmp_count);
     ch->tmp_length = ch->tmp_count = NULL;
   }
-  /* find reference location for each context */
-  genomic_context_find_reference_location (genome, reference_genome_filename);
+  /* 2. find reference location for each context */
+  genomic_context_find_reference_location (genome, genome->opt.reference_genome_filename);
+  /* 3. sort context_histograms based on genomic location, ties broken with more frequent first
+   *   -- ties are found when location == -1 i.e. not found on reference */
+  qsort (genome->hist, genome->n_hist, sizeof (context_histogram_t), compare_context_histogram_for_qsort);
+  for (i = 0; (i < genome->n_hist) && (genome->hist[i]->location < 0); i++); // just scan i
+  genome->idx_reference_start = i;
+  if (i > genome->n_hist/2) 
+    biomcmc_fprintf_colour (stderr, 0, 1, "warning:", "%6d out of %6d context+tracts were not found in reference %s\n", 
+                            i, genome->n_hist, genome->name);
+
+  print_debug_genomic_context_hist (genome);
+  return;
 }
 
 void
@@ -475,9 +494,9 @@ genomic_context_find_reference_location (genomic_context_list_t genome, const ch
   readseqs = new_char_vector (genome->n_hist);
 
   for (i = 0; i < genome->n_hist; i++) {
-    read = context_histogram_tract_as_string (genome->hist[i], genome->kmer_size);
+    read = context_histogram_tract_as_string (genome->hist[i], genome->opt.kmer_size);
     char_vector_link_string_at_position (readseqs, read, readseqs->next_avail); // just link 
-    genome->hist[i]->name =  context_histogram_generate_name (genome->hist[i], genome->kmer_size);
+    genome->hist[i]->name =  context_histogram_generate_name (genome->hist[i], genome->opt.kmer_size);
     char_vector_add_string (readname, genome->hist[i]->name); // unlike _link_ above, this will alloc memory and copy name[]  
   }
   // rightmost zero means to store in int[], instead of plotting SAM to stdout

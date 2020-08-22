@@ -6,16 +6,28 @@
  *  \brief homopolymer counter
  */
 
-#ifndef _hopo_counter_h_
-#define _hopo_counter_h_
+#ifndef _context_histogram_h_
+#define _context_histogram_h_
 
 #include <kalign.h> // biomcmc is included here
 #include <wrapper_bwa.h>
+
+extern uint8_t dna_in_2_bits[256][2];
+extern char bit_2_dna[];
 
 typedef struct hopo_counter_struct* hopo_counter;
 typedef struct context_histogram_struct* context_histogram_t;
 typedef struct genomic_context_list_struct* genomic_context_list_t;
 
+typedef struct 
+{
+  char *reference_genome_filename; 
+  bool paired_end;
+  int max_distance_per_flank, 
+      kmer_size,
+      min_tract_size,
+      min_coverage;
+} tatajuba_options_t;
 
 typedef struct
 { 
@@ -32,6 +44,7 @@ struct hopo_counter_struct
   char *name;
   int n_elem, n_alloc, kmer_size, coverage;
   int *idx, n_idx;
+  tatajuba_options_t opt;
   int ref_counter;
 };
 
@@ -54,16 +67,18 @@ struct genomic_context_list_struct
 {
   context_histogram_t *hist;
   char *name;
-  int n_hist, kmer_size, coverage;
+  tatajuba_options_t opt;
+  int n_hist, coverage,
+      idx_reference_start;  /*! \brief index of first hist found on ref genome (all before were not found) */
 };
 
-hopo_counter new_or_append_hopo_counter_from_file (hopo_counter hc, const char *filename, int kmer_size, int min_hopo_size);
+void print_tatajuba_options (tatajuba_options_t opt);
+hopo_counter new_or_append_hopo_counter_from_file (hopo_counter hc, const char *filename, tatajuba_options_t opt);
 void del_hopo_counter (hopo_counter hc);
-void print_debug_hopo_counter (hopo_counter hc);
 
-void print_debug_genomic_context_hist (genomic_context_hist_t genome);
-genomic_context_list_t  new_genomic_context_list (hopo_counter hc, const char *reference_genome_filename, int max_distance_per_flank, int min_coverage);
+void print_debug_genomic_context_hist (genomic_context_list_t genome);
+genomic_context_list_t  new_genomic_context_list (hopo_counter hc);
 void del_genomic_context_list (genomic_context_list_t genome);
-void finalise_genomic_context_hist (genomic_context_list_t genome,  const char *reference_genome_filename);
+void finalise_genomic_context_hist (genomic_context_list_t genome);
 
 #endif
