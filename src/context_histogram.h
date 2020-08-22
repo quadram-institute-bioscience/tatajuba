@@ -58,7 +58,7 @@ struct context_histogram_struct
       location,      /*! \brief genomic location(s) of context */
       mode_context_count,   /*! \brief frequency of reads, defining "best homopolymer+context" */
       mode_context_length,  /*! \brief tract length of best homopolymer+context */
-      mode_context_id;      /*! \brief which context (from neighboUrhood) has best homopolymer+context */
+      mode_context_id;      /*! \brief which context (from neighbourhood) has best homopolymer+context */
   int *tmp_count, *tmp_length, n_tmp;
   empfreq h;
 };
