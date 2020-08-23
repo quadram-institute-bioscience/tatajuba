@@ -59,7 +59,7 @@ struct context_histogram_struct
       mode_context_count,   /*! \brief frequency of reads, defining "best homopolymer+context" */
       mode_context_length,  /*! \brief tract length of best homopolymer+context */
       mode_context_id;      /*! \brief which context (from neighbourhood) has best homopolymer+context */
-  int *tmp_count, *tmp_length, n_tmp;
+  int *tmp_count, *tmp_length, index; // index in genome_set, first used temporarily as counter
   empfreq h;
 };
 
@@ -68,8 +68,7 @@ struct genomic_context_list_struct
   context_histogram_t *hist;
   char *name;
   tatajuba_options_t opt;
-  int n_hist, coverage,
-      idx_reference_start;  /*! \brief index of first hist found on ref genome (all before were not found) */
+  int n_hist, coverage, ref_start;  /*! \brief ref_start is index of first hist found on ref genome (all before were not found) */
 };
 
 void print_tatajuba_options (tatajuba_options_t opt);

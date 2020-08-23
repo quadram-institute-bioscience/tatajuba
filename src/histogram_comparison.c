@@ -10,7 +10,8 @@
 int compare_hopo_element_decreasing (const void *a, const void *b);
 int compare_hopo_context (hopo_element a, hopo_element b);
 int distance_between_context_kmer (uint64_t *c1, uint64_t *c2, int max_dist);
-int  distance_between_context_histogram_and_hopo_context (context_histogram_t ch, hopo_element he, int max_distance, int *idx_match);
+int distance_between_context_histogram_and_hopo_context (context_histogram_t ch, hopo_element he, int max_distance, int *idx_match);
+int distance_between_context_histograms (context_histogram_t c1, context_histogram_t c2, double *result); // return is not distance
 int compare_context_histogram_for_qsort (const void *a, const void *b);
 
 #endif // as with regular header files, functions must be declared once  
@@ -69,13 +70,21 @@ distance_between_context_histogram_and_hopo_context (context_histogram_t ch, hop
   return this_max;
 }
 
+// TODO: distance between contexts (for each context in c1, smallest dist to all contexts in c2)
 int
-distance_between_context_histograms (context_histogram_t ch, hopo_element he, int max_distance, int *idx_match)
+distance_between_context_histograms (context_histogram_t c1, context_histogram_t c2, double *result)
 { 
-  int distance = 0, this_max = 0, i;
-  *idx_match = -1;
-  if (ch->base != he.base) return 2 * max_distance + 1; // homopolymer tracts are different
-
+  int i, min_n;
+  double x,y;
+  min_n = MIN (c1->h->n, c2->h->n);
+  result[0] = 0.;
+  for (i = 0; i < min_n; i++) {
+    x = (double) (1 + abs (c1->h->i[i].idx - c2->h->i[i].idx)); // absolute distance between nth-mode plus one
+    y = (double) (c1->h->i[i].freq/c1->integral - c2->h->i[i].freq/c2->integral); // absolute distance between nth-mode plus one
+    result[0] += x * fabs (y);
+  }
+  return 1; // number of results
+}
 
 int
 compare_context_histogram_for_qsort (const void *a, const void *b) // increasing, resolve ties with integral (e.g. location==-1)

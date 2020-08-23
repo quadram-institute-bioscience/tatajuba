@@ -255,7 +255,7 @@ new_context_histogram_from_hopo_elem (hopo_element he)
   ch->integral = he.count;
   ch->name = NULL; // defined on finalise()
   ch->h= NULL; // empfreq created at the end (finalise_genomic_context)
-  ch->n_tmp = 1;
+  ch->index = 1; // index in genome_set (here used provisorily as n_tmp 
   ch->tmp_count  = (int*) biomcmc_malloc (sizeof (int));
   ch->tmp_length = (int*) biomcmc_malloc (sizeof (int));
   ch->tmp_count[0]  = he.count;
@@ -293,10 +293,10 @@ context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, int id
   }
   ch->integral += he.count;
 
-  ch->tmp_count  = (int*) biomcmc_realloc ((int*) ch->tmp_count,  (ch->n_tmp +1) * sizeof (int));
-  ch->tmp_length = (int*) biomcmc_realloc ((int*) ch->tmp_length, (ch->n_tmp +1) * sizeof (int));
-  ch->tmp_count [ch->n_tmp  ] = he.count;
-  ch->tmp_length[ch->n_tmp++] = he.length;
+  ch->tmp_count  = (int*) biomcmc_realloc ((int*) ch->tmp_count,  (ch->index +1) * sizeof (int));
+  ch->tmp_length = (int*) biomcmc_realloc ((int*) ch->tmp_length, (ch->index +1) * sizeof (int));
+  ch->tmp_count [ch->index]   = he.count;
+  ch->tmp_length[ch->index++] = he.length;
 }
 
 genomic_context_list_t
@@ -348,10 +348,10 @@ finalise_genomic_context_hist (genomic_context_list_t genome)
   /* 1. empirical frequency histogram of tract lengths */
   for (i = 0; i < genome->n_hist; i++) {
     ch = genome->hist[i];
-    ch->h = new_empfreq_from_int_weighted (ch->tmp_length, ch->n_tmp, ch->tmp_count); // histogram, from high to low count
+    ch->h = new_empfreq_from_int_weighted (ch->tmp_length, ch->index, ch->tmp_count); // histogram, from high to low count
     if (ch->tmp_length) free (ch->tmp_length);
     if (ch->tmp_count) free (ch->tmp_count);
-    ch->tmp_length = ch->tmp_count = NULL;
+    ch->tmp_length = ch->tmp_count = NULL; ch->index = -1;
   }
   /* 2. find reference location for each context */
   genomic_context_find_reference_location (genome, genome->opt.reference_genome_filename);
@@ -359,7 +359,7 @@ finalise_genomic_context_hist (genomic_context_list_t genome)
    *    location == -1 i.e. not found on reference, and ultimately ties are sorted by context */
   qsort (genome->hist, genome->n_hist, sizeof (context_histogram_t), compare_context_histogram_for_qsort);
   for (i = 0; (i < genome->n_hist) && (genome->hist[i]->location < 0); i++); // just scan i
-  genome->idx_reference_start = i;
+  genome->ref_start = i;
   if (i > genome->n_hist/2) 
     biomcmc_fprintf_colour (stderr, 0, 1, "warning:", "%6d out of %6d context+tracts were not found in reference %s\n", 
                             i, genome->n_hist, genome->name);
@@ -367,7 +367,7 @@ finalise_genomic_context_hist (genomic_context_list_t genome)
    *    actually the same, specially when max_flank_distance is too strict */
   genomic_context_merge_histograms_at_same_location (genome);
 
-  print_debug_genomic_context_hist (genome);
+//  print_debug_genomic_context_hist (genome);
   return;
 }
 
@@ -462,10 +462,10 @@ genomic_context_merge_histograms_at_same_location (genomic_context_list_t genome
   context_histogram_t *new_h;
   int i, j;
 
-  if (genome->idx_reference_start == genome->n_hist) return; // nothing to do if no contexts were found in ref genome 
+  if (genome->ref_start == genome->n_hist) return; // nothing to do if no contexts were found in ref genome 
   new_h = (context_histogram_t*) biomcmc_malloc (genome->n_hist * sizeof (context_histogram_t));
 
-  for (j = 0; j < genome->idx_reference_start; j++) new_h[j] = genome->hist[j]; // negative locations
+  for (j = 0; j < genome->ref_start; j++) new_h[j] = genome->hist[j]; // negative locations
   new_h[j] = genome->hist[j]; 
   for (i = j + 1; i < genome->n_hist; i++) {
     if (genome->hist[i]->location == new_h[j]->location) accumulate_from_context_histogram (new_h[j], genome->hist[i]);

@@ -5,6 +5,7 @@
 #include "genome_set.h"
   
 //void hopo_set_distance_wrapper (void *data, int s1, int s2, double *result);
+void  genome_set_concatenate_tracts (genome_set_t g);
 
 genome_set_t
 new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_options_t opt) 
@@ -14,6 +15,8 @@ new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_opt
   hopo_counter hc;
   genome_set_t g = (genome_set_t) biomcmc_malloc (sizeof (struct genome_set_struct));
   g->n_genome = n_filenames;
+  g->tract = NULL;
+  g->n_tract = 0;
 
   if (opt.paired_end) g->n_genome /= 2;
   
@@ -36,11 +39,11 @@ new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_opt
     del_hopo_counter (hc); hc = NULL;
     time1 = clock (); g->secs_finalise = (double)(time1-time0)/(double)(CLOCKS_PER_SEC);
   }
-
   g->secs_comparison = 0.;
   g->generator = NULL;
   g->ref_counter = 1;
 
+  genome_set_concatenate_tracts (g);
   return g;
 }
 
@@ -54,6 +57,47 @@ del_genome_set (genome_set_t g)
   if (g->genome) free (g->genome);
   del_distance_generator (g->generator);
   free (g);
+}
+
+void 
+genome_set_concatenate_tracts (genome_set_t g)
+{
+  int i, j, k1, k2, dif, n_new_h;
+  context_histogram_t *new_h = NULL;
+
+  /* 1. label each histogram with index of genome they belong to */
+  for (i = 0; i < g->n_genome; i++) for (j = 0; j < g->genome[i]->n_hist; j++) g->genome[i]->hist[j]->index = i;
+
+  /* 2. skip genomes without (genome-location) annotated histograms and start new histogram */ 
+  for (i = 0; g->genome[i]->ref_start == g->genome[i]->n_hist; i++); // do nothing besides loop
+  g->n_tract = g->genome[i]->n_hist - g->genome[i]->ref_start;
+  g->tract   = (context_histogram_t*) biomcmc_malloc (sizeof (context_histogram_t) * g->n_tract);
+  for (j = g->genome[i]->ref_start; j < g->genome[i]->n_hist; j++) g->tract[j] = g->genome[i]->hist[j];
+  new_h = g->tract;
+  n_new_h = g->n_tract;
+
+  /* 3. tract[] will be new_h and genome[i]->hist merged, in order (both are ordered) */
+  for (i++; i < g->n_genome; i++) if (g->genome[i]->n_hist > g->genome[i]->ref_start) {
+    printf ("DBG::%4d::%5d\n",i, g->genome[i]->n_hist - g->genome[i]->ref_start);
+    g->n_tract = n_new_h + g->genome[i]->n_hist - g->genome[i]->ref_start; // sum of lengths
+    g->tract = (context_histogram_t*) biomcmc_malloc (sizeof (context_histogram_t) * g->n_tract);
+    j = 0;
+    for (k1 = 0, k2 = g->genome[i]->ref_start; (k1 < n_new_h) && (k2 < g->genome[i]->n_hist); ) { 
+      dif = new_h[k1]->location - g->genome[i]->hist[k2]->location;
+      if (dif > 0) g->tract[j++] = g->genome[i]->hist[k2++]; // k2 steps forward 
+      if (dif < 0) g->tract[j++] = new_h[k1++];              // k1 steps forward
+      else { // both are the same, both step forward and tract increases by two
+        g->tract[j++] = g->genome[i]->hist[k2++]; 
+        g->tract[j++] = new_h[k1++];
+      }
+    } // loop ends when one of them finishes, now we need to complete with the other
+    for (; k2 < g->genome[i]->n_hist; k2++, j++) g->tract[j] = g->genome[i]->hist[k2]; 
+    for (; k1 < n_new_h; k1++, j++) g->tract[j] = new_h[k1];
+    free (new_h); // only place where we free is here (o.w. we only have pointers)
+    new_h = g->tract;
+    n_new_h = g->n_tract;
+  }
+  printf ("DBG::total::%5d\n", g->n_tract); 
 }
 
 /*

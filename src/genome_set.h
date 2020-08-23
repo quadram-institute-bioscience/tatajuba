@@ -16,7 +16,8 @@ typedef struct genome_set_struct* genome_set_t;
 struct genome_set_struct 
 {
   genomic_context_list_t *genome;
-  int n_genome;
+  context_histogram_t *tract; // tracts pooled over genomes that can be found in reference
+  int n_genome, n_tract;
   double secs_read, secs_finalise, secs_comparison;
   distance_generator generator;
   int ref_counter;
