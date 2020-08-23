@@ -72,15 +72,15 @@ genome_set_concatenate_tracts (genome_set_t g)
   for (i = 0; g->genome[i]->ref_start == g->genome[i]->n_hist; i++); // do nothing besides loop
   g->n_tract = g->genome[i]->n_hist - g->genome[i]->ref_start;
   g->tract   = (context_histogram_t*) biomcmc_malloc (sizeof (context_histogram_t) * g->n_tract);
-  for (j = g->genome[i]->ref_start; j < g->genome[i]->n_hist; j++) g->tract[j] = g->genome[i]->hist[j];
+  for (j=0, k1 = g->genome[i]->ref_start; k1 < g->genome[i]->n_hist; j++, k1++) g->tract[j] = g->genome[i]->hist[k1];
   new_h = g->tract;
   n_new_h = g->n_tract;
 
   /* 3. tract[] will be new_h and genome[i]->hist merged, in order (both are ordered) */
   for (i++; i < g->n_genome; i++) if (g->genome[i]->n_hist > g->genome[i]->ref_start) {
-    printf ("DBG::%4d::%5d\n",i, g->genome[i]->n_hist - g->genome[i]->ref_start);
     g->n_tract = n_new_h + g->genome[i]->n_hist - g->genome[i]->ref_start; // sum of lengths
-    g->tract = (context_histogram_t*) biomcmc_malloc (sizeof (context_histogram_t) * g->n_tract);
+    printf ("DBG::%4d::%5d::%5lu\n",i, g->genome[i]->n_hist - g->genome[i]->ref_start, sizeof (context_histogram_t) * g->n_tract);
+    g->tract = (context_histogram_t*) biomcmc_malloc (g->n_tract * sizeof (context_histogram_t));
     j = 0;
     for (k1 = 0, k2 = g->genome[i]->ref_start; (k1 < n_new_h) && (k2 < g->genome[i]->n_hist); ) { 
       dif = new_h[k1]->location - g->genome[i]->hist[k2]->location;
