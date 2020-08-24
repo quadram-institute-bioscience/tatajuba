@@ -9,6 +9,7 @@ typedef struct
   struct arg_int  *minsize;
   struct arg_int  *minread;
   struct arg_int  *maxdist;
+  struct arg_int  *leven;
   struct arg_file *ref;
   struct arg_file *fastq;
   struct arg_end  *end;
@@ -30,16 +31,18 @@ get_parameters_from_argv (int argc, char **argv)
     .minsize = arg_int0("m","minsize","{1,...,32}", "minimum homopolymer tract length to be compared"),
     .minread = arg_int0("i","minreads",NULL, "minimum number of reads for tract+context to be considered"),
     .maxdist = arg_int0("d","maxdist",NULL, "maximum distance between kmers of a flanking region to merge them into one context"),
+    .leven   = arg_int0("l","leven",NULL, "levenshtein distance between flanking regions to merge them into one context (after ref genome mapping)"),
     .ref     = arg_file1("r", "ref", "<genome.fa|genome.fa.gz>", "reference genome file (bwa indices will be created if absent)"),
     .fastq   = arg_filen(NULL, NULL, "<fastq files>", 1, 0xffff, "fasta or fastq file with reads"),
     .end     = arg_end(10) // max number of errors it can store (o.w. shows "too many errors")
   };
-  void* argtable[] = {params.help, params.version, params.paired, params.kmer, params.minsize, params.minread, params.maxdist, params.ref, params.fastq, params.end};
+  void* argtable[] = {params.help, params.version, params.paired, params.kmer, params.minsize, params.minread, params.maxdist, params.leven, params.ref, params.fastq, params.end};
   params.argtable = argtable; 
   params.kmer->ival[0]    = 8; // default values must be before parsing
   params.minsize->ival[0] = 3; 
   params.minread->ival[0] = 3;
   params.maxdist->ival[0] = 1;
+  params.leven->ival[0] = -1;
   /* actual parsing: */
   if (arg_nullcheck(params.argtable)) biomcmc_error ("Problem allocating memory for the argtable (command line arguments) structure");
   if (arg_parse (argc, argv, params.argtable)) print_usage (params, argv[0]); // returns >0 if errors were found, info also on params.end->count
@@ -56,6 +59,7 @@ del_arg_parameters (arg_parameters params)
   if (params.minsize) free (params.minsize);
   if (params.minread) free (params.minread);
   if (params.maxdist) free (params.maxdist);
+  if (params.leven)   free (params.leven);
   if (params.ref)     free (params.ref);
   if (params.fastq)   free (params.fastq);
   if (params.end)     free (params.end);
@@ -99,6 +103,7 @@ get_options_from_argtable (arg_parameters params)
   opt.min_tract_size = params.minsize->ival[0];
   opt.min_coverage = params.minread->ival[0]; 
   opt.max_distance_per_flank = params.maxdist->ival[0]; 
+  opt.levenshtein_distance = params.leven->ival[0]; 
 
   if (opt.kmer_size < 2)  opt.kmer_size = 2; 
   if (opt.kmer_size > 32) opt.kmer_size = 32; 
@@ -108,6 +113,7 @@ get_options_from_argtable (arg_parameters params)
   if (opt.min_coverage > 0xffff) opt.min_coverage = 0xffff; 
   if (opt.max_distance_per_flank < 0) opt.max_distance_per_flank = 0; 
   if (opt.max_distance_per_flank > opt.kmer_size/2) opt.max_distance_per_flank = opt.kmer_size/2; 
+  if (opt.levenshtein_distance < 0) opt.levenshtein_distance = opt.max_distance_per_flank + 1; 
   return opt;
 }
 

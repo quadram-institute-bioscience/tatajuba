@@ -7,7 +7,7 @@
 g_tract_vector_t new_g_tract_vector_from_genomic_context_list (genomic_context_list_t *genome, int n_genome);
 void del_g_tract_vector (g_tract_vector_t tract);
 void g_tract_vector_concatenate_tracts  (g_tract_vector_t tract, genomic_context_list_t *genome, int n_genome);
-void generate_g_tract_from_context_histogram (g_tract_vector_t tract, int prev, int curr);
+void generate_g_tract_from_context_histogram (g_tract_vector_t tract, int prev, int curr, int lev_distance);
 
 genome_set_t
 new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_options_t opt) 
@@ -66,18 +66,27 @@ del_genome_set (genome_set_t g)
 g_tract_vector_t
 new_g_tract_vector_from_genomic_context_list (genomic_context_list_t *genome, int n_genome)
 {
-  int i, prev;
+  int i, prev, lev_distance = 0, max_lev_distance = 0;
+  bool is_same;
   g_tract_vector_t tract = (g_tract_vector_t) biomcmc_malloc (sizeof (struct g_tract_vector_struct));
   tract->distinct = NULL;
-  tract->concat = NULL;
+  tract->concat = NULL; // big vector with all tracts from all genomes in linear order
   tract->n_distinct = tract->n_concat = 0;
   g_tract_vector_concatenate_tracts  (tract, genome, n_genome); // updates tract->concat
 
-  for (prev=0, i = 1; i < tract->n_concat; i++) if (tract->concat[i]->location != tract->concat[prev]->location) {
-    generate_g_tract_from_context_histogram (tract, prev, i); // updates tract->distinct
-    prev = i;
+  for (prev=0, i = 1; i < tract->n_concat; i++) { // overlap() is true if tracts are the same, false if distinct 
+    is_same = context_histograms_overlap (tract->concat[i], tract->concat[prev], &lev_distance, genome[0]->opt);
+    if (!is_same) {
+      generate_g_tract_from_context_histogram (tract, prev, i, max_lev_distance); // updates tract->distinct
+      prev = i;
+      max_lev_distance = 0;
+    }
+    else if (max_lev_distance < lev_distance) max_lev_distance = lev_distance; // tracts are similar enough 
   }
-  generate_g_tract_from_context_histogram (tract, prev, i-1); //  last block i == tract->n_concat
+  // call context() just to calculate levenshtein distance 
+  context_histograms_overlap (tract->concat[i-1], tract->concat[prev], &lev_distance, genome[0]->opt);
+  if (max_lev_distance < lev_distance) max_lev_distance = lev_distance; // tracts are similar enough 
+  generate_g_tract_from_context_histogram (tract, prev, i-1, max_lev_distance); //  last block i == tract->n_concat
 
   return tract;
 }
@@ -89,8 +98,9 @@ del_g_tract_vector (g_tract_vector_t tract)
   if (tract->concat) free (tract->concat);
   if (tract->distinct) {
     for (int i = tract->n_distinct - 1; i >= 0; i--) {
-      if (tract->distinct[i].dist) free (tract->distinct[i].dist);
+      if (tract->distinct[i].d1) free (tract->distinct[i].d1);
       del_empfreq (tract->distinct[i].mode);
+      del_context_histogram (tract->distinct[i].example);
     }
     free (tract->distinct);
   }
@@ -113,15 +123,13 @@ g_tract_vector_concatenate_tracts (g_tract_vector_t tract, genomic_context_list_
   n_new_h = tract->n_concat;
 
   /* 2. concat[] will be new_h and genome[i]->hist merged, in order (both are ordered) */
-  for (i++; i < n_genome; i++) if (genome[i]->n_hist > genome[i]->ref_start) {
+  for (i+=1; i < n_genome; i++) if (genome[i]->n_hist > genome[i]->ref_start) {
     tract->n_concat = n_new_h + genome[i]->n_hist - genome[i]->ref_start; // sum of lengths
-    printf ("DBG::adding genome::%4d::%5d\n",i, genome[i]->n_hist - genome[i]->ref_start);
     tract->concat = (context_histogram_t*) biomcmc_malloc (tract->n_concat * sizeof (context_histogram_t));
-    j = 0;
-    for (k1 = 0, k2 = genome[i]->ref_start; (k1 < n_new_h) && (k2 < genome[i]->n_hist); ) { 
+    for (j = 0, k1 = 0, k2 = genome[i]->ref_start; (k1 < n_new_h) && (k2 < genome[i]->n_hist); ) { 
       dif = new_h[k1]->location - genome[i]->hist[k2]->location;
-      if (dif > 0) tract->concat[j++] = genome[i]->hist[k2++]; // k2 steps forward 
-      if (dif < 0) tract->concat[j++] = new_h[k1++];           // k1 steps forward
+      if (dif > 0) tract->concat[j++] = genome[i]->hist[k2++]; // k2 steps forward (if equal both step forward)
+      else if (dif < 0) tract->concat[j++] = new_h[k1++];           // k1 steps forward
       else { // both are the same, both step forward and tract increases by two
         tract->concat[j++] = genome[i]->hist[k2++]; 
         tract->concat[j++] = new_h[k1++];
@@ -133,25 +141,30 @@ g_tract_vector_concatenate_tracts (g_tract_vector_t tract, genomic_context_list_
     new_h = tract->concat;
     n_new_h = tract->n_concat;
   }
-  printf ("DBG::total::%5d\n", tract->n_concat); 
 }
 
 void
-generate_g_tract_from_context_histogram (g_tract_vector_t tract, int prev, int curr)
+generate_g_tract_from_context_histogram (g_tract_vector_t tract, int prev, int curr, int lev_distance)
 {
   int *modlen=NULL, *index=NULL;
   int i, j, k, this = tract->n_distinct;
+  double result[2];
   tract->n_distinct++;
   tract->distinct = (g_tract_t*) biomcmc_realloc ((g_tract_t*) tract->distinct, tract->n_distinct * sizeof (g_tract_t));
   tract->distinct[this].location = tract->concat[prev]->location;
-  tract->distinct[this].dist = NULL;
+  tract->distinct[this].d1 = NULL;
+  tract->distinct[this].lev_distance = lev_distance;
+
+  tract->distinct[this].example = tract->concat[prev]; // example of a context_histogram_t
+  tract->distinct[this].example->ref_counter++;
 
   /* 1. empirical frequency of modal lengths */
   modlen = (int*) biomcmc_malloc ((curr-prev) * sizeof (int));
   index  = (int*) biomcmc_malloc ((curr-prev) * sizeof (int));
-  for (i = 0; i < (curr - prev); i++) {
-    modlen[i]  = tract->concat[i]->h->i[0].idx; // modal tract length for this genome id
-    index[i] = tract->concat[i]->index; // genome id (index)
+  for (i = 0, j = prev; j < curr; j++, i++) {
+    modlen[i]  = tract->concat[j]->h->i[0].idx; // modal tract length for this genome id
+//    for(k=0;k<tract->concat[j]->h->n;k++) { printf (" %3d (%4d)", tract->concat[j]->h->i[k].idx, tract->concat[j]->h->i[k].freq);} printf ("::%5d::DBG\n", prev);
+    index[i] = tract->concat[i]->index; // genome id (index), not very useful now :)
   }
   tract->distinct[this].mode = new_empfreq_from_int_weighted (index, (curr - prev), modlen);
   if (modlen) free (modlen);
@@ -160,10 +173,40 @@ generate_g_tract_from_context_histogram (g_tract_vector_t tract, int prev, int c
   /* 2. matrix of pairwise distances (1D vector sorted from highest to smallest distance) */
   tract->distinct[this].n_dist = ((curr-prev) * (curr-prev-1))/2;
   if (!tract->distinct[this].n_dist) return;
-  tract->distinct[this].dist = (double*) biomcmc_malloc (tract->distinct[this].n_dist * sizeof (double));
-  for (k = i = 0; i < (curr - prev); i++) for (j = 0; j < i; j++) distance_between_context_histograms (tract->concat[i], tract->concat[j], tract->distinct[this].dist + (k++));
-  qsort (tract->distinct[this].dist, tract->distinct[this].n_dist, sizeof (double), compare_double_decreasing);
+  tract->distinct[this].d1 = (double*) biomcmc_malloc (2 * tract->distinct[this].n_dist * sizeof (double)); // d1 and d2
+  tract->distinct[this].d2 = tract->distinct[this].d1 + tract->distinct[this].n_dist;
+
+  for (k = 0, i = prev+1; i < curr; i++) for (j = prev; j < i; j++) {
+    distance_between_context_histograms (tract->concat[i], tract->concat[j], result);
+    tract->distinct[this].d1[k]   = result[0]; 
+    tract->distinct[this].d2[k++] = result[1]; 
+  }
+  qsort (tract->distinct[this].d1, tract->distinct[this].n_dist, sizeof (double), compare_double_decreasing);
+  qsort (tract->distinct[this].d2, tract->distinct[this].n_dist, sizeof (double), compare_double_decreasing);
   return;
+}
+
+void
+print_interesting_tracts (genome_set_t g)
+{
+  int i;
+  g_tract_t *t;
+  bool to_print = false;
+  printf ("tract location n_genomes | max_tract_length min_tract_length | lev_distance | max_chi2_dist max_avge_dist\n"); 
+  for (i = 0; i < g->tract->n_distinct; i++) { 
+    to_print = false;
+    t = g->tract->distinct + i;
+    if (t->mode->n < g->n_genome) to_print = true;
+    if ((!to_print) && (t->mode->i[0].freq != t->mode->i[t->mode->n-1].freq)) to_print = true;
+    if ((!to_print) && (t->lev_distance > 0)) to_print = true;
+    if ((!to_print) && (t->d1[0] > 0.)) to_print = true;
+    if ((!to_print) && (t->d2[0] > 0.)) to_print = true;
+    if (to_print) {
+      printf ("%-60s %-5d %-5d |%-5d %-5d | %-5d | ", t->example->name, t->location, t->mode->n, t->mode->i[0].freq, t->mode->i[t->mode->n-1].freq, t->lev_distance);
+      if (t->n_dist > 0) printf ("%12e %12e\n", t->d1[0], t->d2[0]);
+      printf ("%12e %12e\n", 0., 0.);
+    }
+  }
 }
 
 void
@@ -171,11 +214,11 @@ print_debug_g_tract_vector (g_tract_vector_t tract)
 {
   int i;
   empfreq e;
-  printf ("location n_genomes min_length max_length max_dist min_dist\n"); 
+  printf ("tract location n_genomes | min_length max_length | lev_distance | max_chi2_dist max_avge_dist\n"); 
   for (i = 0; i < tract->n_distinct; i++) { 
     e = tract->distinct[i].mode;
-    printf ("%-5d %-5d %-5d %-5d ", tract->distinct[i].location, e->n, e->i[0].freq, e->i[e->n-1].freq);
-    if (tract->distinct[i].n_dist>0) printf ("%9e %9e\n", tract->distinct[i].dist[0], tract->distinct[i].dist[tract->distinct[i].n_dist-1]);
+    printf ("%-60s %-5d %-5d |%-5d %-5d | %-5d | ", tract->distinct[i].example->name, tract->distinct[i].location, e->n, e->i[0].freq, e->i[e->n-1].freq, tract->distinct[i].lev_distance);
+    if (tract->distinct[i].n_dist>0) printf ("%12e %12e\n", tract->distinct[i].d1[0], tract->distinct[i].d2[0]);
     else printf ("0.0 0.0\n");
   }
 }

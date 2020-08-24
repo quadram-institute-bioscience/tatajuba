@@ -26,6 +26,7 @@ typedef struct
   int max_distance_per_flank, 
       kmer_size,
       min_tract_size,
+      levenshtein_distance,
       min_coverage;
 } tatajuba_options_t;
 
@@ -61,6 +62,7 @@ struct context_histogram_struct
       mode_context_id;      /*! \brief which context (from neighbourhood) has best homopolymer+context */
   int *tmp_count, *tmp_length, index; // index in genome_set, first used temporarily as counter
   empfreq h; // h.idx = tract length; h.freq = count (number of reads supporting this length)
+  int ref_counter;
 };
 
 struct genomic_context_list_struct
@@ -74,6 +76,7 @@ struct genomic_context_list_struct
 void print_tatajuba_options (tatajuba_options_t opt);
 hopo_counter new_or_append_hopo_counter_from_file (hopo_counter hc, const char *filename, tatajuba_options_t opt);
 void del_hopo_counter (hopo_counter hc);
+void del_context_histogram (context_histogram_t ch);
 
 void print_debug_genomic_context_hist (genomic_context_list_t genome);
 genomic_context_list_t  new_genomic_context_list (hopo_counter hc);
@@ -81,5 +84,6 @@ void del_genomic_context_list (genomic_context_list_t genome);
 void finalise_genomic_context_hist (genomic_context_list_t genome);
 
 int distance_between_context_histograms (context_histogram_t c1, context_histogram_t c2, double *result); // return is not distance
+bool context_histograms_overlap (context_histogram_t c1, context_histogram_t c2, int *distance, tatajuba_options_t opt);
 
 #endif

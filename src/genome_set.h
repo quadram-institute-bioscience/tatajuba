@@ -16,9 +16,10 @@ typedef struct g_tract_vector_struct* g_tract_vector_t;
 
 typedef struct
 {
-  int location, n_dist;
-  double *dist;
-  empfreq mode;
+  int location, n_dist, lev_distance; // levenstein distance across genomes in neighbour locations (while still belonging to same tract)
+  double *d1, *d2; // d2 is pointer to middle of d1; only d1 is alloced/feed
+  empfreq mode;    // idx = index of genome; freq = model tract length
+  context_histogram_t example;
 } g_tract_t;
 
 struct g_tract_vector_struct
@@ -39,6 +40,7 @@ struct genome_set_struct
 
 genome_set_t new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_options_t opt);
 void del_genome_set (genome_set_t g);
+void print_interesting_tracts (genome_set_t g);
 void print_debug_g_tract_vector (g_tract_vector_t tract);
 
 #endif

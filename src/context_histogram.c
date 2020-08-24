@@ -21,7 +21,6 @@ void estimate_coverage_hopo_counter (hopo_counter hc);
 void finalise_hopo_counter (hopo_counter hc);
 
 context_histogram_t new_context_histogram_from_hopo_elem (hopo_element he);
-void del_context_histogram (context_histogram_t ch);
 void context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, int idx_match);
 
 char* context_histogram_tract_as_string (context_histogram_t ch, int kmer_size);
@@ -35,10 +34,11 @@ print_tatajuba_options (tatajuba_options_t opt)
 {
   biomcmc_fprintf_colour (stderr, 0, 2, PACKAGE_STRING, "\n");
   fprintf (stderr, "Reference genome file: %s\n", opt.reference_genome_filename);
-  fprintf (stderr, "Max distance per flanking k-mer: %6d\n", opt.max_distance_per_flank);
-  fprintf (stderr, "Flanking k-mer size (context):   %6d\n", opt.kmer_size);
-  fprintf (stderr, "Min tract length to consider:    %6d\n", opt.min_tract_size);
-  fprintf (stderr, "Min depth of tract lengths:      %6d\n", opt.min_coverage);
+  fprintf (stderr, "Max distance per flanking k-mer:  %6d\n", opt.max_distance_per_flank);
+  fprintf (stderr, "Levenshtein distance for merging: %6d\n", opt.levenshtein_distance);
+  fprintf (stderr, "Flanking k-mer size (context):    %6d\n", opt.kmer_size);
+  fprintf (stderr, "Min tract length to consider:     %6d\n", opt.min_tract_size);
+  fprintf (stderr, "Min depth of tract lengths:       %6d\n", opt.min_coverage);
   if (opt.paired_end) fprintf (stderr, "Assuming paired-end samples: their file names should be consecutive (no file name check is conducted)\n");
   else fprintf (stderr, "Assuming single-end samples\n");
 }
@@ -243,6 +243,7 @@ new_context_histogram_from_hopo_elem (hopo_element he)
 {
   context_histogram_t ch = (context_histogram_t) biomcmc_malloc (sizeof (struct context_histogram_struct));
   ch->context = (uint64_t*) biomcmc_malloc (2 * sizeof (uint64_t));
+  ch->ref_counter = 1;
   ch->n_context = 1; // how many context pairs 
   ch->mode_context_id = 0; // location, in context[], of best context (the one with length of highest frequency)
   ch->location = -1; // bwa location, calculate at the end
@@ -267,6 +268,7 @@ void
 del_context_histogram (context_histogram_t ch)
 {
   if (!ch) return;
+  if (--ch->ref_counter) return;
   if (ch->context) free (ch->context);
   if (ch->name)    free (ch->name);
   if (ch->tmp_count)  free (ch->tmp_count);
@@ -366,7 +368,6 @@ finalise_genomic_context_hist (genomic_context_list_t genome)
   /* 4. merge context_histograms mapped to same ref genome location.BWA may detect that slightly different contexts are 
    *    actually the same, specially when max_flank_distance is too strict */
   genomic_context_merge_histograms_at_same_location (genome);
-
 //  print_debug_genomic_context_hist (genome);
   return;
 }
@@ -468,7 +469,8 @@ genomic_context_merge_histograms_at_same_location (genomic_context_list_t genome
   for (j = 0; j < genome->ref_start; j++) new_h[j] = genome->hist[j]; // negative locations are neglected
   new_h[j] = genome->hist[j]; 
   for (i = j + 1; i < genome->n_hist; i++) {
-    if (genome->hist[i]->location == new_h[j]->location) accumulate_from_context_histogram (new_h[j], genome->hist[i]);
+    // NULL is pointer, it means that we don't want to store the actual levenshtein distance 
+    if (context_histograms_overlap (new_h[j], genome->hist[i], NULL, genome->opt)) accumulate_from_context_histogram (new_h[j], genome->hist[i]);
     else new_h[++j] = genome->hist[i];
   }
 
@@ -483,15 +485,14 @@ genomic_context_merge_histograms_at_same_location (genomic_context_list_t genome
 void
 accumulate_from_context_histogram (context_histogram_t to, context_histogram_t from)
 {
-  /* 1. merge empirical frequencies */
-  empfreq pivot_ef = to->h;
-  to->h = new_empfreq_merge_empfreqs (to->h, from->h);
-  del_empfreq (pivot_ef);
-  /* 2. find context_histogram with "best" tract (exact context+tract with highest frequency/depth) */
   uint64_t *c1; 
   int i, j, n1;
   char *s1;
+  /* 1. merge empirical frequencies */
+  to->h = new_empfreq_merge_empfreqs (to->h, from->h);
+  /* 2. find context_histogram with "best" tract (exact context+tract with highest frequency/depth) */
   if (to->mode_context_count < from->mode_context_count) { // needs to update modal values
+    to->location = from->location; // is the same except when one has indels (found with levenshtein distance)
     to->mode_context_count  = from->mode_context_count;
     to->mode_context_length = from->mode_context_length;
     to->mode_context_id     = from->mode_context_id;

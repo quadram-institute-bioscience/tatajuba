@@ -76,13 +76,19 @@ distance_between_context_histograms (context_histogram_t c1, context_histogram_t
   int i, min_n;
   double x,y;
   min_n = MIN (c1->h->n, c2->h->n);
-  result[0] = 0.;
+  result[0] = 0.; // chi-square based distance, but 'bin-bin' with modes only 
   for (i = 0; i < min_n; i++) {
-    x = (double) (1 + abs (c1->h->i[i].idx - c2->h->i[i].idx)); // absolute distance between nth-mode plus one
-    y = (double) (c1->h->i[i].freq/c1->integral - c2->h->i[i].freq/c2->integral); // absolute distance between nth-mode plus one
+    x = (double)(1 + abs (c1->h->i[i].idx - c2->h->i[i].idx)); // absolute distance between nth-mode plus one
+    y = (double)(c1->h->i[i].freq)/(double)(c1->integral) - (double)(c2->h->i[i].freq)/(double)(c2->integral); // absolute distance between nth-mode plus one
     result[0] += x * fabs (y);
   }
-  return 1; // number of results
+  result[1] = 0.; x = y = 0.; // weighted average
+  for (i = 0; i < c1->h->n; i++) x += (double)(c1->h->i[i].freq * c1->h->i[i].idx)/(double)(c1->integral);
+  for (i = 0; i < c2->h->n; i++) y += (double)(c2->h->i[i].freq * c2->h->i[i].idx)/(double)(c2->integral);
+  x = x - y;
+  result[1] = x * x; 
+
+  return 2; // number of results
 }
 
 int
@@ -100,6 +106,29 @@ compare_context_histogram_for_qsort (const void *a, const void *b) // increasing
   return 0;
 }
 
-/*void 
-compare_context_histograms (context_histogram_t ch1, context_histogram_t ch2, double *result){}*/
+bool 
+context_histograms_overlap (context_histogram_t c1, context_histogram_t c2, int *distance, tatajuba_options_t opt)
+{
+  int tract_length, n_bases_apart;
 
+  n_bases_apart = abs (c1->location - c2->location);
+  if (!n_bases_apart) {
+    if (distance) *distance = 0;
+    return true; // same location
+  }
+
+  tract_length = MIN (c1->mode_context_length, c2->mode_context_length);
+//  printf ("DBG::LEN::%6d :: %6d %6d\n", c1->location, n_bases_apart, tract_length);
+  if (n_bases_apart > (tract_length - 1)) {
+    if (distance) *distance = -1; // should NOT be used
+    return false; // locations too different
+  }
+
+  uint32_t i1, i2;
+  i1 = strlen (c1->name); // name = "ATTGC-A-CCCAG"
+  i2 = biomcmc_levenshtein_distance (c1->name, i1, c2->name, i1, 1, 1, true); // allows for indels
+  if (distance) *distance = (int) i2;
+//  printf ("DBG::DIST::%6d :: %8u\t", c1->location, i2);
+  if (i2 <= (uint32_t)(opt.levenshtein_distance)) return true;
+  return false;
+}
