@@ -204,7 +204,7 @@ print_interesting_tracts (genome_set_t g)
     if (to_print) {
       printf ("%-60s %-5d %-5d |%-5d %-5d | %-5d | ", t->example->name, t->location, t->mode->n, t->mode->i[0].freq, t->mode->i[t->mode->n-1].freq, t->lev_distance);
       if (t->n_dist > 0) printf ("%12e %12e\n", t->d1[0], t->d2[0]);
-      printf ("%12e %12e\n", 0., 0.);
+      else printf ("%12e %12e\n", 0., 0.);
     }
   }
 }
