@@ -124,7 +124,7 @@ main (int argc, char **argv)
   print_tatajuba_options (opt);
 
   g = new_genome_set_from_files (params.fastq->filename, params.fastq->count, opt); 
-  //dg = new_distance_generator_from_hopo_set (hs);
+  print_debug_g_tract_vector (g->tract);
 
   time1 = clock (); fprintf (stderr, "overall time: %lf secs\n",  (double)(time1-time0)/(double)(CLOCKS_PER_SEC)); fflush(stderr); time0 = time1; 
   fprintf (stderr, "internal timers::  %lf secs to read, %lf secs to normalise, and %lf secs to compare\n", g->secs_read, g->secs_finalise, g->secs_comparison);

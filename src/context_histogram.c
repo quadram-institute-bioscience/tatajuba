@@ -456,7 +456,7 @@ print_debug_genomic_context_hist (genomic_context_list_t genome)
             genome->hist[i]->location, genome->hist[i]->name);
 }
 
-void
+void  // FIXME: CTCT.3xA.CCCC at position 1 and GCTC.4xA.CCCC at position zero are the same (w/ T->A subst)
 genomic_context_merge_histograms_at_same_location (genomic_context_list_t genome)
 {
   context_histogram_t *new_h;
@@ -465,7 +465,7 @@ genomic_context_merge_histograms_at_same_location (genomic_context_list_t genome
   if (genome->ref_start == genome->n_hist) return; // nothing to do if no contexts were found in ref genome 
   new_h = (context_histogram_t*) biomcmc_malloc (genome->n_hist * sizeof (context_histogram_t));
 
-  for (j = 0; j < genome->ref_start; j++) new_h[j] = genome->hist[j]; // negative locations
+  for (j = 0; j < genome->ref_start; j++) new_h[j] = genome->hist[j]; // negative locations are neglected
   new_h[j] = genome->hist[j]; 
   for (i = j + 1; i < genome->n_hist; i++) {
     if (genome->hist[i]->location == new_h[j]->location) accumulate_from_context_histogram (new_h[j], genome->hist[i]);

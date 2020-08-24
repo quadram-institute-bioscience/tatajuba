@@ -11,7 +11,6 @@ int compare_hopo_element_decreasing (const void *a, const void *b);
 int compare_hopo_context (hopo_element a, hopo_element b);
 int distance_between_context_kmer (uint64_t *c1, uint64_t *c2, int max_dist);
 int distance_between_context_histogram_and_hopo_context (context_histogram_t ch, hopo_element he, int max_distance, int *idx_match);
-int distance_between_context_histograms (context_histogram_t c1, context_histogram_t c2, double *result); // return is not distance
 int compare_context_histogram_for_qsort (const void *a, const void *b);
 
 #endif // as with regular header files, functions must be declared once  

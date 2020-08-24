@@ -567,3 +567,23 @@ genomic_context_sort_context_histogram (genomic_context_list_t genome)
   chp = (cont_hist_ptr_t*) biomcmc_malloc (genome->n_hist * sizeof (cont_hist_ptr_t));
   for (i = 0; i < genome->n_hist; i++) chp[i] = {.ch = genome->hist[i], .location = genome->hist[i]->location, .integral = genome->hist[i]->integral};
 }
+
+
+distance_generator
+new_distance_generator_from_hopo_set (hopo_set hs)
+{
+  distance_generator dg = new_distance_generator (hs->n_hc, 2); // 2 distances available (2 rescalings)
+  distance_generator_set_function_data (dg, &hopo_set_distance_wrapper, (void*) hs); // hs will have any extra data needed to calculate distances
+  hs->generator = dg; dg->ref_counter++;
+  return dg;
+}
+
+void
+hopo_set_distance_wrapper (void *data, int s1, int s2, double *result)
+{
+  clock_t time0, time1;
+  time0 = clock ();
+  compare_hopo_counters ( ((hopo_set)data)->hc[s1], ((hopo_set)data)->hc[s2], result);
+  time1 = clock (); ((hopo_set)data)->secs_comparison += (double)(time1-time0)/(double)(CLOCKS_PER_SEC);
+  return;
+}

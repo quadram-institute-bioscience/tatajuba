@@ -60,7 +60,7 @@ struct context_histogram_struct
       mode_context_length,  /*! \brief tract length of best homopolymer+context */
       mode_context_id;      /*! \brief which context (from neighbourhood) has best homopolymer+context */
   int *tmp_count, *tmp_length, index; // index in genome_set, first used temporarily as counter
-  empfreq h;
+  empfreq h; // h.idx = tract length; h.freq = count (number of reads supporting this length)
 };
 
 struct genomic_context_list_struct
@@ -79,5 +79,7 @@ void print_debug_genomic_context_hist (genomic_context_list_t genome);
 genomic_context_list_t  new_genomic_context_list (hopo_counter hc);
 void del_genomic_context_list (genomic_context_list_t genome);
 void finalise_genomic_context_hist (genomic_context_list_t genome);
+
+int distance_between_context_histograms (context_histogram_t c1, context_histogram_t c2, double *result); // return is not distance
 
 #endif
