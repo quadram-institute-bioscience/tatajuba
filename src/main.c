@@ -131,10 +131,11 @@ main (int argc, char **argv)
   g = new_genome_set_from_files (params.fastq->filename, params.fastq->count, opt); 
   print_selected_g_tract_vector (g);
 
-  time1 = clock (); fprintf (stderr, "overall time: %lf secs\n",  (double)(time1-time0)/(double)(CLOCKS_PER_SEC)); fflush(stderr); time0 = time1; 
+  time1 = clock (); 
   biomcmc_fprintf_colour (stderr, 0,2, "Internal timer::", "%9lf secs to read and generate initial histograms\n", g->secs[0]);
   biomcmc_fprintf_colour (stderr, 0,2, "Internal timer::", "%9lf secs to merge and map histograms\n", g->secs[1]);
-  biomcmc_fprintf_colour (stderr, 0,2, "Internal timer::", "%9lf secs to compare across genomes\n\n", g->secs[2]);
+  biomcmc_fprintf_colour (stderr, 0,2, "Internal timer::", "%9lf secs to compare across genomes\n", g->secs[2]);
+  biomcmc_fprintf_colour (stderr, 0,2, "Overall timer ::", "%9lf secs\n\n", (double)(time1-time0)/(double)(CLOCKS_PER_SEC)); 
   biomcmc_fprintf_fortune (stderr);
 
   del_genome_set (g);

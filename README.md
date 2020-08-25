@@ -60,7 +60,7 @@ Both cases are shown below:
 At the lowest level (C `struct`), the homopolymeric tracts are stored as the two flanking k-mers (called "context" here) and the base
 comprising the homopolymer in th middle, as seen  in the figure below. 
 
-<img src="recipe/200322_001.png" height="160" alt="context_struct" class="center">
+<img src="recipe/200322_001.png" height="160" alt="context_struct" align="middle">
 
 We define the canonical form based on the homopolymer &mdash; in the figure above the same flanking regions `CCG` and
 `GAT` are stored as a completely different context b/c they flank a distinct homopolymer base. The three contextualised
@@ -75,7 +75,7 @@ due to the canon, we always observe the side of the homopolymers with `A` or wit
 Scanning through the fastq files, we now can, for each sample, generate the histograms of contextualised homopolymeric tract lengths as
 depicted in the figure below.
 
-<img src="recipe/200322_002.png" height="100" alt="context-histogram" class="center">
+<img src="recipe/200322_002.png" height="160" alt="context-histogram" align="middle">
 
 Once this histogram is complete we search for this tract (i.e. homopolymer plus flanking regions) on the reference
 genome, by using a typical length (a typical length would be _3_ for the figure above).
