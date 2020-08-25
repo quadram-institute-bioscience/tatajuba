@@ -48,9 +48,28 @@ Both cases are shown below:
 ```
 
 ## Model
-At the lowest level, the homopolymeric tracts are stored as the canonical k-mers at 
-<img src="recipe/200322_001.png" height="100" alt="Tatajuba">
+At the lowest level, the homopolymeric tracts are stored as the two flanking k-mers (called "context" here) and the base
+comprising the homopolymer in th middle, as seen  in the figure below. 
+
+<img src="recipe/200322_001.png" height="160" alt="Tatajuba">
+
+We define the canonical form based on the homopolymer &mdash; in the figure above the same flanking regions `CCG` and
+`GAT` are stored as a completely different context b/c they flank a distinct homopolymer base. The three contextualised
+tracts above are displayed by tatajubá as
+```
+CCG-A-GAT
+ATC-A-CCG
+CCG-C-GAT
+```
+due to the canon, we only observe `A` or `C` as the homopolymers. 
+
+
+Scanning through the fastq files, we can now for each sample generate a histogram of homopolymeric tract lengths,
+depicted in the figure below.
 <img src="recipe/200322_002.png" height="100" alt="Tatajuba">
+
+Currently our measure of dispersion (used to find tracts most variable across genomes) is the *relative difference of
+ranges* (similar to the coefficient of range), defined here as (MAX-MIN)/MAX.
 
 ## License
 SPDX-License-Identifier: GPL-3.0-or-later

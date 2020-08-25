@@ -38,8 +38,8 @@ get_parameters_from_argv (int argc, char **argv)
   };
   void* argtable[] = {params.help, params.version, params.paired, params.kmer, params.minsize, params.minread, params.maxdist, params.leven, params.ref, params.fastq, params.end};
   params.argtable = argtable; 
-  params.kmer->ival[0]    = 8; // default values must be before parsing
-  params.minsize->ival[0] = 3; 
+  params.kmer->ival[0]    = 16; // default values must be before parsing
+  params.minsize->ival[0] = 4; 
   params.minread->ival[0] = 3;
   params.maxdist->ival[0] = 1;
   params.leven->ival[0] = -1;
