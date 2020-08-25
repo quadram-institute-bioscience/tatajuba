@@ -369,6 +369,9 @@ finalise_genomic_context_hist (genomic_context_list_t genome)
    *    actually the same, specially when max_flank_distance is too strict */
   genomic_context_merge_histograms_at_same_location (genome);
 //  print_debug_genomic_context_hist (genome);
+  /* 5. add genome-wide information to each histogram (genome coverage and number of histograms), useful to summarise tracts */
+  for (i = 0; i < genome->n_hist; i++) { genome->hist[i]->coverage = genome->coverage; genome->hist[i]->n_tracts = genome->n_hist; } 
+
   return;
 }
 

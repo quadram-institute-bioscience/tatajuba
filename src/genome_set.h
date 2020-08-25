@@ -9,24 +9,28 @@
 #ifndef _genome_set_h_
 #define _genome_set_h_
 
+#define N_SUMMARY_TABLES 5 
+
 #include "context_histogram.h" 
+
 
 typedef struct genome_set_struct* genome_set_t;
 typedef struct g_tract_vector_struct* g_tract_vector_t;
 
 typedef struct
 {
-  int location, n_dist, lev_distance; // levenstein distance across genomes in neighbour locations (while still belonging to same tract)
-  double *d1, *d2; // d2 is pointer to middle of d1; only d1 is alloced/feed
-  empfreq mode;    // idx = index of genome; freq = model tract length
+  int location, n_dist, lev_distance, id_in_concat; // levenstein distance across genomes in neighbour locations (while still belonging to same tract)
+  double *tab0, *d1, *d2; // d2 is pointer to middle of d1; only d1 is alloced/feed || tab0 is new, for tables
+  double *gentab[N_SUMMARY_TABLES], reldiff[N_SUMMARY_TABLES]; // reldiff are relative differences of extreme values from genome table
+  int n_genome_total, n_genome_id, *genome_id;
   context_histogram_t example;
 } g_tract_t;
 
 struct g_tract_vector_struct
 {
-  g_tract_t *distinct;
-  context_histogram_t *concat; // tracts pooled over genomes that can be found in reference
-  int n_distinct, n_concat;
+  g_tract_t *summary; // summary of tracts over genomes
+  context_histogram_t *concat; // tracts pooled over genomes, which can be found in reference
+  int n_summary, n_concat;
 };
 
 struct genome_set_struct 
@@ -40,7 +44,7 @@ struct genome_set_struct
 
 genome_set_t new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_options_t opt);
 void del_genome_set (genome_set_t g);
-void print_interesting_tracts (genome_set_t g);
-void print_debug_g_tract_vector (g_tract_vector_t tract);
+void print_selected_g_tract_vector (genome_set_t g);
+void print_debug_g_tract_vector (genome_set_t g);
 
 #endif

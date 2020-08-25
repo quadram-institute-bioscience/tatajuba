@@ -1,5 +1,5 @@
 <img src="recipe/tatajuba-text.png" height="100" alt="Tatajuba">
-Distribution of homopolymeric tracts
+### Distribution of homopolymeric tracts
 
 
 __Leonardo de Oliveira Martins<sup>1</sup>__
@@ -47,6 +47,10 @@ Both cases are shown below:
 /home/simpson/$ (cd tatajuba && autoreconf)  ## the parentheses avoid entering the directory afterwards
 ```
 
+## Model
+At the lowest level, the homopolymeric tracts are stored as the canonical k-mers at 
+<img src="recipe/200322_001.png" height="100" alt="Tatajuba">
+<img src="recipe/200322_002.png" height="100" alt="Tatajuba">
 
 ## License
 SPDX-License-Identifier: GPL-3.0-or-later

@@ -119,7 +119,7 @@ context_histograms_overlap (context_histogram_t c1, context_histogram_t c2, int 
 
   tract_length = MIN (c1->mode_context_length, c2->mode_context_length);
 //  printf ("DBG::LEN::%6d :: %6d %6d\n", c1->location, n_bases_apart, tract_length);
-  if (n_bases_apart > (tract_length - 1)) {
+  if (n_bases_apart > (tract_length - 1) || (c1->base != c2->base)) { // bases SHOULD be the same, but you never know...
     if (distance) *distance = -1; // should NOT be used
     return false; // locations too different
   }

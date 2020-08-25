@@ -122,7 +122,6 @@ main (int argc, char **argv)
 {
   clock_t time0, time1;
   genome_set_t g;
-  //distance_generator dg;
 
   time0 = clock ();
   arg_parameters params = get_parameters_from_argv (argc, argv);
@@ -130,12 +129,11 @@ main (int argc, char **argv)
   print_tatajuba_options (opt);
 
   g = new_genome_set_from_files (params.fastq->filename, params.fastq->count, opt); 
-  print_interesting_tracts(g);
+  print_selected_g_tract_vector (g);
 
   time1 = clock (); fprintf (stderr, "overall time: %lf secs\n",  (double)(time1-time0)/(double)(CLOCKS_PER_SEC)); fflush(stderr); time0 = time1; 
   fprintf (stderr, "internal timers::  %lf secs to read, %lf secs to normalise, and %lf secs to compare\n", g->secs_read, g->secs_finalise, g->secs_comparison);
 
-  //del_distance_generator (dg);
   del_genome_set (g);
   del_arg_parameters (params);
   if (opt.reference_genome_filename) free(opt.reference_genome_filename);

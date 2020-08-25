@@ -7,7 +7,8 @@
 g_tract_vector_t new_g_tract_vector_from_genomic_context_list (genomic_context_list_t *genome, int n_genome);
 void del_g_tract_vector (g_tract_vector_t tract);
 void g_tract_vector_concatenate_tracts  (g_tract_vector_t tract, genomic_context_list_t *genome, int n_genome);
-void generate_g_tract_from_context_histogram (g_tract_vector_t tract, int prev, int curr, int lev_distance);
+void update_g_tract_summary_from_context_histogram (g_tract_vector_t tract, int prev, int curr, int lev_distance, int n_genome);
+void fill_g_tract_summary_tables (g_tract_t *this, context_histogram_t *concat, int prev, int curr);
 
 genome_set_t
 new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_options_t opt) 
@@ -69,15 +70,15 @@ new_g_tract_vector_from_genomic_context_list (genomic_context_list_t *genome, in
   int i, prev, lev_distance = 0, max_lev_distance = 0;
   bool is_same;
   g_tract_vector_t tract = (g_tract_vector_t) biomcmc_malloc (sizeof (struct g_tract_vector_struct));
-  tract->distinct = NULL;
+  tract->summary = NULL;
   tract->concat = NULL; // big vector with all tracts from all genomes in linear order
-  tract->n_distinct = tract->n_concat = 0;
+  tract->n_summary = tract->n_concat = 0;
   g_tract_vector_concatenate_tracts  (tract, genome, n_genome); // updates tract->concat
 
-  for (prev=0, i = 1; i < tract->n_concat; i++) { // overlap() is true if tracts are the same, false if distinct 
+  for (prev=0, i = 1; i < tract->n_concat; i++) { // overlap() is true if tracts are the same, false if summary 
     is_same = context_histograms_overlap (tract->concat[i], tract->concat[prev], &lev_distance, genome[0]->opt);
     if (!is_same) {
-      generate_g_tract_from_context_histogram (tract, prev, i, max_lev_distance); // updates tract->distinct
+      update_g_tract_summary_from_context_histogram (tract, prev, i, max_lev_distance, n_genome); // updates tract->summary
       prev = i;
       max_lev_distance = 0;
     }
@@ -86,7 +87,7 @@ new_g_tract_vector_from_genomic_context_list (genomic_context_list_t *genome, in
   // call context() just to calculate levenshtein distance 
   context_histograms_overlap (tract->concat[i-1], tract->concat[prev], &lev_distance, genome[0]->opt);
   if (max_lev_distance < lev_distance) max_lev_distance = lev_distance; // tracts are similar enough 
-  generate_g_tract_from_context_histogram (tract, prev, i-1, max_lev_distance); //  last block i == tract->n_concat
+  update_g_tract_summary_from_context_histogram (tract, prev, i-1, max_lev_distance, n_genome); //  last block i == tract->n_concat
 
   return tract;
 }
@@ -96,13 +97,14 @@ del_g_tract_vector (g_tract_vector_t tract)
 {
   if (!tract) return;
   if (tract->concat) free (tract->concat);
-  if (tract->distinct) {
-    for (int i = tract->n_distinct - 1; i >= 0; i--) {
-      if (tract->distinct[i].d1) free (tract->distinct[i].d1);
-      del_empfreq (tract->distinct[i].mode);
-      del_context_histogram (tract->distinct[i].example);
+  if (tract->summary) {
+    for (int i = tract->n_summary - 1; i >= 0; i--) {
+      if (tract->summary[i].d1) free (tract->summary[i].d1);
+      if (tract->summary[i].tab0) free (tract->summary[i].tab0);
+      if (tract->summary[i].genome_id) free (tract->summary[i].genome_id);
+      del_context_histogram (tract->summary[i].example);
     }
-    free (tract->distinct);
+    free (tract->summary);
   }
   free (tract);
 }
@@ -144,81 +146,127 @@ g_tract_vector_concatenate_tracts (g_tract_vector_t tract, genomic_context_list_
 }
 
 void
-generate_g_tract_from_context_histogram (g_tract_vector_t tract, int prev, int curr, int lev_distance)
+update_g_tract_summary_from_context_histogram (g_tract_vector_t tract, int prev, int curr, int lev_distance, int n_genome)
 {
-  int *modlen=NULL, *index=NULL;
-  int i, j, k, this = tract->n_distinct;
+  int i, j, k;
   double result[2];
-  tract->n_distinct++;
-  tract->distinct = (g_tract_t*) biomcmc_realloc ((g_tract_t*) tract->distinct, tract->n_distinct * sizeof (g_tract_t));
-  tract->distinct[this].location = tract->concat[prev]->location;
-  tract->distinct[this].d1 = NULL;
-  tract->distinct[this].lev_distance = lev_distance;
 
-  tract->distinct[this].example = tract->concat[prev]; // example of a context_histogram_t
-  tract->distinct[this].example->ref_counter++;
+  tract->n_summary++;
+  tract->summary = (g_tract_t*) biomcmc_realloc ((g_tract_t*) tract->summary, tract->n_summary * sizeof (g_tract_t));
+  g_tract_t *this = tract->summary + (tract->n_summary-1);
 
-  /* 1. empirical frequency of modal lengths */
-  modlen = (int*) biomcmc_malloc ((curr-prev) * sizeof (int));
-  index  = (int*) biomcmc_malloc ((curr-prev) * sizeof (int));
-  for (i = 0, j = prev; j < curr; j++, i++) {
-    modlen[i]  = tract->concat[j]->h->i[0].idx; // modal tract length for this genome id
-//    for(k=0;k<tract->concat[j]->h->n;k++) { printf (" %3d (%4d)", tract->concat[j]->h->i[k].idx, tract->concat[j]->h->i[k].freq);} printf ("::%5d::DBG\n", prev);
-    index[i] = tract->concat[i]->index; // genome id (index), not very useful now :)
-  }
-  tract->distinct[this].mode = new_empfreq_from_int_weighted (index, (curr - prev), modlen);
-  if (modlen) free (modlen);
-  if (index) free (index);
+  this->location = tract->concat[prev]->location;
+  this->d1 = NULL;
+  this->lev_distance = lev_distance;
+  this->id_in_concat = prev;
+  this->n_genome_total = n_genome;
+  this->n_genome_id = curr - prev;
 
-  /* 2. matrix of pairwise distances (1D vector sorted from highest to smallest distance) */
-  tract->distinct[this].n_dist = ((curr-prev) * (curr-prev-1))/2;
-  if (!tract->distinct[this].n_dist) return;
-  tract->distinct[this].d1 = (double*) biomcmc_malloc (2 * tract->distinct[this].n_dist * sizeof (double)); // d1 and d2
-  tract->distinct[this].d2 = tract->distinct[this].d1 + tract->distinct[this].n_dist;
+  /* 1. indices of genomes where this tract is present */
+  this->genome_id = (int*) biomcmc_malloc ((curr-prev) * sizeof (int));
+  for (i = 0, j = prev; j < curr; j++, i++) this->genome_id[i] = tract->concat[j]->index;
+
+  /* 2. example of a context_histogram_t (if we dont have access to parent genome_t */
+  this->example = tract->concat[prev]; 
+  this->example->ref_counter++;
+
+  /* 3. table of values per genome  (modal length, entropy, etc) */
+  this->tab0 = (double*) biomcmc_malloc (this->n_genome_id * N_SUMMARY_TABLES * sizeof (double));
+  for (i = 0; i < this->n_genome_id * N_SUMMARY_TABLES; i++) this->tab0[i] = 0.; 
+  for (i = 0; i < N_SUMMARY_TABLES; i++) this->gentab[i] = this->tab0 + (this->n_genome_id * i); // pointers 
+  fill_g_tract_summary_tables (this, tract->concat, prev, curr);
+
+  /* 4. matrix of pairwise distances (1D vector sorted from highest to smallest distance) FIXME: may remove this*/
+  this->n_dist = ((curr-prev) * (curr-prev-1))/2;
+  if (!this->n_dist) return;
+  this->d1 = (double*) biomcmc_malloc (2 * this->n_dist * sizeof (double)); // d1 and d2
+  this->d2 = this->d1 + this->n_dist;
 
   for (k = 0, i = prev+1; i < curr; i++) for (j = prev; j < i; j++) {
     distance_between_context_histograms (tract->concat[i], tract->concat[j], result);
-    tract->distinct[this].d1[k]   = result[0]; 
-    tract->distinct[this].d2[k++] = result[1]; 
+    this->d1[k]   = result[0]; 
+    this->d2[k++] = result[1]; 
   }
-  qsort (tract->distinct[this].d1, tract->distinct[this].n_dist, sizeof (double), compare_double_decreasing);
-  qsort (tract->distinct[this].d2, tract->distinct[this].n_dist, sizeof (double), compare_double_decreasing);
+  qsort (this->d1, this->n_dist, sizeof (double), compare_double_decreasing);
+  qsort (this->d2, this->n_dist, sizeof (double), compare_double_decreasing); 
+
   return;
 }
 
-void
-print_interesting_tracts (genome_set_t g)
+void  
+fill_g_tract_summary_tables (g_tract_t *this, context_histogram_t *concat, int prev, int curr)
 {
-  int i;
+  int i1, i2, j;
+  double x1, x2, **gentab = this->gentab;
+
+  for (i2 = 0, i1 = prev; i1 < curr; i1++, i2++) {
+    x1 = (double) (concat[i1]->h->i[0].freq)/(double)(concat[i1]->integral); // modal frequency
+    gentab[0][i2] = x1;
+
+    x2 = 0.; // weighted average tract length
+    for (j = 0; j < concat[i1]->h->n; j++) if (concat[i1]->integral) 
+      x2 += (double) (concat[i1]->h->i[j].freq * concat[i1]->h->i[j].idx)/(double)(concat[i1]->integral);
+    gentab[1][i2] = x2;  
+
+    // proportional coverage ("coverage" is the depth of most frequent kmer)
+    gentab[2][i2] = (double)(concat[i1]->integral)/(double)(concat[i1]->coverage);
+   
+    // average coverage per context 
+    gentab[3][i2] = (double)(concat[i1]->integral)/(double)(concat[i1]->n_context);
+
+    x1 = 0.; // entropy
+    for (j = 0; j < concat[i1]->h->n; j++) {
+      if (concat[i1]->integral) x2 = (double) (concat[i1]->h->i[j].freq)/(double)(concat[i1]->integral);
+      x1 += (x2 * log (x2)); 
+    }
+    gentab[4][i2] = - x1;
+  }
+
+  for (i1 = 0; i1 < N_SUMMARY_TABLES; i1++) {
+    x1 = -FLT_MAX; x2 = FLT_MAX; // FLT and not DBL since we take negative 
+    for (i2 = 0; i2 < this->n_genome_id; i2++) {
+      if (x1 < gentab[i1][i2]) x1 = gentab[i1][i2]; // x1 will be max and x2 will be min
+      if (x2 > gentab[i1][i2]) x2 = gentab[i1][i2];
+    }
+    if (x1 > DBL_MIN) this->reldiff[i1] = (x1 - x2)/x1;
+    else this->reldiff[i1] = 0.;
+  }
+}
+
+void
+print_selected_g_tract_vector (genome_set_t g)
+{
+  int i, j;
   g_tract_t *t;
   bool to_print = false;
-  printf ("tract location n_genomes | max_tract_length min_tract_length | lev_distance | max_chi2_dist max_avge_dist\n"); 
-  for (i = 0; i < g->tract->n_distinct; i++) { 
+  printf ("    tract    location    n_genomes    lev_distance | rd_frequency rd_avge_tract_length rd_coverage rd_context_covge rd_entropy\n"); 
+  for (i = 0; i < g->tract->n_summary; i++) { 
     to_print = false;
-    t = g->tract->distinct + i;
-    if (t->mode->n < g->n_genome) to_print = true;
-    if ((!to_print) && (t->mode->i[0].freq != t->mode->i[t->mode->n-1].freq)) to_print = true;
+    t = g->tract->summary + i;
+    if (t->n_genome_id  < t->n_genome_total) to_print = true;
     if ((!to_print) && (t->lev_distance > 0)) to_print = true;
-    if ((!to_print) && (t->d1[0] > 0.)) to_print = true;
-    if ((!to_print) && (t->d2[0] > 0.)) to_print = true;
+    if ((!to_print) && (t->reldiff[0] > 1e-6)) to_print = true;
+    if ((!to_print) && (t->reldiff[1] > 1e-6)) to_print = true;
+    if ((!to_print) && (t->reldiff[4] > 1e-6)) to_print = true;
     if (to_print) {
-      printf ("%-60s %-5d %-5d |%-5d %-5d | %-5d | ", t->example->name, t->location, t->mode->n, t->mode->i[0].freq, t->mode->i[t->mode->n-1].freq, t->lev_distance);
-      if (t->n_dist > 0) printf ("%12e %12e\n", t->d1[0], t->d2[0]);
-      else printf ("%12e %12e\n", 0., 0.);
+      printf ("%s\t%-8d %-5d %-5d | ", t->example->name, t->location, t->n_genome_id, t->lev_distance);
+      for (j = 0; j < N_SUMMARY_TABLES; j++) printf ("%8.6lf ", t->reldiff[j]);
+      printf ("\n");
+      // if (t->n_dist > 0) printf ("%12e %12e\n", t->d1[0], t->d2[0]);
     }
   }
 }
 
 void
-print_debug_g_tract_vector (g_tract_vector_t tract)
+print_debug_g_tract_vector (genome_set_t g)
 {
-  int i;
-  empfreq e;
-  printf ("tract location n_genomes | min_length max_length | lev_distance | max_chi2_dist max_avge_dist\n"); 
-  for (i = 0; i < tract->n_distinct; i++) { 
-    e = tract->distinct[i].mode;
-    printf ("%-60s %-5d %-5d |%-5d %-5d | %-5d | ", tract->distinct[i].example->name, tract->distinct[i].location, e->n, e->i[0].freq, e->i[e->n-1].freq, tract->distinct[i].lev_distance);
-    if (tract->distinct[i].n_dist>0) printf ("%12e %12e\n", tract->distinct[i].d1[0], tract->distinct[i].d2[0]);
-    else printf ("0.0 0.0\n");
+  int i,j;
+  g_tract_t *t;
+  printf ("tract location n_genomes lev_distance | relative_differences \n"); 
+  for (i = 0; i < g->tract->n_summary; i++) { 
+    t = g->tract->summary + i;
+    printf ("%s\t%-8d %-5d %-5d | ", t->example->name, t->location, t->n_genome_id, t->lev_distance);
+    for (j = 0; j < N_SUMMARY_TABLES; j++) printf ("%9.7e ", t->reldiff[j]);
+    printf ("\n");
   }
 }

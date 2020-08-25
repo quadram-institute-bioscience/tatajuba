@@ -587,3 +587,53 @@ hopo_set_distance_wrapper (void *data, int s1, int s2, double *result)
   time1 = clock (); ((hopo_set)data)->secs_comparison += (double)(time1-time0)/(double)(CLOCKS_PER_SEC);
   return;
 }
+
+void // 2020.08.24 (with empirical freq)
+update_g_tract_summary_from_context_histogram (g_tract_vector_t tract, int prev, int curr, int lev_distance, int n_genome)
+{
+  int *modlen=NULL, *index=NULL;
+  int i, j, k, this = tract->n_summary;
+  double result[2];
+  tract->n_summary++;
+  tract->summary = (g_tract_t*) biomcmc_realloc ((g_tract_t*) tract->summary, tract->n_summary * sizeof (g_tract_t));
+  tract->summary[this].location = tract->concat[prev]->location;
+  tract->summary[this].d1 = NULL;
+  tract->summary[this].lev_distance = lev_distance;
+  tract->summary[this].id_in_concat = prev;
+  tract->summary[this].n_g = n_genome;
+
+  tract->summary[this].example = tract->concat[prev]; // example of a context_histogram_t
+  tract->summary[this].example->ref_counter++;
+
+  tract->summary[this].tab0 = (double*) biomcmc_malloc (n_genome * N_SUMMARY_TABLES * sizeof (double));
+  for (i = 0; i < n_genome * N_SUMMARY_TABLES; i++) tract->summary[this].tab0[i] = -FLT_MAX; // smallest negative value
+  for (i = 0; i < N_SUMMARY_TABLES; i++) tract->summary[this].gentab[i] = tract->summary[this].tab0 + (n_genome * i); // pointers
+  fill_g_tract_summary_tables (tract->summary[this].gentab, tract->concat, prev, curr, n_genome);
+
+  /* 1. empirical frequency of modal lengths */
+  modlen = (int*) biomcmc_malloc ((curr-prev) * sizeof (int));
+  index  = (int*) biomcmc_malloc ((curr-prev) * sizeof (int));
+  for (i = 0, j = prev; j < curr; j++, i++) {
+    modlen[i]  = tract->concat[j]->h->i[0].idx; // modal tract length for this genome id
+    index[i] = tract->concat[j]->index; // genome id (index), not very useful now :)
+    //for(k=0;k<tract->concat[j]->h->n;k++) { printf (" %3d (%4d)", tract->concat[j]->h->i[k].idx, tract->concat[j]->h->i[k].freq);} printf ("::%5d::DBG\n", prev);
+  }
+  tract->summary[this].mode = new_empfreq_from_int_weighted (index, (curr - prev), modlen);
+  if (modlen) free (modlen);
+  if (index) free (index);
+
+  /* 2. matrix of pairwise distances (1D vector sorted from highest to smallest distance) */
+  tract->summary[this].n_dist = ((curr-prev) * (curr-prev-1))/2;
+  if (!tract->summary[this].n_dist) return;
+  tract->summary[this].d1 = (double*) biomcmc_malloc (2 * tract->summary[this].n_dist * sizeof (double)); // d1 and d2
+  tract->summary[this].d2 = tract->summary[this].d1 + tract->summary[this].n_dist;
+
+  for (k = 0, i = prev+1; i < curr; i++) for (j = prev; j < i; j++) {
+    distance_between_context_histograms (tract->concat[i], tract->concat[j], result);
+    tract->summary[this].d1[k]   = result[0];
+    tract->summary[this].d2[k++] = result[1];
+  }
+  qsort (tract->summary[this].d1, tract->summary[this].n_dist, sizeof (double), compare_double_decreasing);
+  qsort (tract->summary[this].d2, tract->summary[this].n_dist, sizeof (double), compare_double_decreasing);
+  return;
+}
