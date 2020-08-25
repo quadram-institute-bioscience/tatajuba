@@ -49,7 +49,7 @@ bwa_aln_bwase (const char *index_filename, char **seqname, char **dnaseq, char *
   bwa_seq_t *seqs;
   int n_matches = 0;
   gap_opt_t *opt = gap_init_opt();
-  char *prefix = save_bwa_index (index_filename, NULL, true);
+  char *prefix = save_bwa_index (index_filename, NULL, false);
   if (n_occurrences < 1) n_occurrences = 1;
   if (sam_to_stdout != 0) n_matches = -1; // bwa_sai2sam() will then print SAM to stdout instead of creating match_list[]
 

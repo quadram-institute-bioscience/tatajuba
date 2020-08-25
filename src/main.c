@@ -10,6 +10,7 @@ typedef struct
   struct arg_int  *minread;
   struct arg_int  *maxdist;
   struct arg_int  *leven;
+  struct arg_int  *threads;
   struct arg_file *ref;
   struct arg_file *fastq;
   struct arg_end  *end;
@@ -32,11 +33,13 @@ get_parameters_from_argv (int argc, char **argv)
     .minread = arg_int0("i","minreads",NULL, "minimum number of reads for tract+context to be considered"),
     .maxdist = arg_int0("d","maxdist",NULL, "maximum distance between kmers of a flanking region to merge them into one context"),
     .leven   = arg_int0("l","leven",NULL, "levenshtein distance between flanking regions to merge them into one context (after ref genome mapping)"),
+    .threads = arg_int0("t","nthreads",NULL, "suggested number of threads (default is to let system decide; I may not honour your suggestion btw)"),
     .ref     = arg_file1("r", "ref", "<genome.fa|genome.fa.gz>", "reference genome file (bwa indices will be created if absent)"),
     .fastq   = arg_filen(NULL, NULL, "<fastq files>", 1, 0xffff, "fasta or fastq file with reads"),
     .end     = arg_end(10) // max number of errors it can store (o.w. shows "too many errors")
   };
-  void* argtable[] = {params.help, params.version, params.paired, params.kmer, params.minsize, params.minread, params.maxdist, params.leven, params.ref, params.fastq, params.end};
+  void* argtable[] = {params.help, params.version, params.paired, params.kmer, params.minsize, params.minread, params.maxdist, params.leven, 
+    params.threads, params.ref, params.fastq, params.end};
   params.argtable = argtable; 
   params.kmer->ival[0]    = 16; // default values must be before parsing
   params.minsize->ival[0] = 4; 
@@ -60,6 +63,7 @@ del_arg_parameters (arg_parameters params)
   if (params.minread) free (params.minread);
   if (params.maxdist) free (params.maxdist);
   if (params.leven)   free (params.leven);
+  if (params.threads) free (params.threads);
   if (params.ref)     free (params.ref);
   if (params.fastq)   free (params.fastq);
   if (params.end)     free (params.end);
@@ -104,7 +108,18 @@ get_options_from_argtable (arg_parameters params)
   opt.min_coverage = params.minread->ival[0]; 
   opt.max_distance_per_flank = params.maxdist->ival[0]; 
   opt.levenshtein_distance = params.leven->ival[0]; 
-
+  if (params.threads->count) {
+    opt.n_threads = params.threads->ival[0];
+    if (opt.n_threads < 1) opt.n_threads = 1;
+#ifdef _OPENMP
+    omp_set_num_threads (opt.n_threads); // try to fix n_threads to input number 
+#endif
+  }
+#ifdef _OPENMP
+  opt.n_threads = omp_get_max_threads (); // upper bound may be distinct to whatever number user has chosen
+#else
+  opt.n_threads = 0; // compiled without openMP support (e.g. --disable-openmp)
+#endif
   if (opt.kmer_size < 2)  opt.kmer_size = 2; 
   if (opt.kmer_size > 32) opt.kmer_size = 32; 
   if (opt.min_tract_size < 1)  opt.min_tract_size = 1; 
@@ -132,10 +147,10 @@ main (int argc, char **argv)
   print_selected_g_tract_vector (g);
 
   time1 = clock (); 
-  biomcmc_fprintf_colour (stderr, 0,2, "Internal timer::", "%9lf secs to read and generate initial histograms\n", g->secs[0]);
-  biomcmc_fprintf_colour (stderr, 0,2, "Internal timer::", "%9lf secs to merge and map histograms\n", g->secs[1]);
-  biomcmc_fprintf_colour (stderr, 0,2, "Internal timer::", "%9lf secs to compare across genomes\n", g->secs[2]);
-  biomcmc_fprintf_colour (stderr, 0,2, "Overall timer ::", "%9lf secs\n\n", (double)(time1-time0)/(double)(CLOCKS_PER_SEC)); 
+  biomcmc_fprintf_colour (stderr, 0,2, "Internal (threaded) timer::", " %15lf secs to read and generate initial histograms\n", g->secs[0]);
+  biomcmc_fprintf_colour (stderr, 0,2, "Internal (threaded) timer::", " %15lf secs to merge and map histograms\n", g->secs[1]);
+  biomcmc_fprintf_colour (stderr, 0,2, "Internal (threaded) timer::", " %15lf secs to compare across genomes\n", g->secs[2]);
+  biomcmc_fprintf_colour (stderr, 0,2, "Non-threaded timing      ::", " %15lf secs\n\n", (double)(time1-time0)/(double)(CLOCKS_PER_SEC)); 
   biomcmc_fprintf_fortune (stderr);
 
   del_genome_set (g);

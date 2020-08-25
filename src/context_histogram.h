@@ -27,7 +27,8 @@ typedef struct
       kmer_size,
       min_tract_size,
       levenshtein_distance,
-      min_coverage;
+      min_coverage,
+      n_threads;
 } tatajuba_options_t;
 
 typedef struct

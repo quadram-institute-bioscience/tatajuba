@@ -19,29 +19,45 @@ new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_opt
   genome_set_t g = (genome_set_t) biomcmc_malloc (sizeof (struct genome_set_struct));
   g->n_genome = n_filenames;
   g->ref_counter = 1;
+  double secs[2];
   g->secs[0] = g->secs[1] = g->secs[2] = 0.;
+  secs[0] = secs[1] = 0.;
 
   if (opt.paired_end) g->n_genome /= 2;
   
-  time0 = clock ();
   g->genome = (genomic_context_list_t*) biomcmc_malloc (g->n_genome * sizeof (genomic_context_list_t));
-  if (opt.paired_end) for (i = 0; i < g->n_genome; i++) {
-    hc = new_or_append_hopo_counter_from_file (NULL, filenames[2*i],   opt);
-    hc = new_or_append_hopo_counter_from_file (hc,   filenames[2*i+1], opt);
-    time1 = clock (); g->secs[0] += (double)(time1-time0)/(double)(CLOCKS_PER_SEC); time0 = time1; 
 
-    g->genome[i] = new_genomic_context_list (hc);
-    del_hopo_counter (hc); hc = NULL;
-    time1 = clock (); g->secs[1]+= (double)(time1-time0)/(double)(CLOCKS_PER_SEC); time0 = time1; 
-  }
-  else for (i = 0; i < g->n_genome; i++) {
-    hc = new_or_append_hopo_counter_from_file (NULL, filenames[i], opt);
-    time1 = clock (); g->secs[0] += (double)(time1-time0)/(double)(CLOCKS_PER_SEC); time0 = time1; 
+  if (opt.paired_end) {
+#ifdef _OPENMP
+#pragma omp parallel for shared(g,opt,filenames) private(time0,time1,hc) schedule(dynamic) reduction(+:secs[:2])
+#endif
+    for (i = 0; i < g->n_genome; i++) {
+      time0 = clock ();
+      hc = new_or_append_hopo_counter_from_file (NULL, filenames[2*i],   opt);
+      hc = new_or_append_hopo_counter_from_file (hc,   filenames[2*i+1], opt);
+      time1 = clock (); secs[0] += (double)(time1-time0)/(double)(CLOCKS_PER_SEC); time0 = time1; 
 
-    g->genome[i] = new_genomic_context_list (hc);
-    del_hopo_counter (hc); hc = NULL;
-    time1 = clock (); g->secs[1] += (double)(time1-time0)/(double)(CLOCKS_PER_SEC); time0 = time1; 
+      g->genome[i] = new_genomic_context_list (hc);
+      del_hopo_counter (hc); hc = NULL;
+      time1 = clock (); secs[1]+= (double)(time1-time0)/(double)(CLOCKS_PER_SEC); time0 = time1; 
+    }
   }
+  else {
+#ifdef _OPENMP
+#pragma omp parallel for shared(g,opt,filenames) private(time0,time1,hc) schedule(dynamic) reduction(+:secs[:2])
+#endif
+    for (i = 0; i < g->n_genome; i++) {
+      time0 = clock ();
+      hc = new_or_append_hopo_counter_from_file (NULL, filenames[i], opt);
+      time1 = clock (); secs[0] += (double)(time1-time0)/(double)(CLOCKS_PER_SEC); time0 = time1; 
+
+      g->genome[i] = new_genomic_context_list (hc);
+      del_hopo_counter (hc); hc = NULL;
+      time1 = clock (); secs[1] += (double)(time1-time0)/(double)(CLOCKS_PER_SEC); time0 = time1; 
+    }
+  }
+  g->secs[0] = secs[0]; g->secs[1] = secs[1]; 
+  time0 = clock ();
 
   /* label each histogram with index of genome they belong to */
   for (i = 0; i < g->n_genome; i++) for (j = 0; j < g->genome[i]->n_hist; j++) g->genome[i]->hist[j]->index = i;

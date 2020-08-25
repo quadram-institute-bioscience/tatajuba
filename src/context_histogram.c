@@ -39,6 +39,8 @@ print_tatajuba_options (tatajuba_options_t opt)
   fprintf (stderr, "Flanking k-mer size (context):    %6d\n", opt.kmer_size);
   fprintf (stderr, "Min tract length to consider:     %6d\n", opt.min_tract_size);
   fprintf (stderr, "Min depth of tract lengths:       %6d\n", opt.min_coverage);
+  if (opt.n_threads) fprintf (stderr, "Number of threads (requested or optimised): %3d\n", opt.n_threads);
+  else fprintf (stderr, "Software compiled without multithreaded support\n");
   if (opt.paired_end) fprintf (stderr, "Assuming paired-end samples: their file names should be consecutive (no file name check is conducted)\n");
   else fprintf (stderr, "Assuming single-end samples\n");
 }
