@@ -38,7 +38,7 @@ struct genome_set_struct
   genomic_context_list_t *genome;
   g_tract_vector_t tract;
   int n_genome;
-  double secs_read, secs_finalise, secs_comparison;
+  double secs[3];
   int ref_counter;
 };
 

@@ -1,14 +1,23 @@
 <img src="recipe/tatajuba-text.png" height="100" alt="Tatajuba">
-### Distribution of homopolymeric tracts
-
 
 __Leonardo de Oliveira Martins<sup>1</sup>__
 <br>
 <sub>1. Quadram Institute Bioscience, Norwich Research Park, NR4 7UQ, UK</sub>
 
-## Name
+# Distribution of homopolymeric tracts
+
+Instead of assuming a fixed length for a given homopolymer tract, tatajubá allows for its whole distribution of sizes to
+be analysed. 
+The rationale is that 1. our sequence might represent a population of non-identical individuals, with diversity of tract
+lengths, and 2. sequencing errors might be more frequent near or within homopolymers (so we should not remove
+uncertainty prematurely).
+
+Tatajubá also assumes that what we call a "tract" is a homopolymeric base flanked by a specific sequence (allowing for
+variability).
+
+#### Name
 Tatajuba (_Bagassa guianensis_) is a South American tree, also known as Tatajubá, Tatajuva, Garrote, Totajuba.
-If I'm not mistaken it means "yellow fire" in [Tupi](https://en.wikipedia.org/wiki/Tupi_language).
+It means "yellow fire" in [Tupi](https://en.wikipedia.org/wiki/Tupi_language).
 
 ## Installation
 You should download this repository with `git clone --recursive` to ensure it also downloads
@@ -48,10 +57,10 @@ Both cases are shown below:
 ```
 
 ## Model
-At the lowest level, the homopolymeric tracts are stored as the two flanking k-mers (called "context" here) and the base
+At the lowest level (C `struct`), the homopolymeric tracts are stored as the two flanking k-mers (called "context" here) and the base
 comprising the homopolymer in th middle, as seen  in the figure below. 
 
-<img src="recipe/200322_001.png" height="160" alt="Tatajuba">
+<img src="recipe/200322_001.png" height="160" alt="context_struct" class="center">
 
 We define the canonical form based on the homopolymer &mdash; in the figure above the same flanking regions `CCG` and
 `GAT` are stored as a completely different context b/c they flank a distinct homopolymer base. The three contextualised
@@ -61,12 +70,31 @@ CCG-A-GAT
 ATC-A-CCG
 CCG-C-GAT
 ```
-due to the canon, we only observe `A` or `C` as the homopolymers. 
+due to the canon, we always observe the side of the homopolymers with `A` or with `C`.
 
-
-Scanning through the fastq files, we can now for each sample generate a histogram of homopolymeric tract lengths,
+Scanning through the fastq files, we now can, for each sample, generate the histograms of contextualised homopolymeric tract lengths as
 depicted in the figure below.
-<img src="recipe/200322_002.png" height="100" alt="Tatajuba">
+
+<img src="recipe/200322_002.png" height="100" alt="context-histogram" class="center">
+
+Once this histogram is complete we search for this tract (i.e. homopolymer plus flanking regions) on the reference
+genome, by using a typical length (a typical length would be _3_ for the figure above).
+Tatajubá also tries to merge histograms if they may represent the same tract both before and after the reference genome
+mapping.
+*Before* mapping it tries to find contexts that are quite similar (and thus could represent the same tract). 
+The parameter `maxdist` will control up to how may mismatches (per flanking region) are considered the same context.
+*After* mapping we may notice very close tracts, which may in fact be the same tract but with indels in the flanking
+regions. 
+The parameter `leven` decides the maximum Levenshtein distance between contexts for such neighbouring tracts to be
+considered the same. 
+If in your results you see tracts just a few bases apart, try increasing the `leven` value. My suggestion is that both
+parameters are kept as low as possible (less than two). 
+As a side note, the Levenshtein distance is slower to calculate, while the pre-mapping mismatch has to be done between
+all pairs and not only neighbours.
+
+By the way, histograms with very low frequency (representing contexts+tracts observed very rarely in the fastq file) are
+excluded, assuming they represent sequencing errors. This is controlled by the parameter `minreads`. The default is
+currenlty _3_ (any tract observed in less than _3_ reads is discarded).
 
 Currently our measure of dispersion (used to find tracts most variable across genomes) is the *relative difference of
 ranges* (similar to the coefficient of range), defined here as (MAX-MIN)/MAX.

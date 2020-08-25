@@ -132,7 +132,10 @@ main (int argc, char **argv)
   print_selected_g_tract_vector (g);
 
   time1 = clock (); fprintf (stderr, "overall time: %lf secs\n",  (double)(time1-time0)/(double)(CLOCKS_PER_SEC)); fflush(stderr); time0 = time1; 
-  fprintf (stderr, "internal timers::  %lf secs to read, %lf secs to normalise, and %lf secs to compare\n", g->secs_read, g->secs_finalise, g->secs_comparison);
+  biomcmc_fprintf_colour (stderr, 0,2, "Internal timer::", "%9lf secs to read and generate initial histograms\n", g->secs[0]);
+  biomcmc_fprintf_colour (stderr, 0,2, "Internal timer::", "%9lf secs to merge and map histograms\n", g->secs[1]);
+  biomcmc_fprintf_colour (stderr, 0,2, "Internal timer::", "%9lf secs to compare across genomes\n\n", g->secs[2]);
+  biomcmc_fprintf_fortune (stderr);
 
   del_genome_set (g);
   del_arg_parameters (params);
