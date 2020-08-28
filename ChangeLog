@@ -1,3 +1,11 @@
+2020.08.25
+	* beta version working: 
+		1. imports BWA and gives for each tract a location in reference genome. (BWA creates indices from ref fasta)
+		2. merge tracts from same genome based on similarity and location
+	* TODO:
+		1. needs annotated genome; therefore user gives GFF, we generate the ref fasta that will then be used for bwa indexing
+		2. aim is to distinguish tracts by their effects on sample; therefore we need to keep track of (a) coding effect (i.e. 
+		if tract is on coding region or not); and (b) change in length from reference
 2020.02.19
 	* Andrew's hints:
 		1. if program is slow, we can first map context-mers to a reference and exclude those not in homopolymer tracts; 
