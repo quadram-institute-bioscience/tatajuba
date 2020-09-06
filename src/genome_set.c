@@ -13,7 +13,7 @@ void fill_g_tract_summary_tables (g_tract_t *this, context_histogram_t *concat, 
 genome_set_t
 new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_options_t opt) 
 {
-  clock_t time0, time1;
+  int64_t time0[2], time1[2];
   int i, j;
   hopo_counter hc;
   genome_set_t g = (genome_set_t) biomcmc_malloc (sizeof (struct genome_set_struct));
@@ -32,14 +32,14 @@ new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_opt
 #pragma omp parallel for shared(g,opt,filenames) private(time0,time1,hc) schedule(dynamic) reduction(+:secs[:2])
 #endif
     for (i = 0; i < g->n_genome; i++) {
-      time0 = clock ();
+      biomcmc_get_time (time0);
       hc = new_or_append_hopo_counter_from_file (NULL, filenames[2*i],   opt);
       hc = new_or_append_hopo_counter_from_file (hc,   filenames[2*i+1], opt);
-      time1 = clock (); secs[0] += (double)(time1-time0)/(double)(CLOCKS_PER_SEC); time0 = time1; 
+      biomcmc_get_time (time1); secs[0] += biomcmc_elapsed_time (time1, time0); time0[0] = time1[0]; time0[1] = time1[1];
 
       g->genome[i] = new_genomic_context_list (hc);
       del_hopo_counter (hc); hc = NULL;
-      time1 = clock (); secs[1]+= (double)(time1-time0)/(double)(CLOCKS_PER_SEC); time0 = time1; 
+      biomcmc_get_time (time1); secs[1] += biomcmc_elapsed_time (time1, time0); time0[0] = time1[0]; time0[1] = time1[1];
     }
   }
   else {
@@ -47,23 +47,23 @@ new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_opt
 #pragma omp parallel for shared(g,opt,filenames) private(time0,time1,hc) schedule(dynamic) reduction(+:secs[:2])
 #endif
     for (i = 0; i < g->n_genome; i++) {
-      time0 = clock ();
+      biomcmc_get_time (time0);
       hc = new_or_append_hopo_counter_from_file (NULL, filenames[i], opt);
-      time1 = clock (); secs[0] += (double)(time1-time0)/(double)(CLOCKS_PER_SEC); time0 = time1; 
+      biomcmc_get_time (time1); secs[0] += biomcmc_elapsed_time (time1, time0); time0[0] = time1[0]; time0[1] = time1[1];
 
       g->genome[i] = new_genomic_context_list (hc);
       del_hopo_counter (hc); hc = NULL;
-      time1 = clock (); secs[1] += (double)(time1-time0)/(double)(CLOCKS_PER_SEC); time0 = time1; 
+      biomcmc_get_time (time1); secs[1] += biomcmc_elapsed_time (time1, time0); time0[0] = time1[0]; time0[1] = time1[1];
     }
   }
   g->secs[0] = secs[0]; g->secs[1] = secs[1]; 
-  time0 = clock ();
+  biomcmc_get_time (time0);
 
   /* label each histogram with index of genome they belong to */
   for (i = 0; i < g->n_genome; i++) for (j = 0; j < g->genome[i]->n_hist; j++) g->genome[i]->hist[j]->index = i;
   /* generate comparisons between genomes */
   g->tract = new_g_tract_vector_from_genomic_context_list (g->genome, g->n_genome);
-  time1 = clock (); g->secs[2] = (double)(time1-time0)/(double)(CLOCKS_PER_SEC); time0 = time1; 
+  biomcmc_get_time (time1); g->secs[2] += biomcmc_elapsed_time (time1, time0); time0[0] = time1[0]; time0[1] = time1[1];
 
   return g;
 }
