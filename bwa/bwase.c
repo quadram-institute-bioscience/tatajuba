@@ -74,6 +74,8 @@ void bwa_aln2seq_core(int n_aln, const bwt_aln1_t *aln, bwa_seq_t *s, int set_ma
         for (l = q->k; l <= q->l; ++l) {
           s->multi[z].pos = l;
           s->multi[z].gap = q->n_gapo + q->n_gape;
+          s->multi[z].gapo = q->n_gapo; // added by leo
+          s->multi[z].gape = q->n_gape; // added by leo
           s->multi[z].ref_shift = (int)q->n_del - (int)q->n_ins;
           s->multi[z++].mm = q->n_mm;
         }
@@ -85,6 +87,8 @@ void bwa_aln2seq_core(int n_aln, const bwt_aln1_t *aln, bwa_seq_t *s, int set_ma
           while (x < p) p -= p * j / (i--);
           s->multi[z].pos = q->l - i;
           s->multi[z].gap = q->n_gapo + q->n_gape;
+          s->multi[z].gapo = q->n_gapo; // added by leo
+          s->multi[z].gape = q->n_gape; // added by leo
           s->multi[z].ref_shift = (int)q->n_del - (int)q->n_ins;
           s->multi[z++].mm = q->n_mm;
         }
@@ -618,12 +622,14 @@ bwa_seq_t *bwa_sai2sam_se_from_vector (const char *prefix, bwa_seq_t *seqs, int 
   bwt_aln1_t *aln = 0;
   bntseq_t *bns;
   clock_t t;
+  char_vector vec = new_char_vector (1); // DEBUG
 
   // initialization
   bwase_initialize();
   bns = bns_restore (prefix);
   srand48 (bns->seed);
   t = clock();
+  del_char_vector (vec);
 
   // copy alignment struct from seqs[i] to aln
   for (i = 0; i < n_dnaseq; i++) {
@@ -689,4 +695,5 @@ update_bwa_list_hits_sam (const bntseq_t *bns, bwa_seq_t *p0, const int iter_p, 
     (*match_list)[this_match +3] = q->mm; 
     (*match_list)[this_match +4] = q->gap;
   }
+  // FIXME: now multi has gapo and gape; all hits share c1 c2 and mapQ (or seQ) from best hit
 }

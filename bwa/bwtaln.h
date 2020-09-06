@@ -58,6 +58,7 @@ typedef uint16_t bwa_cigar_t;
 
 typedef struct {
 	uint32_t n_cigar:15, gap:8, mm:8, strand:1;
+  uint16_t gapo:8, gape:8; 
 	int ref_shift;
 	bwtint_t pos;
 	bwa_cigar_t *cigar;

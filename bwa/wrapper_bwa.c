@@ -7,7 +7,6 @@
  *  https://github.com/lh3/bwa commit 13b5637 (dowloaded 2020.08.05)
  */
 
-#include <biomcmc.h>
 #include <unistd.h>  // access() returns zero in sucess, -1 if failure;  R_OK | W_OK | X_OK or exists: F_OK
 #include "bwtindex.c"
 #include "bwase.c"
@@ -53,6 +52,7 @@ bwa_aln_bwase (const char *index_filename, char **seqname, char **dnaseq, char *
   if (n_occurrences < 1) n_occurrences = 1;
   if (sam_to_stdout != 0) n_matches = -1; // bwa_sai2sam() will then print SAM to stdout instead of creating match_list[]
 
+  // TODO: bwa works with chunks of 0x40000 (262k) query seqs 
   seqs = bwa_read_seq_from_vector (seqname, dnaseq, qual, seq_len, n_dnaseq, opt->trim_qual);
   seqs = bwa_aln_from_vector (prefix, seqs, n_dnaseq, opt);
   seqs = bwa_sai2sam_se_from_vector (prefix, seqs, n_dnaseq, n_occurrences, opt, match_list, &n_matches);

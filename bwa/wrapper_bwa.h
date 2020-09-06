@@ -11,6 +11,22 @@
 #define _wrapper_bwa_h_
 
 #include <stddef.h>
+#include <biomcmc.h>
+
+typedef struct bwase_match_struct* bwase_match_t;
+typedef struct
+{
+  int query_id, ref_id, position, score;
+  uint32_t gapo:8, gape:8, mm:8, neg_strand:1, is_best_hit:1; 
+  uint64_t top1_hits:28, top2_hits:28, mapQ:8; // c1 c2 seQ from bwtaln
+} bwase_elem_t;
+
+struct bwase_match_struct
+{
+  bwase_elem_t *m;
+  char_vector ref; /*! \brief reference genomes from index files */
+  int n_m;
+};
 
 char *save_bwa_index (const char *genome_filename, const char *suffix, char overwrite);
 /*! \brief "index + aln + bwase"; creates indices if absent. do not forget to match_list=NULL the first time (if you are not appending) 
