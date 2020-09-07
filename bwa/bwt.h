@@ -32,7 +32,6 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <wrapper_bwa.h>
 
 // requirement: (OCC_INTERVAL%16 == 0); please DO NOT change this line because some part of the code assume OCC_INTERVAL=0x80
 #define OCC_INTV_SHIFT 7

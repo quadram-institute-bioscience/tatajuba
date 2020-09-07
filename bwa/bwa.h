@@ -27,6 +27,7 @@
 #ifndef BWA_H_
 #define BWA_H_
 
+#include <biomcmc.h>
 #include <stdint.h>
 #include "bntseq.h"
 #include "bwt.h"

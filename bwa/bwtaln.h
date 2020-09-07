@@ -154,6 +154,7 @@ extern "C" {
   /*! Refine alignments from bwa_aln above. Uses several index files so better to give prefix. returns match_list; Defined in bwase.c  */
   bwa_seq_t *bwa_sai2sam_se_from_vector (const char *prefix, bwa_seq_t *seqs, int n_dnaseq, int n_occ, gap_opt_t *opt, int **match_list, int *n_matches);
 
+
 #ifdef __cplusplus
 }
 #endif

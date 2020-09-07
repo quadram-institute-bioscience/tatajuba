@@ -61,3 +61,50 @@ bwa_aln_bwase (const char *index_filename, char **seqname, char **dnaseq, char *
   if (prefix) free (prefix);
   return n_matches; 
 }
+
+bwase_match_t
+new_bwase_match_t (const char *index_filename)
+{
+  bwase_match_t match = (bwase_match_t) biomcmc_malloc (sizeof (struct bwase_match_struct));
+  match->prefix = save_bwa_index (index_filename, NULL, false); // generates index files
+  match->bns = bns_restore (match->prefix);
+  match->m = NULL;
+  match->n_m = 0;
+  match->ref_counter = 1;
+  return match;
+}
+
+void
+del_bwase_match_t (bwase_match_t match)
+{
+  if (!match) return;
+  if (--match->ref_counter) return;
+  for (int i = 0; i < match->n_m; i++) if (match->m[i].cigar)  free (match->m[i].cigar); 
+  if (match->m) free (match->m);
+  if (match->bns) bns_destroy (match->bns);
+  free (match);
+  return;
+}
+
+bwase_match_t
+new_bwase_match_from_bwa_and_char_vector (const char *index_filename, char_vector seqname, char_vector dnaseq, int n_occurrences)
+//char *index_filename, char **seqname, char **dnaseq, char **qual, size_t *seq_len, int n_dnaseq, int n_occurrences
+{
+  int i, c, n_reads, chunks = 0x40000;
+  bwa_seq_t *seqs;
+  gap_opt_t *opt = gap_init_opt();
+  if (seqname->nstrings != dnaseq->nstrings) biomcmc_error ("Vector length of read names do not match the one with reads in bwase_match()");
+  bwase_match_t match = new_bwase_match_t (index_filename);
+
+  for (c = 0; c < seqname->nstrings; c += chunks) { 
+    n_reads = chunks;
+    if ((c + n_reads) > seqname->nstrings) n_reads = seqname->nstrings - c; // last loop
+    seqs = bwa_read_seq_from_vector (seqname->string + c, dnaseq->string + c, NULL, dnaseq->nchars + c, n_reads, opt->trim_qual);
+    seqs = bwa_aln_from_vector (match->prefix, seqs, n_reads, opt);
+    seqs = bwase_to_match_t (match, seqs, n_reads, n_occurrences, opt); // updates bwase_match_t
+    bwa_free_read_seq (n_reads, seqs);
+  }
+  if (opt) free (opt);
+  return match; 
+}
+

@@ -12,20 +12,26 @@
 
 #include <stddef.h>
 #include <biomcmc.h>
+#include "bntseq.h"
+//#include "bwa.h"
+//#include "bwt.h"
+#include "bwtaln.h"
 
 typedef struct bwase_match_struct* bwase_match_t;
 typedef struct
 {
-  int query_id, ref_id, position, score;
+  int query_id, ref_id, position;
   uint32_t gapo:8, gape:8, mm:8, neg_strand:1, is_best_hit:1; 
   uint64_t top1_hits:28, top2_hits:28, mapQ:8; // c1 c2 seQ from bwtaln
+  char *cigar;
 } bwase_elem_t;
 
 struct bwase_match_struct
 {
   bwase_elem_t *m;
-  char_vector ref; /*! \brief reference genomes from index files */
-  int n_m;
+  bntseq_t *bns; /*! \brief index files with ref genome info */
+  char *prefix;
+  int n_m, ref_counter;
 };
 
 char *save_bwa_index (const char *genome_filename, const char *suffix, char overwrite);
@@ -34,5 +40,12 @@ char *save_bwa_index (const char *genome_filename, const char *suffix, char over
  *  \result number n of successful matches; most important is however one-dimensional match_list[] with five columns (consecutive values) per match.
  * */
 int bwa_aln_bwase (const char *index_filename, char **seqname, char **dnaseq, char **qual, size_t *seq_len, int n_dnaseq, int n_occurrences, int **match_list, char print_to_stdout);
+
+/*! \brief new version, storing results to struct (from bwase.c) */
+bwa_seq_t *bwase_to_match_t (bwase_match_t match, bwa_seq_t *seqs, int n_dnaseq, int n_occ, gap_opt_t *opt);
+char *bwase_match_ref_genome_name (bwase_match_t match, int i);
+
+void del_bwase_match_t (bwase_match_t match);
+bwase_match_t new_bwase_match_from_bwa_and_char_vector (const char *index_filename, char_vector seqname, char_vector dnaseq, int n_occurrences);
 
 #endif

@@ -9,7 +9,8 @@
 int main (int argc, char **argv)
 {
   clock_t time0, time1;
-  int i, n_matches, *match_list = NULL;
+  int i, *match_list = NULL;
+  bwase_match_t match;
   alignment aln;
 
   time0 = clock ();
@@ -17,21 +18,18 @@ int main (int argc, char **argv)
   if (argc == 1) return TEST_SKIPPED;
   if (argc != 3) { fprintf (stderr, "usage: <ref.fa> <reads.fa>\n"); return 1; }
   aln = read_alignment_from_file (argv[2]);
-  n_matches = bwa_aln_bwase (argv[1], aln->taxlabel->string, aln->character->string, NULL, aln->character->nchars, aln->ntax, 5, &match_list, 0);
+  match = new_bwase_match_from_bwa_and_char_vector(argv[1], aln->taxlabel, aln->character, 5);
 
-  for (i=0; i < n_matches; i++) printf ("read:%5d ref:%5d position:%5d mismathces:%5d gaps:%5d\n",
-                                        match_list[5 * i],
-                                        match_list[5 * i + 1],
-                                        match_list[5 * i + 2],
-                                        match_list[5 * i + 3],
-                                        match_list[5 * i + 4]);
+  for (i=0; i < match->n_m; i++) 
+    printf ("read:%5d ref:%5d position:%5d mismatches:%4d gaps:%4d %4d  qual=%3d cigar=%s ref_name=%s\n", match->m[i].query_id, match->m[i].ref_id, match->m[i].position, 
+            match->m[i].mm, match->m[i].gape, match->m[i].gapo, match->m[i].mapQ, match->m[i].cigar, bwase_match_ref_genome_name (match, i));
+
   printf ("Now running again but printing SAM file to stdout (last parameter of bwa_aln_bwase())\n");
-  if (match_list) free (match_list);
-  match_list = NULL;
 
-  n_matches = bwa_aln_bwase (argv[1], aln->taxlabel->string, aln->character->string, NULL, aln->character->nchars, aln->ntax, 5, &match_list, 1);
+  bwa_aln_bwase (argv[1], aln->taxlabel->string, aln->character->string, NULL, aln->character->nchars, aln->ntax, 5, &match_list, 1);
 
   time1 = clock (); printf ("overall time: %.8f secs\n", (double)(time1-time0)/(double)CLOCKS_PER_SEC);
   del_alignment (aln);
+  del_bwase_match_t (match);
   return TEST_SKIPPED; 
 }

@@ -1,9 +1,10 @@
 #ifndef BWASE_H
 #define BWASE_H
 
-#include "bntseq.h"
+//#include "bntseq.h" // called from wrapper
 #include "bwt.h"
-#include "bwtaln.h"
+//#include "bwtaln.h" // called from wrapper
+#include "wrapper_bwa.h"
 
 #ifdef __cplusplus
 extern "C" {
