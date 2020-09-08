@@ -23,6 +23,7 @@ typedef struct
 {
   char *reference_genome_filename; 
   bool paired_end;
+  gff3_t gff;
   int max_distance_per_flank, 
       kmer_size,
       min_tract_size,

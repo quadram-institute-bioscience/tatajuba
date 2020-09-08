@@ -33,7 +33,8 @@ void
 print_tatajuba_options (tatajuba_options_t opt)
 {
   biomcmc_fprintf_colour (stderr, 0, 2, PACKAGE_STRING, "\n");
-  fprintf (stderr, "Reference genome file: %s\n", opt.reference_genome_filename);
+  fprintf (stderr, "Reference genome fasta file: %s\n", opt.reference_genome_filename);
+  fprintf (stderr, "Reference GFF3 file prefix:  %s\n", opt.gff->file_basename);
   fprintf (stderr, "Max distance per flanking k-mer:  %6d\n", opt.max_distance_per_flank);
   fprintf (stderr, "Levenshtein distance for merging: %6d\n", opt.levenshtein_distance);
   fprintf (stderr, "Flanking k-mer size (context):    %6d\n", opt.kmer_size);
@@ -365,8 +366,7 @@ finalise_genomic_context_hist (genomic_context_list_t genome)
   for (i = 0; (i < genome->n_hist) && (genome->hist[i]->location < 0); i++); // just scan i
   genome->ref_start = i;
   if (i > genome->n_hist/2) 
-    biomcmc_fprintf_colour (stderr, 0, 1, "warning:", "%6d out of %6d context+tracts were not found in reference %s\n", 
-                            i, genome->n_hist, genome->name);
+    biomcmc_warning ("warning:", "%6d out of %6d context+tracts were not found in reference %s\n", i, genome->n_hist, genome->name);
   /* 4. merge context_histograms mapped to same ref genome location.BWA may detect that slightly different contexts are 
    *    actually the same, specially when max_flank_distance is too strict */
   genomic_context_merge_histograms_at_same_location (genome);
