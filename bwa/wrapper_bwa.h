@@ -38,11 +38,12 @@ char *save_bwa_index (const char *genome_filename, const char *suffix, char over
  * */
 int bwa_aln_bwase (const char *index_filename, char **seqname, char **dnaseq, char **qual, size_t *seq_len, int n_dnaseq, int n_occurrences, int **match_list, char print_to_stdout);
 
-/*! \brief new version, storing results to struct (from bwase.c) */
+/*! \brief new version, storing results to struct (from bwase.c) [this is low level component, assumes a bwase-match_t exists] */
 bwa_seq_t *bwase_to_match_t (bwase_match_t match, bwa_seq_t *seqs, int n_dnaseq, int n_occ, gap_opt_t *opt);
 char *bwase_match_ref_genome_name (bwase_match_t match, int i);
 
 void del_bwase_match_t (bwase_match_t match);
+/*! \brief high-level function that creates the bwase_match_t struct and finds matches to index files (defined by FASTA name */
 bwase_match_t new_bwase_match_from_bwa_and_char_vector (const char *index_filename, char_vector seqname, char_vector dnaseq, int n_occurrences);
 
 #endif
