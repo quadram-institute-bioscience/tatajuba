@@ -14,7 +14,8 @@
 #include "wrapper_bwa.h"
 
 /*! \brief return the cigar string or assume it's a match of length p_len */ // Leo addition
-char *alloc_cigar_string (bwa_cigar_t *cigar, int n_cigar, int p_len);
+char *alloc_cigar_string_bwaln (bwa_cigar_t *cigar, int n_cigar, int p_len);
+char *alloc_cigar_string_bwmem (uint32_t *cigar, int n_cigar);
 
 char*
 save_bwa_index (const char *genome_filename, const char *suffix, char overwrite)
@@ -44,6 +45,8 @@ save_bwa_index (const char *genome_filename, const char *suffix, char overwrite)
   bwa_idx_build (genome_filename, prefix, algo_type, block_size);
   return prefix;
 }   
+
+/** BWA-aln **/
 
 int
 bwa_aln_bwase (const char *index_filename, char **seqname, char **dnaseq, char **qual, size_t *seq_len, int n_dnaseq, int n_occurrences, int **match_list, char sam_to_stdout)
@@ -91,7 +94,6 @@ del_bwase_match_t (bwase_match_t match)
 
 bwase_match_t
 new_bwase_match_from_bwa_and_char_vector (const char *index_filename, char_vector seqname, char_vector dnaseq, int n_occurrences)
-//char *index_filename, char **seqname, char **dnaseq, char **qual, size_t *seq_len, int n_dnaseq, int n_occurrences
 {
   int i, c, n_reads, chunks = 0x40000;
   bwa_seq_t *seqs;
@@ -157,7 +159,7 @@ bwa_seq_t *bwase_to_match_t (bwase_match_t match, bwa_seq_t *seqs, int n_dnaseq,
 
     match->m[match->n_m].neg_strand  = p->strand; // zero for positive strand, one for negative
     match->m[match->n_m].is_best_hit = 1;
-    match->m[match->n_m].cigar = alloc_cigar_string (p->cigar, p->n_cigar, p->len);
+    match->m[match->n_m].cigar = alloc_cigar_string_bwaln (p->cigar, p->n_cigar, p->len);
     match->n_m++;
 
     if (p->n_multi) for (k = 0; k < p->n_multi; ++k) { 
@@ -180,7 +182,7 @@ bwa_seq_t *bwase_to_match_t (bwase_match_t match, bwa_seq_t *seqs, int n_dnaseq,
 
       match->m[match->n_m].neg_strand  = q->strand; // zero for positive strand, one for negative
       match->m[match->n_m].is_best_hit = 0;
-      match->m[match->n_m].cigar = alloc_cigar_string (q->cigar, q->n_cigar, p->len);
+      match->m[match->n_m].cigar = alloc_cigar_string_bwaln (q->cigar, q->n_cigar, p->len);
       match->n_m++;
     } // multi
   }
@@ -189,7 +191,7 @@ bwa_seq_t *bwase_to_match_t (bwase_match_t match, bwa_seq_t *seqs, int n_dnaseq,
 }
 
 char *
-alloc_cigar_string (bwa_cigar_t *cigar, int n_cigar, int p_len)
+alloc_cigar_string_bwaln (bwa_cigar_t *cigar, int n_cigar, int p_len)
 {
   int k;
   char *str;
@@ -215,4 +217,88 @@ bwase_match_ref_genome_name (bwase_match_t match, int i)
   return match->bns->anns[ match->m[i].ref_id ].name;
 }
 
+/** BWA-mem **/
+
+bwmem_match_t
+new_bwmem_match_t (const char *index_filename)
+{
+  bwmem_match_t match = (bwmem_match_t) biomcmc_malloc (sizeof (struct bwmem_match_struct));
+  match->prefix = save_bwa_index (index_filename, NULL, false); // generates index files
+  match->idx = bwa_idx_load(match->prefix, BWA_IDX_ALL);
+  match->m = NULL;
+  match->n_m = 0;
+  match->ref_counter = 1;
+  return match;
+}
+
+void
+del_bwmem_match_t (bwmem_match_t match)
+{
+  if (!match) return;
+  if (--match->ref_counter) return;
+  for (int i = 0; i < match->n_m; i++) if (match->m[i].cigar)  free (match->m[i].cigar); 
+  if (match->m) free (match->m);
+  if (match->idx) bwa_idx_destroy (match->idx);
+  free (match);
+  return;
+}
+
+bwmem_match_t
+new_bwmem_match_from_bwa_and_char_vector (const char *index_filename, char_vector dnaseq)
+{
+  mem_opt_t *opt = mem_opt_init ();
+  bwmem_match_t match = new_bwmem_match_t (index_filename);
+  for (int i = 0; i < dnaseq->nstrings; i++) update_bwmem_match (match, i, dnaseq->string[i], dnaseq->nchars[i], opt); 
+  if (opt) free (opt);
+  return match; 
+}
+
+void
+update_bwmem_match (bwmem_match_t match, int query_id, char *seq, size_t len, mem_opt_t *opt)
+{
+  mem_alnreg_v ar;
+  mem_aln_t a;
+  bwmem_elem_t *p;
+
+  ar = mem_align1 (opt, match->idx->bwt, match->idx->bns, match->idx->pac, len, seq); // all the hits
+  match->m = (bwmem_elem_t*) biomcmc_realloc ((bwmem_elem_t*) match->m, (match->n_m + ar.n) * sizeof (bwmem_elem_t));
+  for (int i = 0; i < ar.n; ++i) { // traverse each hit
+    a = mem_reg2aln (opt, match->idx->bns, match->idx->pac, len, seq, &ar.a[i]); // get forward-strand position and CIGAR
+    p = match->m + match->n_m + i;
+    p->query_id = query_id; 
+    p->ref_id = a.rid;
+    p->position = a.pos; 
+    p->score = a.score;  // alternative would be ar.truesc
+    p->rb = ar.a[i].rb; 
+    p->re = ar.a[i].re;
+    p->qb = ar.a[i].qb;
+    p->qe = ar.a[i].qe;
+    p->mapQ = a.mapq;
+    p->edit_distance = a.NM;
+    p->neg_strand = a.is_rev;
+    p->is_primary = (ar.a[i].secondary < 0);
+    p->cigar = alloc_cigar_string_bwmem (a.cigar, a.n_cigar);
+  }
+  match->n_m += ar.n;
+  if (ar.a) free(ar.a); 
+}
+
+char *
+alloc_cigar_string_bwmem (uint32_t *cigar, int n_cigar)
+{
+  int k;
+  char *str;
+
+  str = (char*) biomcmc_malloc (sizeof (char) * n_cigar * 12); // overestimate
+  str[0] = '\0';
+  for (k = 0; k < n_cigar; ++k) sprintf(str, "%d%c", cigar[k]>>4, "MIDSH"[cigar[k] & 0xf]);
+  size_t len = strlen (str);
+  str = (char*) biomcmc_realloc ((char*) str, len * sizeof (char));
+  return str;
+}
+char *
+bwmem_match_ref_genome_name (bwmem_match_t match, int i)
+{
+  return match->idx->bns->anns[ match->m[i].ref_id ].name;
+}
 

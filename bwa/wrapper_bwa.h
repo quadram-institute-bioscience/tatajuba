@@ -46,4 +46,29 @@ void del_bwase_match_t (bwase_match_t match);
 /*! \brief high-level function that creates the bwase_match_t struct and finds matches to index files (defined by FASTA name */
 bwase_match_t new_bwase_match_from_bwa_and_char_vector (const char *index_filename, char_vector seqname, char_vector dnaseq, int n_occurrences);
 
+#include "bwamem.h"
+typedef struct bwmem_match_struct* bwmem_match_t;
+
+typedef struct
+{
+  int query_id, ref_id, score;
+	int64_t position, rb, re; // [rb,re): reference sequence in the alignment
+	int qb, qe;     // [qb,qe): query sequence in the alignment
+  uint32_t mapQ:8, edit_distance:22, neg_strand:1, is_primary:1; 
+  char *cigar;
+} bwmem_elem_t;
+
+struct bwmem_match_struct
+{
+  bwmem_elem_t *m;
+  bwaidx_t *idx; /*! \brief index files with ref genome info */ 
+  char *prefix;
+  int n_m, ref_counter;
+};
+
+bwmem_match_t new_bwmem_match_t (const char *index_filename);
+bwmem_match_t new_bwmem_match_from_bwa_and_char_vector (const char *index_filename, char_vector dnaseq);
+void del_bwmem_match_t (bwmem_match_t match);
+void update_bwmem_match (bwmem_match_t match, int query_id, char *seq, size_t len, mem_opt_t *opt);
+char * bwmem_match_ref_genome_name (bwmem_match_t match, int i);
 #endif

@@ -5,6 +5,6 @@ LDADD = $(GTKDEPS_LIBS) @CHECK_LIBS@  ../kalign/libkalign.la ../bwa/libbwa.la ..
 
 EXTRA_DIST = files # directory with fasta etc files (accessed with #define TEST_FILE_DIR above)
 # list of programs to be compiled only with 'make check':
-check_PROGRAMS = check_bwa debug_bwa
+check_PROGRAMS = check_bwa debug_bwa debug_bwamem
 # list of test programs (duplicate, since we want all to be compiled only with 'make check'):
 TESTS = $(check_PROGRAMS)           
