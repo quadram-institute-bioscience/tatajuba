@@ -10,11 +10,8 @@
 #ifndef _wrapper_bwa_h_
 #define _wrapper_bwa_h_
 
-#include <stddef.h>
-#include <biomcmc.h>
+#include "bwa.h"
 #include "bntseq.h"
-//#include "bwa.h"
-//#include "bwt.h"
 #include "bwtaln.h"
 
 typedef struct bwase_match_struct* bwase_match_t;
