@@ -13,6 +13,7 @@
 #include "bwtaln.c"
 #include "wrapper_bwa.h"
 
+gap_opt_t * gap_opt_from_bwase_options_t (bwase_options_t bopt);
 /*! \brief return the cigar string or assume it's a match of length p_len */ // Leo addition
 char *alloc_cigar_string_bwaln (bwa_cigar_t *cigar, int n_cigar, int p_len);
 char *alloc_cigar_string_bwmem (uint32_t *cigar, int n_cigar);
@@ -48,7 +49,7 @@ save_bwa_index (const char *genome_filename, const char *suffix, char overwrite)
 
 /** BWA-aln **/
 
-int
+int   // OLD
 bwa_aln_bwase (const char *index_filename, char **seqname, char **dnaseq, char **qual, size_t *seq_len, int n_dnaseq, int n_occurrences, int **match_list, char sam_to_stdout)
 {
   bwa_seq_t *seqs;
@@ -66,6 +67,81 @@ bwa_aln_bwase (const char *index_filename, char **seqname, char **dnaseq, char *
   if (opt) free (opt);
   if (prefix) free (prefix);
   return n_matches; 
+}
+
+bwase_options_t
+new_bwase_options_t (int level)
+{ // this overwrites all gap_opt_t from bwa, so important to make them match here (have save defaults)
+  bwase_options_t bopt;
+  bopt.fnr = 0.04;    //-n NUM  missing prob under 0.02 err rate (bwa-aln allows integer for max_diff)
+  bopt.max_gapo = 1;  //-o maximum number or fraction of gap opens [%d]\n", opt->max_gapo);
+  bopt.max_gape = -1; //-e maximum number of gap extensions, -1 for disabling long gaps [-1]\n"); -> becomes 6 if not changed
+  bopt.s_mm = 3;      //-M mismatch penalty [%d]\n", opt->s_mm);
+  bopt.s_gapo = 11;   //-O gap open penalty [%d]\n", opt->s_gapo);
+  bopt.s_gape = 4;    //-E gap extension penalty [%d]\n", opt->s_gape);
+  bopt.max_top2 = 30; //-R stop searching when there are >INT equally best hits [%d]\n", opt->max_top2);
+  bopt.trim_qual = 0; //-q quality threshold for read trimming down to %dbp [%d]\n", BWA_MIN_RDLEN, opt->trim_qual);
+  bopt.seed_len = 32; //-l seed length [%d]\n", opt->seed_len);
+  bopt.max_seed_diff = 2;     //-k maximum differences in the seed [%d]\n", opt->max_seed_diff);
+  bopt.indel_end_skip = 5;    //-i do not put an indel within INT bp towards the ends [%d]\n", opt->indel_end_skip);
+  bopt.max_del_occ = 10;      //-d maximum occurrences for extending a long deletion [%d]\n", opt->max_del_occ);
+  bopt.max_entries = 2000000; //-m maximum entries in the queue [%d]\n", opt->max_entries);
+  bopt.logscaled = false;     //-L log-scaled gap penalty for long deletions\n");
+  bopt.all_hits = false;      //-N non-iterative mode: search for all n-difference hits (slooow)\n");
+  bopt.n_threads = 1;
+  switch (level) {
+    case 2: // short reads, loose but slow
+      bopt.seed_len = 24;
+      bopt.max_gapo = 3;
+      bopt.max_gapo = 5;
+      bopt.s_gape = 3;
+      bopt.indel_end_skip = 2;
+      bopt.max_seed_diff = 4;
+      break;
+    case 1: 
+      bopt.seed_len = 35;
+      bopt.max_gapo = 2;
+      bopt.s_mm = 2;
+      bopt.s_gapo = 10;
+      bopt.s_gape = 3;
+      bopt.fnr = 0.02;
+      bopt.max_seed_diff = 6;
+      bopt.logscaled = true;
+      break;
+    default: break; // do nothing 
+  };
+  return bopt;
+}
+
+gap_opt_t *
+gap_opt_from_bwase_options_t (bwase_options_t bopt)
+{         
+  gap_opt_t *opt = gap_init_opt (); // with defaults from bwa-aln
+
+  opt->max_gapo = bopt.max_gapo;
+  opt->indel_end_skip = bopt.indel_end_skip;
+  opt->max_del_occ = bopt.max_del_occ;
+  opt->seed_len = bopt.seed_len; 
+  opt->max_seed_diff = bopt.max_seed_diff;
+  opt->max_entries = bopt.max_entries;
+  opt->s_mm = bopt.s_mm;
+  opt->s_gapo = bopt.s_gapo;
+  opt->s_gape = bopt.s_gape;
+  opt->max_top2 = bopt.max_top2;
+  opt->trim_qual = bopt.trim_qual;
+  opt->fnr = bopt.fnr;
+  opt->n_threads = bopt.n_threads;
+
+  if (bopt.max_gape > 0) {
+    opt->max_gape = bopt.max_gape;
+    opt->mode &= ~BWA_MODE_GAPE;  
+  }
+  else { // this is default behaviour on bwa-aln (with -1 from variable "opte")
+    opt->max_gape = 6;
+  }
+  if (bopt.logscaled) opt->mode |= BWA_MODE_LOGGAP;
+  if (bopt.all_hits)  { opt->mode |= BWA_MODE_NONSTOP; opt->max_top2 = 0xffff; } // bwa-aln even more agressive on max_top2
+  return opt;
 }
 
 bwase_match_t
@@ -93,11 +169,12 @@ del_bwase_match_t (bwase_match_t match)
 }
 
 bwase_match_t
-new_bwase_match_from_bwa_and_char_vector (const char *index_filename, char_vector seqname, char_vector dnaseq, int n_occurrences)
+new_bwase_match_from_bwa_and_char_vector (const char *index_filename, char_vector seqname, char_vector dnaseq, int n_occurrences, bwase_options_t bopt)
 {
   int i, c, n_reads, chunks = 0x40000;
   bwa_seq_t *seqs;
-  gap_opt_t *opt = gap_init_opt();
+  gap_opt_t *opt = gap_opt_from_bwase_options_t (bopt);
+
   if (seqname->nstrings != dnaseq->nstrings) biomcmc_error ("Vector length of read names do not match the one with reads in bwase_match()");
   bwase_match_t match = new_bwase_match_t (index_filename);
 
@@ -198,17 +275,19 @@ alloc_cigar_string_bwaln (bwa_cigar_t *cigar, int n_cigar, int p_len)
   if (cigar) {
     str = (char*) biomcmc_malloc (sizeof (char) * n_cigar * 8); // overestimate
     str[0] = '\0';
-    for (k = 0; k < n_cigar; ++k) sprintf (str, "%d%c", __cigar_len(cigar[k]), "MIDS"[__cigar_op(cigar[k])]);
+    for (k = 0; k < n_cigar; ++k) sprintf (str, "%s%d%c", str, __cigar_len(cigar[k]), "MIDS"[__cigar_op(cigar[k])]);
     size_t len = strlen (str);
     str = (char*) biomcmc_realloc ((char*) str, len * sizeof (char));
     return str;
   } // if there is no cigar, then it's a perfect match 
-  str = (char*) biomcmc_malloc (sizeof (char) * 8); // overestimate
-  str[0] = '\0';
-  sprintf (str, "%dM", p_len);
-  size_t len = strlen (str);
-  str = (char*) biomcmc_realloc ((char*) str, len * sizeof (char));
-  return str;
+  else {
+    str = (char*) biomcmc_malloc (sizeof (char) * 8); // overestimate
+    str[0] = '\0';
+    sprintf (str, "%dM", p_len);
+    size_t len = strlen (str);
+    str = (char*) biomcmc_realloc ((char*) str, len * sizeof (char));
+    return str;
+  }
 }
 
 char *
@@ -261,6 +340,7 @@ update_bwmem_match (bwmem_match_t match, int query_id, char *seq, size_t len, me
   bwmem_elem_t *p;
 
   ar = mem_align1 (opt, match->idx->bwt, match->idx->bns, match->idx->pac, len, seq); // all the hits
+  if (!ar.n) return; // realloc (m, 0) is bad for business
   match->m = (bwmem_elem_t*) biomcmc_realloc ((bwmem_elem_t*) match->m, (match->n_m + ar.n) * sizeof (bwmem_elem_t));
   for (int i = 0; i < ar.n; ++i) { // traverse each hit
     a = mem_reg2aln (opt, match->idx->bns, match->idx->pac, len, seq, &ar.a[i]); // get forward-strand position and CIGAR
@@ -291,7 +371,7 @@ alloc_cigar_string_bwmem (uint32_t *cigar, int n_cigar)
 
   str = (char*) biomcmc_malloc (sizeof (char) * n_cigar * 12); // overestimate
   str[0] = '\0';
-  for (k = 0; k < n_cigar; ++k) sprintf(str, "%d%c", cigar[k]>>4, "MIDSH"[cigar[k] & 0xf]);
+  for (k = 0; k < n_cigar; ++k) sprintf(str, "%s%d%c", str, cigar[k]>>4, "MIDSH"[cigar[k] & 0xf]);
   size_t len = strlen (str);
   str = (char*) biomcmc_realloc ((char*) str, len * sizeof (char));
   return str;

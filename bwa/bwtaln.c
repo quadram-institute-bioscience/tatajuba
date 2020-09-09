@@ -285,7 +285,7 @@ int bwa_aln(int argc, char *argv[])
 		fprintf(stderr, "         -E INT    gap extension penalty [%d]\n", opt->s_gape);
 		fprintf(stderr, "         -R INT    stop searching when there are >INT equally best hits [%d]\n", opt->max_top2);
 		fprintf(stderr, "         -q INT    quality threshold for read trimming down to %dbp [%d]\n", BWA_MIN_RDLEN, opt->trim_qual);
-        fprintf(stderr, "         -f FILE   file to write output to instead of stdout\n");
+    fprintf(stderr, "         -f FILE   file to write output to instead of stdout\n");
 		fprintf(stderr, "         -B INT    length of barcode\n");
 		fprintf(stderr, "         -L        log-scaled gap penalty for long deletions\n");
 		fprintf(stderr, "         -N        non-iterative mode: search for all n-difference hits (slooow)\n");
@@ -322,8 +322,6 @@ bwa_seq_t *bwa_aln_from_vector (const char *prefix, bwa_seq_t *seqs, int n_dnase
 {
   bwt_t *bwt;
 	clock_t t = clock();
-  fprintf(stderr, "[bwa_aln_from_vector] calculate SA coordinate... ");
-
    { // load BWT
     char *str = (char*)calloc(strlen(prefix) + 10, 1);
     strcpy(str, prefix); strcat(str, ".bwt");  bwt = bwt_restore_bwt(str);

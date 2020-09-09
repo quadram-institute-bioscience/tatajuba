@@ -31,6 +31,26 @@ struct bwase_match_struct
   int n_m, ref_counter;
 };
 
+typedef struct
+{
+  float fnr;                 //-n NUM  missing prob under 0.02 err rate (bwa-aln allows integer for max_diff) 
+  int64_t max_gapo:12,       //-o maximum number or fraction of gap opens [%d]\n", opt->max_gapo
+          max_gape: 12,      //-e maximum number of gap extensions, -1 for disabling long gaps [-1]
+          s_mm:12,           //-M mismatch penalty [%d]\n", opt->s_mm
+          s_gapo:12,         //-O gap open penalty [%d]\n", opt->s_gapo
+          s_gape:12,         //-E gap extension penalty [%d]\n", opt->s_gape
+          max_seed_diff:4;   //-k maximum differences in the seed [%d]\n", opt->max_seed_diff
+  int64_t max_top2:16,       //-R stop searching when there are >INT equally best hits [%d]\n", opt->max_top2
+          max_del_occ:16,    //-d maximum occurrences for extending a long deletion [%d]\n", opt->max_del_occ
+          max_entries:32;    //-m maximum entries in the queue [%d]\n", opt->max_entries
+  int64_t trim_qual:15,      //-q quality threshold for read trimming down to %dbp [%d]\n", BWA_MIN_RDLEN, opt->trim_qual
+          seed_len:15,       //-l seed length [%d]\n", opt->seed_len
+          indel_end_skip:15, //-i do not put an indel within INT bp towards the ends [%d]\n", opt->indel_end_skip
+          logscaled:2,       //-L log-scaled gap penalty for long deletions
+          all_hits:2,        //-N non-iterative mode: search for all n-difference hits (slooow)
+          n_threads:15;
+} bwase_options_t;
+
 char *save_bwa_index (const char *genome_filename, const char *suffix, char overwrite);
 /*! \brief "index + aln + bwase"; creates indices if absent. do not forget to match_list=NULL the first time (if you are not appending) 
  *  \param print_to_stdout zero if you want to fill match_list[] (most common use), otherwise just prints SAM format to stdout
@@ -38,13 +58,15 @@ char *save_bwa_index (const char *genome_filename, const char *suffix, char over
  * */
 int bwa_aln_bwase (const char *index_filename, char **seqname, char **dnaseq, char **qual, size_t *seq_len, int n_dnaseq, int n_occurrences, int **match_list, char print_to_stdout);
 
+/*! \brief new param options with default values, mandatory for bwase_to_match() */ 
+bwase_options_t new_bwase_options_t (int level); 
 /*! \brief new version, storing results to struct (from bwase.c) [this is low level component, assumes a bwase-match_t exists] */
 bwa_seq_t *bwase_to_match_t (bwase_match_t match, bwa_seq_t *seqs, int n_dnaseq, int n_occ, gap_opt_t *opt);
 char *bwase_match_ref_genome_name (bwase_match_t match, int i);
 
 void del_bwase_match_t (bwase_match_t match);
 /*! \brief high-level function that creates the bwase_match_t struct and finds matches to index files (defined by FASTA name */
-bwase_match_t new_bwase_match_from_bwa_and_char_vector (const char *index_filename, char_vector seqname, char_vector dnaseq, int n_occurrences);
+bwase_match_t new_bwase_match_from_bwa_and_char_vector (const char *index_filename, char_vector seqname, char_vector dnaseq, int n_occurrences, bwase_options_t bopt);
 
 #include "bwamem.h"
 typedef struct bwmem_match_struct* bwmem_match_t;

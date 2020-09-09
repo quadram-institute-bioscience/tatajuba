@@ -27,7 +27,7 @@ START_TEST(bwa_aln_bwase_function)
   n_matches = bwa_aln_bwase (filename, aln->taxlabel->string, aln->character->string, NULL, aln->character->nchars, aln->ntax, 2, &match_list, 0);
   time1 = clock (); printf ("  time to read alignment: %.8f secs\n", (double)(time1-time0)/(double)CLOCKS_PER_SEC);
   del_alignment (aln);
-  if (n_matches != 37) ck_abort_msg ("number of matches %d != expected 37 \n", n_matches);
+  if (n_matches != 8) ck_abort_msg ("number of matches %d != expected 7 \n", n_matches);
 }
 END_TEST
 
@@ -38,9 +38,10 @@ START_TEST(bwa_index_function)
 
   time0 = clock ();
   memcpy(filename + prefix_size, "small.fasta", 11);
-  s = save_bwa_index (filename, "test", 1); free (s);
+  s = save_bwa_index (filename, NULL, 1); 
   time1 = clock (); printf ("  time to create index: %.8f secs\n", (double)(time1-time0)/(double)CLOCKS_PER_SEC);
-  if (false) ck_abort_msg ("dummy");
+  if (s == NULL) ck_abort_msg ("could not save file");
+  free (s);
 }
 END_TEST
 
