@@ -33,9 +33,13 @@ struct out_line {
 };
 
 struct msa_seq* msa_seq_from_char_vector_string (char *string, size_t nchars, uint32_t id);
-struct msa* read_char_vector_to_msa (char_vector dna);
+/* from alphabet */
+struct alphabet* create_default_protein_alphabet (void);
+struct alphabet* create_reduced_protein_alphabet (void);
+struct alphabet* create_dna_alphabet (void);
 
 void set_subm_gaps_DNA(struct aln_param* ap);
+void set_subm_gaps_protein (struct aln_param* ap);
 int clean_and_set_to_extern(struct alphabet* a);
 void merge_codes (struct alphabet*a,const int X, const int Y);
 int sort_by_len (const void *a, const void *b);
@@ -49,7 +53,7 @@ void free_line_buffer(struct line_buffer* lb);
 static void set_sip_nsip(struct msa* msa);/* local helper functions  rwalign */
 /* end rwalign.c */
 
-struct aln_param* init_ap (int numseq)
+struct aln_param* init_ap (int numseq, bool is_protein)
 {
   struct aln_param* ap =  (struct aln_param*) biomcmc_malloc (sizeof(struct aln_param));
   int i,j;
@@ -66,7 +70,8 @@ struct aln_param* init_ap (int numseq)
     ap->subm[i] = (float*) biomcmc_malloc (sizeof(float) * 21);
     for (j = 21;j--;) ap->subm[i][j] = 0.0f;
   }
-  set_subm_gaps_DNA (ap);
+  if (is_protein) set_subm_gaps_protein (ap);
+    else set_subm_gaps_DNA (ap);
   return ap;
 }
 
@@ -83,28 +88,27 @@ void free_ap (struct aln_param* ap)
   MFREE(ap);
 }
 
-/* Timo: These are old parameters from kalign 2 */
 void set_subm_gaps_DNA (struct aln_param* ap)
 {
   int i,j;
   for(i = 0; i < 5; i++) for(j =0; j < 5;j++) ap->subm[i][j] = 283;
-  //	A   91 -114  -31 -123    0  -43
-  ap->subm[0][0] += 91;
+
+  ap->subm[0][0] += 91;  //	A   91 -114  -31 -123    0  -43
   ap->subm[0][1] += -114;
   ap->subm[0][2] += -31;
   ap->subm[0][3] += -123;
-  //	C -114  100 -125  -31    0  -43
-  ap->subm[1][0] += -114;
+
+  ap->subm[1][0] += -114;  //	C -114  100 -125  -31    0  -43
   ap->subm[1][1] += 100;
   ap->subm[1][2] += -125;
   ap->subm[1][3] += -31;
-  //	G  -31 -125  100 -114    0  -43
-  ap->subm[2][0] += -31;
+
+  ap->subm[2][0] += -31;  //	G  -31 -125  100 -114    0  -43
   ap->subm[2][1] += -125;
   ap->subm[2][2] += 100;
   ap->subm[2][3] += -114;
-  //	T -123  -31 -114   91    0  -43
-  ap->subm[3][0] += -123;
+
+  ap->subm[3][0] += -123;  //	T -123  -31 -114   91    0  -43
   ap->subm[3][1] += -31;
   ap->subm[3][2] += -114;
   ap->subm[3][3] += 91;
@@ -115,7 +119,113 @@ void set_subm_gaps_DNA (struct aln_param* ap)
   //param->secret = 28.3;
 }
 
+void set_subm_gaps_protein (struct aln_param* ap)
+{
+  int i,j;
+  int m_pos = 0;
+  float *matrix_pointer = 0;
+  float balimt[]={
+    24.501946,
+    5.998169, 115.750240,
+    -2.470710, -31.062287, 47.937530,
+    0.999786, -29.101076, 28.000000, 36.003891,
+    -22.005890, -7.007568, -44.750011, -38.000458, 71.000000,
+    6.000000, -19.000000, 2.000000, -7.015625, -51.000000, 66.992218,
+    -9.000000, -12.000000, 4.843778, 4.934356, -0.000031, -13.499763, 60.750057,
+    -7.000855, -10.015595, -37.000214, -26.249912, 10.985351, -44.001923, -21.030732, 40.753445,
+    -3.000214, -27.998062, 6.000000, 12.000229, -32.055085, -10.000061, 6.999969, -20.013794, 32.875029,
+    -11.007813, -14.000000, -39.000000, -27.124605, 20.844236, -43.003876, -18.001831, 29.000000, -20.000458, 40.875059,
+    -6.015106, -8.986221, -29.128878, -19.062470, 16.875029, -34.029297, -12.000946, 25.503868, -13.000000, 29.000000, 43.938384,
+    -2.499519, -17.003632, 22.780331, 10.000000, -30.001923, 4.999786, 12.999542, -27.375036, 9.000000, -31.000000, -21.000000, 38.902403,
+    3.999908, -30.249973, -6.060548, -4.000000, -37.003662, -15.000000, -10.029297, -25.246525, -5.001801, -22.015595, -23.124971, -8.500008, 77.000000,
+    -1.000214, -23.499855, 9.999786, 17.000473, -25.014832, -9.000092, 12.624781, -18.148531, 15.877928, -15.031189, -9.015595, 7.999786, -1.062470, 27.000473,
+    -5.001923, -21.078096, -2.124971, 5.000000, -31.750011, -9.000000, 7.000000, -23.030274, 27.999542, -21.492195, -16.001923, 3.757809, -8.000000, 15.500023, 47.984375,
+    11.999054, 1.996338, 5.875120, 3.000000, -27.000000, 4.875029, -1.250919, -17.499977, 2.000000, -20.046876, -13.015564, 9.972198, 4.546899, 2.265614, -1.062013, 22.750027,
+    6.993225, -4.031220, 1.000000, -0.499977, -21.000214, -10.000000, -2.062013, -5.000946, 1.985351, -12.999985, -5.000000, 6.000000, 1.562402, -0.500481, -1.000519, 15.960937, 25.986114,
+    0.001923, 0.554681, -28.999985, -18.999557, 1.968780, -32.124025, -19.031220, 32.000000, -16.999985, 18.750027, 16.500053, -21.875227, -17.000458, -14.499519, -19.124971, -9.499886, 0.000015, 34.999512,
+    -35.249973, -9.000031, -51.062959, -42.996109, 36.996124, -39.048310, -7.503426, -17.015595, -34.124971, -7.984436, -9.063233, -35.187503, -49.496101, -26.000214, -15.000092, -32.265599, -34.937026, -25.499977, 143.000000,
+    -21.007782, -4.999985, -27.999985, -26.015595, 51.875029, -39.242649, 22.750027, -6.000458, -20.015595, 0.999969, -1.000000, -13.500008, -30.000000, -16.000458, -17.059052, -18.062470, -18.055146, -10.109377, 41.000107, 78.000961,
+    0.750973, 0.621088, 1.000000, 0.750027, 0.999786, 0.937530, 0.937560, 0.984405, 0.999054, 0.991241, 1.000000, 0.871580, 0.999786, 0.031235, 1.000000, 0.265614, 0.097642, 0.969726, 0.999054, 1.000000, 0.999908,
+  };
+  ap->gpo = 55.918190;
+  ap->gpe =  9.335495;
+  ap->tgpe =  5.017874;
+
+  matrix_pointer = balimt;
+  m_pos = 0;
+
+  for (i = 0;i < 21; i++) for (j = 0;j <= i; j++){
+    ap->subm[i][j] = matrix_pointer[m_pos];
+    ap->subm[j][i] = matrix_pointer[m_pos];
+    m_pos++;
+  }
+
+}
+
 // alphabet.c
+
+struct alphabet* create_default_protein_alphabet (void)
+{
+  struct alphabet* a = (struct alphabet*) biomcmc_malloc (sizeof(struct alphabet));
+  char aacode[20] = "ACDEFGHIKLMNPQRSTVWY";
+  int code = 0;
+  int i;
+
+  for(i = 0; i < 128;i++) a->to_internal[i] = -1;
+  for(i = 0; i < 32;i++)  a->to_external[i] = -1;
+  for(i = 0; i < 20;i++)  a->to_internal[(int) aacode[i]] = code++;
+  /* ambiguity codes: BZX and U (non-IUPAC but existing) */
+  a->to_internal[(int) 'B'] = code;
+  a->to_internal[(int) 'Z'] = code;
+  a->to_internal[(int) 'X'] = code;
+  a->to_internal[(int) 'U'] = code;
+  code++;
+  clean_and_set_to_extern(a);
+  return a;
+}
+
+struct alphabet* create_reduced_protein_alphabet (void)
+{
+  struct alphabet* a = (struct alphabet*) biomcmc_malloc (sizeof(struct alphabet));
+  char aacode[20] = "ACDEFGHIKLMNPQRSTVWY";
+  int code = 0;
+  int i;
+
+  for(i = 0; i < 128;i++) a->to_internal[i] = -1;
+  for(i = 0; i < 32;i++)  a->to_external[i] = -1;
+  for(i = 0; i < 20;i++)  a->to_internal[(int) aacode[i]] = code++;
+  /* ambiguity codes: BZX and U (non-IUPAC but existing) */
+  a->to_internal[(int) 'B'] = code; code++;
+  a->to_internal[(int) 'Z'] = code; code++;
+  a->to_internal[(int) 'X'] = code; code++;
+  //a->to_internal[(int) 'U'] = code; // added by leo (not present in kalign3) assuming X and U are same 
+
+  /* From  Clustering huge protein sequence sets in linear time Martin Steinegger 1, 2, 3 and Johannes Söding 1 */
+  /* The default alphabet with A = 13 merges (L,M), (I,V), (K,R), (E, Q), (A,S,T), (N, D) and (F,Y).*/
+
+  /* reduced codes */
+  merge_codes(a,'L','M');
+  merge_codes(a,'I','V');
+  merge_codes(a,'K','R');
+  merge_codes(a,'E','Q');
+  merge_codes(a,'A','S');
+  merge_codes(a,'A','T');
+  merge_codes(a,'S','T');
+
+  merge_codes(a,'N','D');
+  merge_codes(a,'F','Y');
+
+  /* merge ambiguity codes */
+  merge_codes(a,'B','N');
+  merge_codes(a,'B','D');
+
+  merge_codes(a,'Z','E');
+  merge_codes(a,'Z','Q');
+
+  clean_and_set_to_extern(a);
+  return a;
+}
+
 
 struct alphabet* create_dna_alphabet (void)
 {
@@ -126,10 +236,7 @@ struct alphabet* create_dna_alphabet (void)
 
   for(i = 0; i < 128;i++) a->to_internal[i] = -1;
   for(i = 0; i < 32;i++)  a->to_external[i] = -1;
-  for(i = 0; i < 16;i++) {
-    a->to_internal[(int) dnacode[i]] = code;
-    code++;
-  }
+  for(i = 0; i < 16;i++)  a->to_internal[(int) dnacode[i]] = code++;
 
   merge_codes(a,'U','T');
   merge_codes(a,'N','R');  /* R.................A or G */
@@ -221,8 +328,8 @@ int sort_by_len(const void *a, const void *b)
 
 // rwalign.c 
 
-/**< only DNA sequences and integer IDs, no names */
-struct msa* read_char_vector_to_msa (char_vector dna) 
+/**< only sequences and integer IDs, no names */
+struct msa* read_char_vector_to_msa (char_vector dna, bool is_protein) 
 {
   struct msa* msal = (struct msa*) biomcmc_malloc (sizeof (struct msa));
   uint32_t i;
@@ -231,9 +338,10 @@ struct msa* read_char_vector_to_msa (char_vector dna)
   msal->plen = NULL;
   msal->sip = NULL;
   msal->nsip = NULL;
+  msal->is_protein = is_protein;
   msal->sequences = (struct msa_seq**) biomcmc_malloc (sizeof(struct msa_seq*) * msal->numseq);
   for (i = 0; i < msal->numseq; i++) msal->sequences[i] = msa_seq_from_char_vector_string (dna->string[i], dna->nchars[i], (uint32_t) i);
-  convert_msa_to_internal (msal);
+  convert_msa_to_internal (msal, is_protein); // is_protein = 1 : reduce_protein, not standard (is_protein =2) , at this point 
   set_sip_nsip (msal);
   return msal;
 }
@@ -268,14 +376,17 @@ void set_sip_nsip (struct msa* msa)
   }
 }
 
-void convert_msa_to_internal (struct msa* msa)
+void convert_msa_to_internal (struct msa* msa, bool is_protein) 
 {
   struct alphabet* a = NULL;
   struct msa_seq* seq = NULL;
   int8_t* t = NULL;
   uint32_t i, j;
 
-  a = create_dna_alphabet();
+  if (is_protein == 1) a = create_reduced_protein_alphabet();
+  else if (is_protein == 2) a = create_default_protein_alphabet();
+  else a = create_dna_alphabet(); 
+
   t = a->to_internal;
   for(i = 0; i <  msa->numseq;i++){
     seq = msa->sequences[i];
@@ -283,7 +394,7 @@ void convert_msa_to_internal (struct msa* msa)
       if(t[(int) seq->seq[j]] == -1){
         WARNING_MSG("there should be no character not matching the alphabet");
         WARNING_MSG("offending character: >>>%c<<<", seq->seq[j]);
-      }else{
+      } else {
         seq->s[j] = t[(int) seq->seq[j]];
       }
     }
@@ -305,10 +416,11 @@ char_vector aligned_msa_to_charvector (struct msa* msa)
     id = msa->sequences[i]->id; /* I don't know if the order can change so better safe than sorry */
     f = 0;
     for (j = 0; j < msa->sequences[i]->len; j++) {
-      for (c = 0; c < msa->sequences[i]->gaps[j]; c++)  aligned->string[id][f++] = '-';
+      for (c = 0; c < msa->sequences[i]->gaps[j]; c++) aligned->string[id][f++] = '-';
       aligned->string[id][f++] = msa->sequences[i]->seq[j];
     }
     for (c = 0; c < msa->sequences[i]->gaps[j]; c++) aligned->string[id][f++] = '-';
+    aligned->string[id][f] = '\0'; // last char
   }
   return aligned;
 }

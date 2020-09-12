@@ -10,8 +10,8 @@
  *  \brief library based on [kalign3 multiple sequence alignment program](https://github.com/TimoLassmann/kalign.git)
  */
 
-#ifndef _tatajuba_kalign_h
-#define _tatajuba_kalign_h
+#ifndef _cumaru_kalign_h
+#define _cumaru_kalign_h
 
 #include "alignment.h"
 #include "alignment_parameters.h"

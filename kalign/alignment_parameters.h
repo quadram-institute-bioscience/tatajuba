@@ -19,19 +19,10 @@
 #include "config.h"
 #endif
 
-#define MSA_NAME_LEN 128
-#define FORMAT_FA 1
-#define FORMAT_MSF 2
-#define FORMAT_CLU 3
-#define defPROTEIN 21
-#define redPROTEIN 13
-#define defDNA 5
-
-
 struct msa_seq {
-  char* seq;
+  char* seq;   // original (string) representation of sequence
   uint32_t id; // leo: we don't store seq names here, external char_vector should have it
-  uint8_t* s;
+  uint8_t* s;  // compact representation of sequence
   uint32_t* gaps;
   uint32_t len;
 };
@@ -43,6 +34,7 @@ struct msa {
   uint32_t* plen;
   uint32_t numseq;
   uint32_t num_profiles;
+  bool is_protein; 
 };
 
 struct aln_param {
@@ -61,17 +53,16 @@ struct alphabet {
 };
 
 /**< main input function **/
-struct msa* read_char_vector_to_msa (char_vector dna);
+struct msa* read_char_vector_to_msa (char_vector dna, bool is_protein);
 /**< main output function **/
 char_vector aligned_msa_to_charvector (struct msa* msa);
 
-struct aln_param* init_ap (int numseq);
+struct aln_param* init_ap (int numseq, bool is_protein);
 void free_ap (struct aln_param* ap);
-struct alphabet* create_dna_alphabet (void);
 uint32_t* pick_anchor (struct msa* msa, uint32_t* n);
 int make_aliged_seq (uint8_t* aligned, uint8_t* unaligned, int* gaps,int len);
 
-void convert_msa_to_internal(struct msa* msa);/* convert */
+void convert_msa_to_internal(struct msa* msa, bool is_protein);/* convert */
 int write_msa(struct msa* msa, char* outfile, int type);
 void free_msa(struct msa* msa);
 

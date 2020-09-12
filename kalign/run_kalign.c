@@ -18,20 +18,27 @@
 #include "bisectingKmeans.h"
 #include "alignment.h"
 
-char_vector kalign3_from_char_vector (char_vector dna)
+bool charvector_is_protein (char_vector seq);
+
+char_vector kalign3_from_char_vector (char_vector seq)
 {
   struct msa* msa = NULL;
   struct aln_param* ap = NULL;
   int** map = NULL; /* holds all alignment paths  */
   uint32_t i;
+  bool is_protein;
   char_vector aligned_charvector = NULL;
 
+  is_protein = charvector_is_protein (seq); // once protein alignment is finished
+  if (is_protein) biomcmc_warning ("protein detected\n");
+  else  biomcmc_warning ("DNA detected\n");
   /* Step 1: read all input sequences & figure out output  */
-  msa = read_char_vector_to_msa (dna);
-  ap = init_ap (msa->numseq);/* allocate aln parameters  */
+  msa = read_char_vector_to_msa (seq, is_protein);
+  ap = init_ap (msa->numseq, is_protein);/* allocate aln parameters  */
   /* Start bi-secting K-means sequence clustering */
   build_tree_kmeans (msa, ap);
-  /* Start alignment stuff */
+  if (is_protein) convert_msa_to_internal (msa, 2); // is_protein = 2 means to make standard (full) protein 
+  /* Start alignment stuff */ 
   map = hirschberg_alignment(msa, ap);
   weave (msa, map, ap->tree); /* it's aligned already */
   /* clean up map */
@@ -42,4 +49,34 @@ char_vector kalign3_from_char_vector (char_vector dna)
   free_msa(msa);
   free_ap(ap);
   return aligned_charvector;
+}
+
+bool
+charvector_is_protein (char_vector seq)
+{
+  char  dna_letters[] = "acgtuACGTUnN"; // MRWSYK are ambiguous
+  char prot_letters[] = "defhiklmpqrsvwyDEFHIKLMPQRSVWY"; // excluding acgtn
+  size_t i, len_dna, len_prot;
+  uint8_t dna[256], prot[256];
+  int j, count_dna = 0, count_prot = 0, evidence_dna = 0;
+
+  len_dna  = strlen (dna_letters);
+  len_prot = strlen (prot_letters);
+  for (i = 0; i < 256; i++) dna[i] = prot[i] = 0;
+  for (i = 0; i < len_dna;  i++)  dna[ (int)dna_letters[i] ] = 1;
+  for (i = 0; i < len_prot; i++) prot[ (int)prot_letters[i] ] = 1;
+
+  for (j = 0; j < seq->nstrings; j++) {
+    for (i = 0; i < seq->nchars[i]; i++) {
+      count_dna  +=  dna[ (int)seq->string[j][i] ];
+      count_prot += prot[ (int)seq->string[j][i] ]; // indels etc are not counted by either
+    }
+    if ((count_dna > 0xfffffff) || (count_prot < 0xfffffff)) { // zeroes counter to avoid overflow 
+      evidence_dna += (count_dna > count_prot? 1:-1);
+      count_dna = count_prot = 0;
+    }
+  } // for strings
+  evidence_dna += (count_dna > count_prot? 1:-1);
+  if (evidence_dna > 0) return false;
+  else return true; // if in doubt, treat as protein
 }
