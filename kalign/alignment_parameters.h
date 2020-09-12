@@ -19,6 +19,9 @@
 #include "config.h"
 #endif
 
+#define MIN BIOMCMC_MIN
+#define MAX BIOMCMC_MAX
+
 struct msa_seq {
   char* seq;   // original (string) representation of sequence
   uint32_t id; // leo: we don't store seq names here, external char_vector should have it
