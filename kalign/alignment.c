@@ -10,7 +10,7 @@
 #include "alignment.h"
 #include "alignment_parameters.h"
 
-#define MAX3(a,b,c) MAX(MAX(a,b),c)
+#define MAX3(a,b,c) BIOMCMC_MAX(BIOMCMC_MAX(a,b),c)
 
 struct states{
   float a;
@@ -468,13 +468,13 @@ int foward_hirsch_ss_dyn (const struct aln_param* ap,const uint8_t* seq1,const u
   if(startb){
     for (j = startb+1; j < endb;j++){
       s[j].a = -FLT_MAX;
-      s[j].ga = MAX(s[j-1].ga - gpe,s[j-1].a-gpo);
+      s[j].ga = BIOMCMC_MAX(s[j-1].ga - gpe,s[j-1].a-gpo);
       s[j].gb = -FLT_MAX;
     }
   }else {
     for (j = startb+1; j < endb;j++){
       s[j].a = -FLT_MAX;
-      s[j].ga = MAX(s[j-1].ga,s[j-1].a)-tgpe;
+      s[j].ga = BIOMCMC_MAX(s[j-1].ga,s[j-1].a)-tgpe;
       s[j].gb = -FLT_MAX;
     }
   }
@@ -495,8 +495,8 @@ int foward_hirsch_ss_dyn (const struct aln_param* ap,const uint8_t* seq1,const u
     xa = s[startb].a;
     xga = s[startb].ga;
 
-    if(startb) s[startb].gb = MAX(pgb - gpe,pa - gpo);
-    else       s[startb].gb = MAX(pgb,pa) - tgpe;
+    if(startb) s[startb].gb = BIOMCMC_MAX(pgb - gpe,pa - gpo);
+    else       s[startb].gb = BIOMCMC_MAX(pgb,pa) - tgpe;
 
     for (j = startb+1; j < endb;j++){
       ca = s[j].a;
@@ -504,9 +504,9 @@ int foward_hirsch_ss_dyn (const struct aln_param* ap,const uint8_t* seq1,const u
       pa += subp[seq2[j]];
       s[j].a = pa;
       pga = s[j].ga;
-      s[j].ga = MAX(xga-gpe,xa-gpo);
+      s[j].ga = BIOMCMC_MAX(xga-gpe,xa-gpo);
       pgb = s[j].gb;
-      s[j].gb = MAX(pgb-gpe ,ca-gpo);
+      s[j].gb = BIOMCMC_MAX(pgb-gpe ,ca-gpo);
       pa = ca;
       xa = s[j].a;
       xga = s[j].ga;
@@ -516,8 +516,8 @@ int foward_hirsch_ss_dyn (const struct aln_param* ap,const uint8_t* seq1,const u
     pa += subp[seq2[j]];
     s[j].a = pa;
     s[j].ga = -FLT_MAX;
-    if (endb != (int32_t) (hm->len_b)) s[j].gb = MAX(s[j].gb-gpe ,ca-gpo);
-    else                               s[j].gb = MAX(s[j].gb,ca) - tgpe;
+    if (endb != (int32_t) (hm->len_b)) s[j].gb = BIOMCMC_MAX(s[j].gb-gpe ,ca-gpo);
+    else                               s[j].gb = BIOMCMC_MAX(s[j].gb,ca) - tgpe;
   }
   return OK;
 }
@@ -551,13 +551,13 @@ int backward_hirsch_ss_dyn(const struct aln_param* ap,const uint8_t* seq1,const 
   if(endb != (int32_t)(hm->len_b)) {
     for(j = endb-1;j > startb;j--) {
       s[j].a = -FLT_MAX;
-      s[j].ga = MAX(s[j+1].ga-gpe,s[j+1].a-gpo);
+      s[j].ga = BIOMCMC_MAX(s[j+1].ga-gpe,s[j+1].a-gpo);
       s[j].gb = -FLT_MAX;
     }
   }else{
     for(j = endb-1;j > startb;j--){
       s[j].a = -FLT_MAX;
-      s[j].ga = MAX(s[j+1].ga,s[j+1].a)-tgpe;
+      s[j].ga = BIOMCMC_MAX(s[j+1].ga,s[j+1].a)-tgpe;
       s[j].gb = -FLT_MAX;
     }
   }
@@ -579,8 +579,8 @@ int backward_hirsch_ss_dyn(const struct aln_param* ap,const uint8_t* seq1,const 
     xa = s[endb].a;
     xga = s[endb].ga;
 
-    if (endb != (int32_t)(hm->len_b)) s[endb].gb = MAX(pgb-gpe,pa-gpo);
-    else                              s[endb].gb = MAX(pgb,pa)-tgpe;
+    if (endb != (int32_t)(hm->len_b)) s[endb].gb = BIOMCMC_MAX(pgb-gpe,pa-gpo);
+    else                              s[endb].gb = BIOMCMC_MAX(pgb,pa)-tgpe;
 
     for(j = endb-1;j > startb;j--){
       ca = s[j].a;
@@ -588,9 +588,9 @@ int backward_hirsch_ss_dyn(const struct aln_param* ap,const uint8_t* seq1,const 
       pa += subp[seq2[j]];
       s[j].a = pa;
       pga = s[j].ga;
-      s[j].ga = MAX(xga-gpe,xa-gpo);
+      s[j].ga = BIOMCMC_MAX(xga-gpe,xa-gpo);
       pgb = s[j].gb;
-      s[j].gb = MAX(pgb-gpe,ca-gpo);
+      s[j].gb = BIOMCMC_MAX(pgb-gpe,ca-gpo);
       pa = ca;
       xa = s[j].a;
       xga = s[j].ga;
@@ -599,9 +599,9 @@ int backward_hirsch_ss_dyn(const struct aln_param* ap,const uint8_t* seq1,const 
     pa = MAX3(pa,pga - gpo,pgb-gpo);
     pa += subp[seq2[j]];
     s[j].a = pa;
-    s[j].ga = -FLT_MAX;//MAX(s[j+1].ga-gpe,s[j+1].a-gpo);
-    if(startb) s[j].gb = MAX(s[j].gb-gpe,ca-gpo);
-    else       s[j].gb = MAX(s[j].gb,ca) - tgpe;
+    s[j].ga = -FLT_MAX;//BIOMCMC_MAX(s[j+1].ga-gpe,s[j+1].a-gpo);
+    if(startb) s[j].gb = BIOMCMC_MAX(s[j].gb-gpe,ca-gpo);
+    else       s[j].gb = BIOMCMC_MAX(s[j].gb,ca) - tgpe;
   }
   return OK;
 }
@@ -854,13 +854,13 @@ int foward_hirsch_ps_dyn(const struct aln_param* ap,const float* prof1,const uin
   if(hm->startb){
     for (j = hm->startb+1; j < hm->endb;j++){
       s[j].a = -FLT_MAX;
-      s[j].ga = MAX(s[j-1].ga-ext,s[j-1].a-open);
+      s[j].ga = BIOMCMC_MAX(s[j-1].ga-ext,s[j-1].a-open);
       s[j].gb = -FLT_MAX;
     }
   }else{
     for (j = hm->startb+1; j < hm->endb;j++){
       s[j].a = -FLT_MAX;
-      s[j].ga = MAX(s[j-1].ga,s[j-1].a) - text;
+      s[j].ga = BIOMCMC_MAX(s[j-1].ga,s[j-1].a) - text;
       s[j].gb = -FLT_MAX;
     }
   }
@@ -878,17 +878,17 @@ int foward_hirsch_ps_dyn(const struct aln_param* ap,const float* prof1,const uin
     xa = s[hm->startb].a;
     xga = s[hm->startb].ga;
 
-    if(hm->startb) s[hm->startb].gb = MAX(pgb+prof1[28],pa+prof1[27]);
-    else           s[hm->startb].gb = MAX(pgb,pa)+prof1[29];
+    if(hm->startb) s[hm->startb].gb = BIOMCMC_MAX(pgb+prof1[28],pa+prof1[27]);
+    else           s[hm->startb].gb = BIOMCMC_MAX(pgb,pa)+prof1[29];
     for (j = hm->startb+1; j < hm->endb;j++){
       ca = s[j].a;
       pa = MAX3(pa,pga -open,pgb + prof1[-37]);
       pa += prof1[32 + seq2[j]];
       s[j].a = pa;
       pga = s[j].ga;
-      s[j].ga = MAX(xga-ext,xa-open);
+      s[j].ga = BIOMCMC_MAX(xga-ext,xa-open);
       pgb = s[j].gb;
-      s[j].gb = MAX(pgb+prof1[28],ca+prof1[27]);
+      s[j].gb = BIOMCMC_MAX(pgb+prof1[28],ca+prof1[27]);
       pa = ca;
       xa = s[j].a;
       xga = s[j].ga;
@@ -897,9 +897,9 @@ int foward_hirsch_ps_dyn(const struct aln_param* ap,const float* prof1,const uin
     pa = MAX3(pa,pga -open,pgb + prof1[-37]);
     pa += prof1[32 + seq2[j]];
     s[j].a = pa;
-    s[j].ga = -FLT_MAX;//MAX(s[j-1].ga-ext,s[j-1].a-open);
-    if (hm->endb != (int32_t)(hm->len_b)) s[j].gb = MAX(s[j].gb+prof1[28] ,ca+prof1[27]);
-    else                                  s[j].gb = MAX(s[j].gb,ca)+ prof1[29];
+    s[j].ga = -FLT_MAX;//BIOMCMC_MAX(s[j-1].ga-ext,s[j-1].a-open);
+    if (hm->endb != (int32_t)(hm->len_b)) s[j].gb = BIOMCMC_MAX(s[j].gb+prof1[28] ,ca+prof1[27]);
+    else                                  s[j].gb = BIOMCMC_MAX(s[j].gb,ca)+ prof1[29];
   }
   prof1 -= hm->enda << 6;
   return OK;
@@ -927,13 +927,13 @@ int backward_hirsch_ps_dyn(const struct aln_param* ap,const float* prof1,const u
   if(hm->endb != (int32_t)(hm->len_b)){
     for(j = hm->endb-1;j > hm->startb;j--){
       s[j].a = -FLT_MAX;
-      s[j].ga = MAX(s[j+1].ga-ext,s[j+1].a-open);
+      s[j].ga = BIOMCMC_MAX(s[j+1].ga-ext,s[j+1].a-open);
       s[j].gb = -FLT_MAX;
     }
   }else{
     for(j = hm->endb-1;j > hm->startb;j--){
       s[j].a = -FLT_MAX;
-      s[j].ga = MAX(s[j+1].ga,s[j+1].a)-text;
+      s[j].ga = BIOMCMC_MAX(s[j+1].ga,s[j+1].a)-text;
       s[j].gb = -FLT_MAX;
     }
   }
@@ -951,8 +951,8 @@ int backward_hirsch_ps_dyn(const struct aln_param* ap,const float* prof1,const u
     xa = s[hm->endb].a;
     xga = s[hm->endb].ga;
 
-    if(hm->endb != (int32_t)(hm->len_b)) s[hm->endb].gb = MAX(pgb+prof1[28],pa+prof1[27]);
-    else                                 s[hm->endb].gb = MAX(pgb,pa) +prof1[29];
+    if(hm->endb != (int32_t)(hm->len_b)) s[hm->endb].gb = BIOMCMC_MAX(pgb+prof1[28],pa+prof1[27]);
+    else                                 s[hm->endb].gb = BIOMCMC_MAX(pgb,pa) +prof1[29];
 
     for(j = hm->endb-1;j > hm->startb;j--){
       ca = s[j].a;
@@ -960,9 +960,9 @@ int backward_hirsch_ps_dyn(const struct aln_param* ap,const float* prof1,const u
       pa += prof1[32 + seq2[j]];
       s[j].a = pa;
       pga = s[j].ga;
-      s[j].ga = MAX(xga-ext,xa-open);
+      s[j].ga = BIOMCMC_MAX(xga-ext,xa-open);
       pgb = s[j].gb;
-      s[j].gb = MAX(pgb+prof1[28],ca+prof1[27]);
+      s[j].gb = BIOMCMC_MAX(pgb+prof1[28],ca+prof1[27]);
       pa = ca;
       xa = s[j].a;
       xga = s[j].ga;
@@ -971,9 +971,9 @@ int backward_hirsch_ps_dyn(const struct aln_param* ap,const float* prof1,const u
     pa = MAX3(pa,pga - open,pgb +prof1[91]);
     pa += prof1[32 + seq2[j]];
     s[j].a = pa;
-    s[j].ga = -FLT_MAX;//MAX(s[j+1].ga-ext,s[j+1].a-open);
-    if(hm->startb) s[j].gb = MAX(s[j].gb+prof1[28], ca+prof1[27]);
-    else           s[j].gb = MAX(s[j].gb,ca)+prof1[29];
+    s[j].ga = -FLT_MAX;//BIOMCMC_MAX(s[j+1].ga-ext,s[j+1].a-open);
+    if(hm->startb) s[j].gb = BIOMCMC_MAX(s[j].gb+prof1[28], ca+prof1[27]);
+    else           s[j].gb = BIOMCMC_MAX(s[j].gb,ca)+prof1[29];
   }
   return OK;
 }
@@ -1228,7 +1228,7 @@ int foward_hirsch_pp_dyn(const float* prof1,const float* prof2,struct hirsch_mem
     for (j = hm->startb+1; j < hm->endb;j++){
       prof2+=64;
       s[j].a = -FLT_MAX;
-      s[j].ga = MAX(s[j-1].ga+prof2[28],s[j-1].a+prof2[27]);
+      s[j].ga = BIOMCMC_MAX(s[j-1].ga+prof2[28],s[j-1].a+prof2[27]);
       s[j].gb = -FLT_MAX;
     }
     prof2+=64;
@@ -1236,7 +1236,7 @@ int foward_hirsch_pp_dyn(const float* prof1,const float* prof2,struct hirsch_mem
     for (j = hm->startb+1; j < hm->endb;j++){
       prof2+=64;
       s[j].a = -FLT_MAX;
-      s[j].ga = MAX(s[j-1].ga,s[j-1].a)+prof2[29];
+      s[j].ga = BIOMCMC_MAX(s[j-1].ga,s[j-1].a)+prof2[29];
       s[j].gb = -FLT_MAX;
     }
     prof2+=64;
@@ -1259,8 +1259,8 @@ int foward_hirsch_pp_dyn(const float* prof1,const float* prof2,struct hirsch_mem
     xa = s[hm->startb].a;
     xga = s[hm->startb].ga;
 
-    if(hm->startb) s[hm->startb].gb = MAX(pgb+prof1[28],pa+prof1[27]);
-    else s[hm->startb].gb = MAX(pgb,pa)+ prof1[29];
+    if(hm->startb) s[hm->startb].gb = BIOMCMC_MAX(pgb+prof1[28],pa+prof1[27]);
+    else s[hm->startb].gb = BIOMCMC_MAX(pgb,pa)+ prof1[29];
     for (j = hm->startb+1; j < hm->endb;j++) {
       prof2 += 64;
       ca = s[j].a;
@@ -1270,9 +1270,9 @@ int foward_hirsch_pp_dyn(const float* prof1,const float* prof2,struct hirsch_mem
       prof2 -= 32;
       s[j].a = pa;
       pga = s[j].ga;
-      s[j].ga = MAX(xga+prof2[28],xa+prof2[27]);
+      s[j].ga = BIOMCMC_MAX(xga+prof2[28],xa+prof2[27]);
       pgb = s[j].gb;
-      s[j].gb = MAX(pgb+prof1[28] ,ca+prof1[27]);
+      s[j].gb = BIOMCMC_MAX(pgb+prof1[28] ,ca+prof1[27]);
       pa = ca;
       xa = s[j].a;
       xga = s[j].ga;
@@ -1285,8 +1285,8 @@ int foward_hirsch_pp_dyn(const float* prof1,const float* prof2,struct hirsch_mem
     prof2 -= 32;
     s[j].a = pa;
     s[j].ga = -FLT_MAX;
-    if (hm->endb != (int32_t)(hm->len_b)) s[j].gb = MAX(s[j].gb+prof1[28] ,ca+prof1[27]);
-    else s[j].gb = MAX(s[j].gb,ca)+ prof1[29];
+    if (hm->endb != (int32_t)(hm->len_b)) s[j].gb = BIOMCMC_MAX(s[j].gb+prof1[28] ,ca+prof1[27]);
+    else s[j].gb = BIOMCMC_MAX(s[j].gb,ca)+ prof1[29];
     prof2 -= (hm->endb-hm->startb) << 6;
   }
   prof1 -=  (hm->enda) << 6;
@@ -1317,7 +1317,7 @@ int backward_hirsch_pp_dyn(const float* prof1,const float* prof2,struct hirsch_m
     for(j = hm->endb-1;j > hm->startb;j--){
       prof2 -= 64;
       s[j].a = -FLT_MAX;
-      s[j].ga = MAX(s[j+1].ga+prof2[28],s[j+1].a+prof2[27]);
+      s[j].ga = BIOMCMC_MAX(s[j+1].ga+prof2[28],s[j+1].a+prof2[27]);
       s[j].gb = -FLT_MAX;
     }
     prof2 -= 64;
@@ -1325,7 +1325,7 @@ int backward_hirsch_pp_dyn(const float* prof1,const float* prof2,struct hirsch_m
     for(j = hm->endb-1;j > hm->startb;j--){
       prof2 -= 64;
       s[j].a = -FLT_MAX;
-      s[j].ga = MAX(s[j+1].ga,s[j+1].a)+prof2[29];
+      s[j].ga = BIOMCMC_MAX(s[j+1].ga,s[j+1].a)+prof2[29];
       s[j].gb = -FLT_MAX;
     }
     prof2 -= 64;
@@ -1347,8 +1347,8 @@ int backward_hirsch_pp_dyn(const float* prof1,const float* prof2,struct hirsch_m
     s[hm->endb].ga = -FLT_MAX;
     xa = s[hm->endb].a;
     xga = s[hm->endb].ga;
-    if(hm->endb != (int32_t)(hm->len_b)) s[hm->endb].gb = MAX(pgb+prof1[28] ,pa+prof1[27]);
-    else s[hm->endb].gb = MAX(pgb,pa)+prof1[29];
+    if(hm->endb != (int32_t)(hm->len_b)) s[hm->endb].gb = BIOMCMC_MAX(pgb+prof1[28] ,pa+prof1[27]);
+    else s[hm->endb].gb = BIOMCMC_MAX(pgb,pa)+prof1[29];
 
     prof2 += (hm->endb-hm->startb) << 6;
     for(j = hm->endb-1;j > hm->startb;j--){
@@ -1360,9 +1360,9 @@ int backward_hirsch_pp_dyn(const float* prof1,const float* prof2,struct hirsch_m
       prof2 -= 32;
       s[j].a = pa;
       pga = s[j].ga;
-      s[j].ga = MAX(xga+prof2[28], xa+prof2[27]);
+      s[j].ga = BIOMCMC_MAX(xga+prof2[28], xa+prof2[27]);
       pgb = s[j].gb;
-      s[j].gb = MAX(pgb+prof1[28], ca+prof1[27]);
+      s[j].gb = BIOMCMC_MAX(pgb+prof1[28], ca+prof1[27]);
       pa = ca;
       xa = s[j].a;
       xga = s[j].ga;
@@ -1375,9 +1375,9 @@ int backward_hirsch_pp_dyn(const float* prof1,const float* prof2,struct hirsch_m
     for (c = f+1;c--;) pa += prof1[freq[c]]*prof2[freq[c]];
     prof2 -= 32;
     s[j].a = pa;
-    s[j].ga = -FLT_MAX;//MAX(s[j+1].ga+prof2[28], s[j+1].a+prof2[27]);
-    if(hm->startb) s[j].gb = MAX(s[j].gb+prof1[28], ca+prof1[27]);
-    else s[j].gb = MAX(s[j].gb,ca)+prof1[29];
+    s[j].ga = -FLT_MAX;//BIOMCMC_MAX(s[j+1].ga+prof2[28], s[j+1].a+prof2[27]);
+    if(hm->startb) s[j].gb = BIOMCMC_MAX(s[j].gb+prof1[28], ca+prof1[27]);
+    else s[j].gb = BIOMCMC_MAX(s[j].gb,ca)+prof1[29];
   }
   return OK;
 }

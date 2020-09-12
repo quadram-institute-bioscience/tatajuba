@@ -291,7 +291,7 @@ uint32_t* pick_anchor(struct msa* msa, uint32_t* n)
   uint32_t* anchors = NULL, num_anchor = 0, powlog2;
   ASSERT(msa != NULL, "No alignment.");
   powlog2 = (uint32_t) pow(log2((double) msa->numseq), 2.0);
-  num_anchor = MAX(MIN(32, msa->numseq), powlog2);
+  num_anchor = BIOMCMC_MAX(BIOMCMC_MIN(32, msa->numseq), powlog2);
   anchors = select_seqs (msa, num_anchor);
   *n = num_anchor;
   return anchors;

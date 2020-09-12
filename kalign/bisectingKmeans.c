@@ -145,7 +145,7 @@ struct node* bisecting_kmeans (struct msa* msa, struct node* n, float** dm, uint
           edist_serial(dm[s], cl, num_anchors, &dl);
           edist_serial(dm[s], cr, num_anchors, &dr);
 #endif
-          score += MIN(dl,dr);
+          score += BIOMCMC_MIN(dl,dr);
 
           if(dr < dl) {
             w = wr;

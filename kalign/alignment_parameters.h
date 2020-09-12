@@ -19,8 +19,6 @@
 #include "config.h"
 #endif
 
-#define MIN BIOMCMC_MIN
-#define MAX BIOMCMC_MAX
 
 struct msa_seq {
   char* seq;   // original (string) representation of sequence
