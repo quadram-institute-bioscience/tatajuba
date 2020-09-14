@@ -1,3 +1,6 @@
 [submodule "submodules/biomcmc-lib"]
 	path = submodules/biomcmc-lib
 	url = https://github.com/quadram-institute-bioscience/biomcmc-lib.git
+[submodule "submodules/bwa"]
+	path = submodules/bwa
+	url = git@github.com:leomrtns/bwa.git

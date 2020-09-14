@@ -75,7 +75,7 @@ distance_between_context_histograms (context_histogram_t c1, context_histogram_t
 { 
   int i, min_n;
   double x,y;
-  min_n = MIN (c1->h->n, c2->h->n);
+  min_n = BIOMCMC_MIN (c1->h->n, c2->h->n);
   result[0] = 0.; // chi-square based distance, but 'bin-bin' with modes only 
   for (i = 0; i < min_n; i++) {
     x = (double)(1 + abs (c1->h->i[i].idx - c2->h->i[i].idx)); // absolute distance between nth-mode plus one
@@ -117,7 +117,7 @@ context_histograms_overlap (context_histogram_t c1, context_histogram_t c2, int 
     return true; // same location
   }
 
-  tract_length = MIN (c1->mode_context_length, c2->mode_context_length);
+  tract_length = BIOMCMC_MIN (c1->mode_context_length, c2->mode_context_length);
 //  printf ("DBG::LEN::%6d :: %6d %6d\n", c1->location, n_bases_apart, tract_length);
   if (n_bases_apart > (tract_length - 1) || (c1->base != c2->base)) { // bases SHOULD be the same, but you never know...
     if (distance) *distance = -1; // should NOT be used

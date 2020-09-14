@@ -112,8 +112,10 @@ am_tatajuba_OBJECTS = main.$(OBJEXT) genome_set.$(OBJEXT) \
 	context_histogram.$(OBJEXT)
 tatajuba_OBJECTS = $(am_tatajuba_OBJECTS)
 am__DEPENDENCIES_1 =
-am__DEPENDENCIES_2 = ../kalign/libkalign.la ../bwa/libbwa.la \
-	../biomcmc-lib/lib/libbiomcmc_static.la $(am__DEPENDENCIES_1)
+am__DEPENDENCIES_2 = $(top_builddir)/kalign/libkalign.la \
+	$(top_builddir)/submodules/bwa/libbwa.la \
+	$(top_builddir)/@BIOMCMCLIB@/lib/libbiomcmc_static.la \
+	$(am__DEPENDENCIES_1)
 tatajuba_DEPENDENCIES = $(am__DEPENDENCIES_2)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -317,8 +319,8 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_CPPFLAGS = $(GTKDEPS_CFLAGS) -I$(srcdir)/../kalign -I$(srcdir)/../bwa -I$(srcdir)/../@BIOMCMCLIB@/lib @OPENMP_CPPFLAGS@  @ZLIB_LIBS@ 
-LDADD = $(GTKDEPS_LIBS) @CHECK_LIBS@  ../kalign/libkalign.la ../bwa/libbwa.la ../biomcmc-lib/lib/libbiomcmc_static.la @ZLIB_LIBS@  $(AM_LDFLAGS)
+AM_CPPFLAGS = $(GTKDEPS_CFLAGS) -I$(top_srcdir)/kalign -I$(top_srcdir)/submodules/bwa -I$(top_srcdir)/@BIOMCMCLIB@/lib @OPENMP_CPPFLAGS@  @ZLIB_LIBS@ 
+LDADD = $(GTKDEPS_LIBS) @CHECK_LIBS@  $(top_builddir)/kalign/libkalign.la $(top_builddir)/submodules/bwa/libbwa.la $(top_builddir)/@BIOMCMCLIB@/lib/libbiomcmc_static.la @ZLIB_LIBS@  $(AM_LDFLAGS)
 tatajuba_SOURCES = main.c kseq.h genome_set.c genome_set.h  context_histogram.c context_histogram.h
 tatajuba_LDADD = $(LDADD)
 BUILT_SOURCES = histogram_comparison.c

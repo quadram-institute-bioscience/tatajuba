@@ -1,6 +1,6 @@
-AM_CPPFLAGS = $(GTKDEPS_CFLAGS)  -I$(srcdir)/../@BIOMCMCLIB@/lib  @OPENMP_CPPFLAGS@ @ZLIB_LIBS@
+AM_CPPFLAGS = $(GTKDEPS_CFLAGS)  -I$(top_srcdir)/@BIOMCMCLIB@/lib  @OPENMP_CPPFLAGS@ @ZLIB_LIBS@
 AM_CFLAGS = @SIMD_FLAGS@ @AM_CFLAGS@  @OPENMP_CFLAGS@
-LDADD = $(GTKDEPS_LIBS) @ZLIB_LIBS@ ../biomcmc-lib/lib/libbiomcmc_static.la  $(AM_LDFLAGS)
+LDADD = $(GTKDEPS_LIBS) @ZLIB_LIBS@ $(top_builddir)/@BIOMCMCLIB@/lib/libbiomcmc_static.la  $(AM_LDFLAGS)
 
 common_headers = kalign.h \
 tldevel.h \
