@@ -173,7 +173,6 @@ main (int argc, char **argv)
   print_tatajuba_options (opt);
   fprintf (stderr, "Read GFF3 reference genome in %15lf secs\n\n", biomcmc_update_elapsed_time (time0)); 
 
-
   g = new_genome_set_from_files (params.fastq->filename, params.fastq->count, opt); 
   print_selected_g_tract_vector (g);
 

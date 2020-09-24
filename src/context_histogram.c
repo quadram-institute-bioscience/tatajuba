@@ -451,7 +451,8 @@ genomic_context_find_reference_location (genomic_context_list_t genome)
     features = find_gff3_fields_within_position_all_genomes (genome->opt.gff, match->m[i].position, &n_features);
     for (j = 0; j < n_features; j++) if (features[j].type.id != GFF3_TYPE_region) {
       genome->hist[match->m[i].query_id]->gffeature = features[j]; // store any feature (may be a gene, cds, ...); however ... 
-      if (features[j].type.id == GFF3_TYPE_cds) break; // .. CDS have priority (overwrite previous and leave for loop)
+      //printf ("DBG::%6d %6d | (%6d-%6d:%6d)  %s [%d]\n", i, j, features[j].start, features[j].end, match->m[i].position, features[j].attr_id.str, features[j].type.id);
+      if (features[j].type.id == GFF3_TYPE_cds) {j = n_features; break; } // .. CDS have priority (overwrite previous and leave for loop)
     }
     if (features) free (features); 
   }

@@ -32,6 +32,7 @@ new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_opt
 #pragma omp parallel for shared(g,opt,filenames) private(time0,time1,hc) schedule(dynamic) reduction(+:secs[:2])
 #endif
     for (i = 0; i < g->n_genome; i++) {
+      fprintf (stderr, "processing paired files %s and %s\n", filenames[2*i], filenames[2*i+1]);
       biomcmc_get_time (time0);
       hc = new_or_append_hopo_counter_from_file (NULL, filenames[2*i],   opt);
       hc = new_or_append_hopo_counter_from_file (hc,   filenames[2*i+1], opt);
@@ -47,6 +48,7 @@ new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_opt
 #pragma omp parallel for shared(g,opt,filenames) private(time0,time1,hc) schedule(dynamic) reduction(+:secs[:2])
 #endif
     for (i = 0; i < g->n_genome; i++) {
+      fprintf (stderr, "processing file %s\n", filenames[i]);
       biomcmc_get_time (time0);
       hc = new_or_append_hopo_counter_from_file (NULL, filenames[i], opt);
       biomcmc_get_time (time1); secs[0] += biomcmc_elapsed_time (time1, time0); time0[0] = time1[0]; time0[1] = time1[1];
@@ -127,11 +129,15 @@ del_g_tract_vector (g_tract_vector_t tract)
 
 void 
 g_tract_vector_concatenate_tracts (g_tract_vector_t tract, genomic_context_list_t *genome, int n_genome)
-{
+{ 
   int i, j, k1, k2, dif, n_new_h;
   context_histogram_t *new_h = NULL;
   /** genomic_context_list is always sorted by position (with position=-1 at beginning, before ref_start) */
-
+  /* brief explanation: each genome has a set of histograms in order; concat 'percolates' them with tracts from all genomes in one vector
+   * genome A: a1 | a5 | a8  (i.e. locations 1,5,and 8) 
+   * genome B: b2 | b5 | b6
+   * concat: a1 | b2| a5 | b5| b6 | a8
+   */
   /* 1. skip genomes without (genome-location) annotated histograms and start new histogram */ 
   for (i = 0; genome[i]->ref_start == genome[i]->n_hist; i++); // do nothing besides loop
   tract->n_concat = genome[i]->n_hist - genome[i]->ref_start;
@@ -147,7 +153,7 @@ g_tract_vector_concatenate_tracts (g_tract_vector_t tract, genomic_context_list_
     for (j = 0, k1 = 0, k2 = genome[i]->ref_start; (k1 < n_new_h) && (k2 < genome[i]->n_hist); ) { 
       dif = new_h[k1]->location - genome[i]->hist[k2]->location;
       if (dif > 0) tract->concat[j++] = genome[i]->hist[k2++]; // k2 steps forward (if equal both step forward)
-      else if (dif < 0) tract->concat[j++] = new_h[k1++];           // k1 steps forward
+      else if (dif < 0) tract->concat[j++] = new_h[k1++];      // k1 steps forward
       else { // both are the same, both step forward and tract increases by two
         tract->concat[j++] = genome[i]->hist[k2++]; 
         tract->concat[j++] = new_h[k1++];
@@ -252,10 +258,14 @@ fill_g_tract_summary_tables (g_tract_t *this, context_histogram_t *concat, int p
 void
 print_selected_g_tract_vector (genome_set_t g)
 {
-  int i, j;
+  int i, j, *cd_yes, *cd_no, n_yes=0, n_no=0;
   g_tract_t *t;
+  gff3_fields gfi;
   bool to_print = false;
-  printf ("    tract    location    n_genomes    lev_distance | rd_frequency rd_avge_tract_length rd_coverage rd_context_covge rd_entropy\n"); 
+
+  cd_yes = (int*) biomcmc_malloc (g->tract->n_summary * sizeof (int));
+  cd_no  = (int*) biomcmc_malloc (g->tract->n_summary * sizeof (int));
+
   for (i = 0; i < g->tract->n_summary; i++) { 
     to_print = false;
     t = g->tract->summary + i;
@@ -265,12 +275,31 @@ print_selected_g_tract_vector (genome_set_t g)
     if ((!to_print) && (t->reldiff[1] > 1e-6)) to_print = true;
     if ((!to_print) && (t->reldiff[4] > 1e-6)) to_print = true;
     if (to_print) {
-      printf ("%s\t%-8d %-5d %-5d | ", t->example->name, t->location, t->n_genome_id, t->lev_distance);
-      for (j = 0; j < N_SUMMARY_TABLES; j++) printf ("%8.6lf ", t->reldiff[j]);
-      printf ("\n");
-      // if (t->n_dist > 0) printf ("%12e %12e\n", t->d1[0], t->d2[0]);
+      if (gff3_fields_is_valid (t->example->gffeature)) cd_yes [n_yes++] = i; // GFF3 has info about this location 
+      else cd_no[n_no++] = i;
     }
+  } // for i in summary
+
+  printf ("<<%d>>  tract    location    n_genomes    lev_distance | rd_frequency rd_avge_tract_length rd_coverage rd_context_covge rd_entropy\n", n_no); 
+  for (i = 0; i < n_no; i++) {
+    t = g->tract->summary + cd_no[i];
+    printf ("%s\t%-8d %-5d %-5d | ", t->example->name, t->location, t->n_genome_id, t->lev_distance);
+    for (j = 0; j < N_SUMMARY_TABLES; j++) printf ("%8.6lf ", t->reldiff[j]);
+    printf ("\n");
+    // if (t->n_dist > 0) printf ("%12e %12e\n", t->d1[0], t->d2[0]);
   }
+  printf ("<<%d>>  tract    location  [GFF3_info]  n_genomes    lev_distance | rd_frequency rd_avge_tract_length rd_coverage rd_context_covge rd_entropy\n", n_yes); 
+  for (i = 0; i < n_yes; i++) {
+    t = g->tract->summary + cd_yes[i]; 
+    gfi = t->example->gffeature;
+    printf ("%s\t%-8d [%s %s] %-5d %-5d | ", t->example->name, t->location, gfi.type.str, gfi.attr_id.str, t->n_genome_id, t->lev_distance);
+    for (j = 0; j < N_SUMMARY_TABLES; j++) printf ("%8.6lf ", t->reldiff[j]);
+    printf ("\n");
+    // if (t->n_dist > 0) printf ("%12e %12e\n", t->d1[0], t->d2[0]);
+  }
+
+  if (cd_yes) free (cd_yes);
+  if (cd_no)  free (cd_no);
 }
 
 void

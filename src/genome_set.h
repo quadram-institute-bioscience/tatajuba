@@ -13,7 +13,6 @@
 
 #include "context_histogram.h" 
 
-
 typedef struct genome_set_struct* genome_set_t;
 typedef struct g_tract_vector_struct* g_tract_vector_t;
 
