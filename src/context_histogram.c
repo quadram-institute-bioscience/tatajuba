@@ -25,7 +25,7 @@ void context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, i
 
 char* context_histogram_tract_as_string (context_histogram_t ch, int kmer_size);
 char* context_histogram_generate_name (context_histogram_t ch, int kmer_size);
-void genomic_context_find_reference_location (genomic_context_list_t genome, const char *ref_genome_filename);
+void genomic_context_find_reference_location (genomic_context_list_t genome);
 void genomic_context_merge_histograms_at_same_location (genomic_context_list_t genome);
 void accumulate_from_context_histogram (context_histogram_t to, context_histogram_t from);
 
@@ -264,6 +264,7 @@ new_context_histogram_from_hopo_elem (hopo_element he)
   ch->tmp_length = (int*) biomcmc_malloc (sizeof (int));
   ch->tmp_count[0]  = he.count;
   ch->tmp_length[0] = he.length;
+  ch->gffeature = return_null_gff3_field(); // zero, but for struct
   return ch;
 }
 
@@ -359,7 +360,7 @@ finalise_genomic_context_hist (genomic_context_list_t genome)
     ch->tmp_length = ch->tmp_count = NULL; ch->index = -1;
   }
   /* 2. find reference location for each context */
-  genomic_context_find_reference_location (genome, genome->opt.reference_fasta_filename);
+  genomic_context_find_reference_location (genome);
   /* 3. sort context_histograms based on genomic location, ties broken with more frequent first. Ties are found when 
    *    location == -1 i.e. not found on reference, and ultimately ties are sorted by context */
   qsort (genome->hist, genome->n_hist, sizeof (context_histogram_t), compare_context_histogram_for_qsort);
@@ -423,11 +424,12 @@ context_histogram_generate_name (context_histogram_t ch, int kmer_size)
 }
 
 void
-genomic_context_find_reference_location (genomic_context_list_t genome, const char *ref_genome_filename)
+genomic_context_find_reference_location (genomic_context_list_t genome)
 {
   char_vector readname, readseqs;
   char *read;
-  int i, j1, j2;
+  int i, j, n_features;
+  gff3_fields *features;
   bwase_match_t match;
   bwase_options_t bopt = new_bwase_options_t (0);
 
@@ -440,14 +442,20 @@ genomic_context_find_reference_location (genomic_context_list_t genome, const ch
     genome->hist[i]->name =  context_histogram_generate_name (genome->hist[i], genome->opt.kmer_size);
     char_vector_add_string (readname, genome->hist[i]->name); // unlike _link_ above, this will alloc memory and copy name[]  
   }
-  match = new_bwase_match_from_bwa_and_char_vector (ref_genome_filename, readname, readseqs, 1, bopt);
+  match = new_bwase_match_from_bwa_and_char_vector (genome->opt.reference_fasta_filename, readname, readseqs, 1, bopt);
   del_char_vector(readname);
   del_char_vector(readseqs);
 
-  for (i = 0; i < match->n_m; i++) {
+  for (i = 0; i < match->n_m; i++) { // TODO: we assume only one bwa hit per histogram
     genome->hist[match->m[i].query_id]->location = match->m[i].position;
+    features = find_gff3_fields_within_position_all_genomes (genome->opt.gff, match->m[i].position, &n_features);
+    for (j = 0; j < n_features; j++) if (features[j].type.id != GFF3_TYPE_region) {
+      genome->hist[match->m[i].query_id]->gffeature = features[j]; // store any feature (may be a gene, cds, ...); however ... 
+      if (features[j].type.id == GFF3_TYPE_cds) break; // .. CDS have priority (overwrite previous and leave for loop)
+    }
+    if (features) free (features); 
   }
-  if (match_list) free (match_list);
+  del_bwase_match_t (match);
 }
 
 void

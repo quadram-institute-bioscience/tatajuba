@@ -65,6 +65,7 @@ struct context_histogram_struct
       mode_context_id;      /*! \brief which context (from neighbourhood) has best homopolymer+context */
   int *tmp_count, *tmp_length, index; // index in genome_set, first used temporarily as counter
   empfreq h; // h.idx = tract length; h.freq = count (number of reads supporting this length)
+  gff3_fields gffeature; /*! \brief could be a list (even for a single position on a single genome) but here we store first belonging */
   int ref_counter;
 };
 
