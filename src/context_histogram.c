@@ -25,7 +25,7 @@ void context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, i
 
 char* context_histogram_tract_as_string (context_histogram_t ch, int kmer_size);
 char* context_histogram_generate_name (context_histogram_t ch, int kmer_size);
-void genomic_context_find_reference_location (genomic_context_list_t genome, const char *reference_genome_filename);
+void genomic_context_find_reference_location (genomic_context_list_t genome, const char *ref_genome_filename);
 void genomic_context_merge_histograms_at_same_location (genomic_context_list_t genome);
 void accumulate_from_context_histogram (context_histogram_t to, context_histogram_t from);
 
@@ -33,7 +33,7 @@ void
 print_tatajuba_options (tatajuba_options_t opt)
 {
   biomcmc_fprintf_colour (stderr, 0, 2, PACKAGE_STRING, "\n");
-  fprintf (stderr, "Reference genome fasta file: %s\n", opt.reference_genome_filename);
+  fprintf (stderr, "Reference genome fasta file: %s\n", opt.reference_fasta_filename);
   fprintf (stderr, "Reference GFF3 file prefix:  %s\n", opt.gff->file_basename);
   fprintf (stderr, "Max distance per flanking k-mer:  %6d\n", opt.max_distance_per_flank);
   fprintf (stderr, "Levenshtein distance for merging: %6d\n", opt.levenshtein_distance);
@@ -359,7 +359,7 @@ finalise_genomic_context_hist (genomic_context_list_t genome)
     ch->tmp_length = ch->tmp_count = NULL; ch->index = -1;
   }
   /* 2. find reference location for each context */
-  genomic_context_find_reference_location (genome, genome->opt.reference_genome_filename);
+  genomic_context_find_reference_location (genome, genome->opt.reference_fasta_filename);
   /* 3. sort context_histograms based on genomic location, ties broken with more frequent first. Ties are found when 
    *    location == -1 i.e. not found on reference, and ultimately ties are sorted by context */
   qsort (genome->hist, genome->n_hist, sizeof (context_histogram_t), compare_context_histogram_for_qsort);
@@ -427,7 +427,9 @@ genomic_context_find_reference_location (genomic_context_list_t genome, const ch
 {
   char_vector readname, readseqs;
   char *read;
-  int i, j1, j2, n_matches, *match_list = NULL;
+  int i, j1, j2;
+  bwase_match_t match;
+  bwase_options_t bopt = new_bwase_options_t (0);
 
   readname = new_char_vector (genome->n_hist);
   readseqs = new_char_vector (genome->n_hist);
@@ -438,15 +440,12 @@ genomic_context_find_reference_location (genomic_context_list_t genome, const ch
     genome->hist[i]->name =  context_histogram_generate_name (genome->hist[i], genome->opt.kmer_size);
     char_vector_add_string (readname, genome->hist[i]->name); // unlike _link_ above, this will alloc memory and copy name[]  
   }
-  // rightmost zero means to store in int[], instead of plotting SAM to stdout
-  n_matches = bwa_aln_bwase (ref_genome_filename, readname->string, readseqs->string, NULL, readseqs->nchars, genome->n_hist, 1, &match_list, 0);
+  match = new_bwase_match_from_bwa_and_char_vector (ref_genome_filename, readname, readseqs, 1, bopt);
   del_char_vector(readname);
   del_char_vector(readseqs);
 
-  for (i = 0; i < n_matches; i++) {
-    j1 = match_list[5 * i]; // read index
-    j2 = match_list[5 * i + 2]; // location in reference
-    genome->hist[j1]->location = j2;
+  for (i = 0; i < match->n_m; i++) {
+    genome->hist[match->m[i].query_id]->location = match->m[i].position;
   }
   if (match_list) free (match_list);
 }

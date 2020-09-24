@@ -21,7 +21,7 @@ typedef struct genomic_context_list_struct* genomic_context_list_t;
 
 typedef struct 
 {
-  char *reference_genome_filename; 
+  char *reference_fasta_filename; 
   bool paired_end;
   gff3_t gff;
   int max_distance_per_flank, 

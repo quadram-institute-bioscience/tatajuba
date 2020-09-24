@@ -113,11 +113,11 @@ get_options_from_argtable (arg_parameters params)
   opt.gff = read_gff3_from_file (params.gff->filename[0]);
   if (params.fna->count) {
    size_t len = strlen (params.fna->filename[0]);
-   opt.reference_genome_filename = (char*) biomcmc_malloc ((len+1) * sizeof (char));
-   strcpy (opt.reference_genome_filename, params.fna->filename[0]);
+   opt.reference_fasta_filename = (char*) biomcmc_malloc ((len+1) * sizeof (char));
+   strcpy (opt.reference_fasta_filename, params.fna->filename[0]);
   } 
-  else opt.reference_genome_filename = save_fasta_from_gff3 (opt.gff, NULL, false); // NULL is custom name; false=dont overwrite if file exists 
-  if (!opt.reference_genome_filename) {
+  else opt.reference_fasta_filename = save_fasta_from_gff3 (opt.gff, NULL, false); // NULL is custom name; false=dont overwrite if file exists 
+  if (!opt.reference_fasta_filename) {
     del_gff3_t (opt.gff);
     biomcmc_error ("No fasta provided and GFF3 file doesn't contain sequences\n You must provide a fasta file with "
                    "reference genome sequence(s) that match the GFF3 features, or you should find a GFF3 file with a '##FASTA' section at the end.\n"); 
@@ -157,7 +157,7 @@ get_options_from_argtable (arg_parameters params)
 void
 del_tatajuba_options (tatajuba_options_t opt)
 {
-  if (opt.reference_genome_filename) free(opt.reference_genome_filename);
+  if (opt.reference_fasta_filename) free(opt.reference_fasta_filename);
   del_gff3_t (opt.gff);
 }
 
