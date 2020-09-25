@@ -359,19 +359,24 @@ finalise_genomic_context_hist (genomic_context_list_t genome)
     if (ch->tmp_count) free (ch->tmp_count);
     ch->tmp_length = ch->tmp_count = NULL; ch->index = -1;
   }
+
   /* 2. find reference location for each context */
   genomic_context_find_reference_location (genome);
+
   /* 3. sort context_histograms based on genomic location, ties broken with more frequent first. Ties are found when 
    *    location == -1 i.e. not found on reference, and ultimately ties are sorted by context */
   qsort (genome->hist, genome->n_hist, sizeof (context_histogram_t), compare_context_histogram_for_qsort);
   for (i = 0; (i < genome->n_hist) && (genome->hist[i]->location < 0); i++); // just scan i
   genome->ref_start = i;
+  biomcmc_fprintf_colour (stderr, 0,2, genome->name, ": %6d out of %6d context+tracts were not found in reference\n", i, genome->n_hist);
   if (i > genome->n_hist/2) 
-    biomcmc_warning ("warning:", "%6d out of %6d context+tracts were not found in reference %s\n", i, genome->n_hist, genome->name);
+    biomcmc_warning ("warning:", "%6d out of %6d (more than half) context+tracts were not found in reference for sample %s\n", i, genome->n_hist, genome->name);
+
   /* 4. merge context_histograms mapped to same ref genome location.BWA may detect that slightly different contexts are 
    *    actually the same, specially when max_flank_distance is too strict */
   genomic_context_merge_histograms_at_same_location (genome);
-//  print_debug_genomic_context_hist (genome);
+  //print_debug_genomic_context_hist (genome);
+  
   /* 5. add genome-wide information to each histogram (genome coverage and number of histograms), useful to summarise tracts */
   for (i = 0; i < genome->n_hist; i++) { genome->hist[i]->coverage = genome->coverage; genome->hist[i]->n_tracts = genome->n_hist; } 
 

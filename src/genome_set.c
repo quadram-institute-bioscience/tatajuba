@@ -192,7 +192,7 @@ update_g_tract_summary_from_context_histogram (g_tract_vector_t tract, int prev,
   this->example = tract->concat[prev]; 
   this->example->ref_counter++;
 
-  /* 3. table of values per genome  (modal length, entropy, etc) */
+  /* 3. table of values per genome (modal length, entropy, etc) allocated as 1D vector, with N_SUMMARY pointers */
   this->tab0 = (double*) biomcmc_malloc (this->n_genome_id * N_SUMMARY_TABLES * sizeof (double));
   for (i = 0; i < this->n_genome_id * N_SUMMARY_TABLES; i++) this->tab0[i] = 0.; 
   for (i = 0; i < N_SUMMARY_TABLES; i++) this->gentab[i] = this->tab0 + (this->n_genome_id * i); // pointers 
@@ -221,7 +221,7 @@ fill_g_tract_summary_tables (g_tract_t *this, context_histogram_t *concat, int p
   int i1, i2, j;
   double x1, x2, **gentab = this->gentab;
 
-  for (i2 = 0, i1 = prev; i1 < curr; i1++, i2++) {
+  for (i2 = 0, i1 = prev; i1 < curr; i1++, i2++) { // for every genome i1 that has this tract  (i2 is new index)
     x1 = (double) (concat[i1]->h->i[0].freq)/(double)(concat[i1]->integral); // modal frequency
     gentab[0][i2] = x1;
 
@@ -250,7 +250,7 @@ fill_g_tract_summary_tables (g_tract_t *this, context_histogram_t *concat, int p
       if (x1 < gentab[i1][i2]) x1 = gentab[i1][i2]; // x1 will be max and x2 will be min
       if (x2 > gentab[i1][i2]) x2 = gentab[i1][i2];
     }
-    if (x1 > DBL_MIN) this->reldiff[i1] = (x1 - x2)/x1;
+    if (x1 > DBL_MIN) this->reldiff[i1] = (x1 - x2)/*/x1*/;
     else this->reldiff[i1] = 0.;
   }
 }
