@@ -34,8 +34,9 @@ tatajubá.
 Here is an example of its installation, please modify to better suit your needs:
 
 ```[bash]
-/home/simpson/$ git clone --recursive git@github.com:quadram-institute-bioscience/tatajuba.git
+/home/simpson/$ git clone --recursive https://github.com/quadram-institute-bioscience/tatajuba.git
 /home/simpson/$ mkdir build && cd build
+/home/simpson/$ autoreconf  
 /home/simpson/$ ../tatajuba/configure --prefix=${HOME}/local
 /home/simpson/$ make; make install
 /home/simpson/$ make check  # battery of unit and integration tests for both tatajuba and biomcmc-lib
@@ -45,16 +46,18 @@ If `configure` complains about a missing library (usually `libcheck` or `zlib`),
 running `configure` again.
 If there is no `configure` file at all in the distribution, or it doesn't run, then you you need to install the
 `autotools` and rerun the configuration. 
-Both cases are shown below:
+Both cases are shown below, if you can install them system-wide:
 
 ```[bash]
-## install libraries possibly missing:
-/home/simpson/$ apt-get install zlib1g-dev check
-
-## 'bootstrap' the configuration files:
-/home/simpson/$ apt-get install automake autoconf libtool 
+## 'bootstrap' the configuration files (needed when cloning from github):
+/home/simpson/$ apt-get install autotools-dev autoconf automake libtool
 /home/simpson/$ (cd tatajuba && autoreconf)  ## the parentheses avoid entering the directory afterwards
+
+## install libraries possibly missing (only check is mandatory, but zlib and omp are strongly suggested)
+/home/simpson/$ apt-get install zlib1g-dev libomp-dev libbz2-dev check liblzma-dev
 ```
+The libraries rely on `pkg-config` to find their location: if your `pkg-config` was installed through conda then you'd
+better install the above libs via conda as well (or, you know, updating environmental variables etc)
 
 ## Model
 At the lowest level (C `struct`), the homopolymeric tracts are stored as the two flanking k-mers (called "context" here) and the base
