@@ -35,8 +35,8 @@ Here is an example of its installation, please modify to better suit your needs:
 
 ```[bash]
 /home/simpson/$ git clone --recursive https://github.com/quadram-institute-bioscience/tatajuba.git
+/home/simpson/$ cd tatajuba && ./autogen.sh 
 /home/simpson/$ mkdir build && cd build
-/home/simpson/$ autoreconf  
 /home/simpson/$ ../tatajuba/configure --prefix=${HOME}/local
 /home/simpson/$ make; make install
 /home/simpson/$ make check  # battery of unit and integration tests for both tatajuba and biomcmc-lib
@@ -44,8 +44,8 @@ Here is an example of its installation, please modify to better suit your needs:
 
 If `configure` complains about a missing library (usually `libcheck` or `zlib`), you'll need to install them before 
 running `configure` again.
-If there is no `configure` file at all in the distribution, or it doesn't run, then you you need to install the
-`autotools` and rerun the configuration. 
+If there is no `configure` file at all in the distribution, or it
+You will most likely need to install the `autotools` before running the configuration (`autogen.sh` depends on it). 
 Both cases are shown below, if you can install them system-wide:
 
 ```[bash]
