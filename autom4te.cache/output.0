@@ -14471,38 +14471,24 @@ fi
 	# Put the nasty error message in config.log where it belongs
 	echo "$CHECK_PKG_ERRORS" >&5
 
-	as_fn_error $? "Package requirements (check >= 0.9.10) were not met:
-
-$CHECK_PKG_ERRORS
-
-Consider adjusting the PKG_CONFIG_PATH environment variable if you
-installed software in a non-standard prefix.
-
-Alternatively, you may set the environment variables CHECK_CFLAGS
-and CHECK_LIBS to avoid the need to call pkg-config.
-See the pkg-config man page for more details." "$LINENO" 5        
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: library \`check\` NOT found, you won't be able to run the battery of tests" >&5
+$as_echo "$as_me: library \`check\` NOT found, you won't be able to run the battery of tests" >&6;}
+                  
 elif test $pkg_failed = untried; then
      	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-	{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "The pkg-config script could not be found or is too old.  Make sure it
-is in your PATH or set the PKG_CONFIG environment variable to the full
-path to pkg-config.
-
-Alternatively, you may set the environment variables CHECK_CFLAGS
-and CHECK_LIBS to avoid the need to call pkg-config.
-See the pkg-config man page for more details.
-
-To get pkg-config, see <http://pkg-config.freedesktop.org/>.
-See \`config.log' for more details" "$LINENO" 5; }        
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: library \`check\` NOT found, you won't be able to run the battery of tests" >&5
+$as_echo "$as_me: library \`check\` NOT found, you won't be able to run the battery of tests" >&6;}
+                  
 else
 	CHECK_CFLAGS=$pkg_cv_CHECK_CFLAGS
 	CHECK_LIBS=$pkg_cv_CHECK_LIBS
         { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-	
-fi # unit tests in for "make check"
+	# unit tests in for "make check"
+                  { $as_echo "$as_me:${as_lineno-$LINENO}: testing library \`check\` found" >&5
+$as_echo "$as_me: testing library \`check\` found" >&6;}
+fi
 
 pkg_failed=no
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ZLIB" >&5
@@ -14671,13 +14657,12 @@ $as_echo "@%:@define HAVE_BZIP2 0" >>confdefs.h
 fi
 
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for BZ2_bzlibVersion in -lbz2" >&5
-$as_echo_n "checking for BZ2_bzlibVersion in -lbz2... " >&6; }
-if ${ac_cv_lib_bz2_BZ2_bzlibVersion+:} false; then :
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing BZ2_bzlibVersion" >&5
+$as_echo_n "checking for library containing BZ2_bzlibVersion... " >&6; }
+if ${ac_cv_search_BZ2_bzlibVersion+:} false; then :
   $as_echo_n "(cached) " >&6
 else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lbz2  $LIBS"
+  ac_func_search_save_LIBS=$LIBS
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -14696,24 +14681,92 @@ return BZ2_bzlibVersion ();
   return 0;
 }
 _ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_bz2_BZ2_bzlibVersion=yes
-else
-  ac_cv_lib_bz2_BZ2_bzlibVersion=no
+for ac_lib in '' bz2; do
+  if test -z "$ac_lib"; then
+    ac_res="none required"
+  else
+    ac_res=-l$ac_lib
+    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
+  fi
+  if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_search_BZ2_bzlibVersion=$ac_res
 fi
 rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
+    conftest$ac_exeext
+  if ${ac_cv_search_BZ2_bzlibVersion+:} false; then :
+  break
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_bz2_BZ2_bzlibVersion" >&5
-$as_echo "$ac_cv_lib_bz2_BZ2_bzlibVersion" >&6; }
-if test "x$ac_cv_lib_bz2_BZ2_bzlibVersion" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-@%:@define HAVE_LIBBZ2 1
+done
+if ${ac_cv_search_BZ2_bzlibVersion+:} false; then :
+  
+else
+  ac_cv_search_BZ2_bzlibVersion=no
+fi
+rm conftest.$ac_ext
+LIBS=$ac_func_search_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_BZ2_bzlibVersion" >&5
+$as_echo "$ac_cv_search_BZ2_bzlibVersion" >&6; }
+ac_res=$ac_cv_search_BZ2_bzlibVersion
+if test "$ac_res" != no; then :
+  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
+  
+fi
+ #  unlike AC_CHECK_LIB, does not define HAVE_LIBBZ2 (thus our custom define above)
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing sqrt" >&5
+$as_echo_n "checking for library containing sqrt... " >&6; }
+if ${ac_cv_search_sqrt+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_func_search_save_LIBS=$LIBS
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char sqrt ();
+int
+main ()
+{
+return sqrt ();
+  ;
+  return 0;
+}
 _ACEOF
-
-  LIBS="-lbz2 $LIBS"
-
+for ac_lib in '' m; do
+  if test -z "$ac_lib"; then
+    ac_res="none required"
+  else
+    ac_res=-l$ac_lib
+    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
+  fi
+  if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_search_sqrt=$ac_res
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext
+  if ${ac_cv_search_sqrt+:} false; then :
+  break
+fi
+done
+if ${ac_cv_search_sqrt+:} false; then :
+  
+else
+  ac_cv_search_sqrt=no
+fi
+rm conftest.$ac_ext
+LIBS=$ac_func_search_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_sqrt" >&5
+$as_echo "$ac_cv_search_sqrt" >&6; }
+ac_res=$ac_cv_search_sqrt
+if test "$ac_res" != no; then :
+  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
+  
 fi
 
 
