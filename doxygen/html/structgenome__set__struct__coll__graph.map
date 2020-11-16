@@ -1,0 +1,7 @@
+<map id="genome_set_struct" name="genome_set_struct">
+<area shape="rect" id="node2" href="$structgenomic__context__list__struct.html" title="genomic_context_list\l_struct" alt="" coords="23,95,169,136"/>
+<area shape="rect" id="node3" href="$structtatajuba__options__t.html" title="tatajuba_options_t" alt="" coords="5,5,133,32"/>
+<area shape="rect" id="node4" href="$structcontext__histogram__struct.html" title="context_histogram_struct" alt="" coords="158,5,327,32"/>
+<area shape="rect" id="node5" href="$structg__tract__vector__struct.html" title="g_tract_vector_struct" alt="" coords="171,199,317,225"/>
+<area shape="rect" id="node6" href="$structg__tract__t.html" title="g_tract_t" alt="" coords="287,102,361,129"/>
+</map>

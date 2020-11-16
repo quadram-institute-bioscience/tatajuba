@@ -121,7 +121,6 @@ get_options_from_argtable (arg_parameters params)
     del_gff3_t (opt.gff);
     biomcmc_error ("No fasta provided and GFF3 file doesn't contain sequences\n You must provide a fasta file with "
                    "reference genome sequence(s) that match the GFF3 features, or you should find a GFF3 file with a '##FASTA' section at the end.\n"); 
- 
   }
 
   opt.paired_end = (params.paired->count? true: false);

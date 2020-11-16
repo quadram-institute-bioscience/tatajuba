@@ -1,0 +1,38 @@
+\begin{theindex}
+
+  \item {\+\_\+\+\_\+bmc2\+\_\+kstring\+\_\+t}, \hyperpage{3}
+
+  \indexspace
+
+  \item {arg\+\_\+parameters}, \hyperpage{3}
+
+  \indexspace
+
+  \item {cont\+\_\+hist\+\_\+ptr\+\_\+t}, \hyperpage{3}
+  \item {context\+\_\+histogram.\+h}, \hyperpage{10}
+  \item {context\+\_\+histogram\+\_\+struct}, \hyperpage{4}
+    \subitem {mode\+\_\+context\+\_\+count}, \hyperpage{4}
+
+  \indexspace
+
+  \item {g\+\_\+tract\+\_\+t}, \hyperpage{5}
+  \item {g\+\_\+tract\+\_\+vector\+\_\+struct}, \hyperpage{6}
+  \item {genome\+\_\+set.\+h}, \hyperpage{11}
+  \item {genome\+\_\+set\+\_\+struct}, \hyperpage{7}
+  \item {genomic\+\_\+context\+\_\+list\+\_\+struct}, \hyperpage{8}
+
+  \indexspace
+
+  \item {hopo\+\_\+counter\+\_\+struct}, \hyperpage{8}
+  \item {hopo\+\_\+element}, \hyperpage{9}
+
+  \indexspace
+
+  \item {mode\+\_\+context\+\_\+count}
+    \subitem {context\+\_\+histogram\+\_\+struct}, \hyperpage{4}
+
+  \indexspace
+
+  \item {tatajuba\+\_\+options\+\_\+t}, \hyperpage{9}
+
+\end{theindex}
