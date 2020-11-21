@@ -14,6 +14,7 @@ typedef struct
   struct arg_file *gff;
   struct arg_file *fna;
   struct arg_file *fastq;
+  struct arg_file *outdir;
   struct arg_end  *end;
   void **argtable;
 } arg_parameters;
@@ -21,6 +22,7 @@ typedef struct
 arg_parameters get_parameters_from_argv (int argc, char **argv);
 void del_arg_parameters (arg_parameters params);
 void print_usage (arg_parameters params, char *progname);
+char* string_for_outdir (const char *dname);
 
 arg_parameters
 get_parameters_from_argv (int argc, char **argv)
@@ -38,10 +40,11 @@ get_parameters_from_argv (int argc, char **argv)
     .gff     = arg_file1("g", "gff", "<genome.gff3|genome.gff3.gz>", "reference genome file in GFF3, preferencially with sequence"),
     .fna     = arg_file0(NULL, "fasta", "<genome.fna|genome.fna.gz>", "reference genome file in fasta format, if absent from GFF3"),
     .fastq   = arg_filen(NULL, NULL, "<fastq files>", 1, 0xffff, "fastq file with reads (weirdly, fasta also possible as long as contains all reads and not only contigs)"),
+    .outdir  = arg_file0("o", "outdir", NULL, "output directory, or 'random' for generating random dir name (default=current dir '.')"),
     .end     = arg_end(10) // max number of errors it can store (o.w. shows "too many errors")
   };
   void* argtable[] = {params.help, params.version, params.paired, params.kmer, params.minsize, params.minread, params.maxdist, params.leven, 
-    params.threads, params.gff, params.fna, params.fastq, params.end};
+    params.threads, params.gff, params.fna, params.fastq, params.outdir, params.end};
   params.argtable = argtable; 
   params.kmer->ival[0]    = 16; // default values must be before parsing
   params.minsize->ival[0] = 4; 
@@ -69,6 +72,7 @@ del_arg_parameters (arg_parameters params)
   if (params.gff)     free (params.gff);
   if (params.fna)     free (params.fna);
   if (params.fastq)   free (params.fastq);
+  if (params.outdir)  free (params.outdir);
   if (params.end)     free (params.end);
 }
 
@@ -110,6 +114,10 @@ get_options_from_argtable (arg_parameters params)
 {
   tatajuba_options_t opt;
 
+  opt.outdir = NULL;
+  if (params.outdir->count) opt.outdir = string_for_outdir (params.outdir->filename[0]);
+  else opt.outdir = string_for_outdir ("./");
+
   opt.gff = read_gff3_from_file (params.gff->filename[0]);
   if (params.fna->count) {
    size_t len = strlen (params.fna->filename[0]);
@@ -150,6 +158,7 @@ get_options_from_argtable (arg_parameters params)
   if (opt.max_distance_per_flank < 0) opt.max_distance_per_flank = 0; 
   if (opt.max_distance_per_flank > opt.kmer_size/2) opt.max_distance_per_flank = opt.kmer_size/2; 
   if (opt.levenshtein_distance < 0) opt.levenshtein_distance = opt.max_distance_per_flank + 1; 
+
   return opt;
 }
 
@@ -158,6 +167,46 @@ del_tatajuba_options (tatajuba_options_t opt)
 {
   if (opt.reference_fasta_filename) free(opt.reference_fasta_filename);
   del_gff3_t (opt.gff);
+  if (opt.outdir) free (opt.outdir); 
+  return;
+}
+
+char*
+string_for_outdir (const char *dname)
+{
+  char *s = NULL;
+  if (!dname) {
+    s = biomcmc_malloc (sizeof (char) * 3);
+    s[0] = '\0';
+    strcpy (s, "./");
+    s[2] = '\0';
+  }
+  else if ((strstr (dname, "random") != NULL) && (strlen (dname) < 8)) { // "randomiser" is fine 
+    uint32_t r3 = biomcmc_rng_get () & 0xffff;
+    uint32_t r2 = getpid  () & 0xff; // PID is usually small number
+    uint32_t r1 = getppid () & 0xff; // parent PID
+    s = biomcmc_malloc (sizeof (char) * 13);
+    s[0] = '\0';
+    sprintf (s, "out%x%x%x/", r1, r2, r3);
+    s[12] = '\0';
+  }
+  else {
+    size_t len = strlen (dname);
+    if (dname[len-1] != '/') len++; // added in any case
+    s = biomcmc_malloc (sizeof (char) * (len+1));
+    s[0] = '\0';
+    strcpy (s, dname);
+    s[len-1] = '/';
+    s[len]   = '\0';
+  }
+
+  if ((strstr (s, "./") != NULL) && (strlen (s) < 4)) return s; // no need to mkdir()
+
+  if (mkdir((const char *) s, 0777)) { // zero on success, negative if error
+    if (errno == EEXIST) biomcmc_warning ("File '%s' already exists; I'll assume it's a directory. Contents will be overwritten", s);
+    else biomcmc_error ("Problem trying to create directory '%s'; error description:\n%s", s, strerror (errno));
+  }
+  return s;
 }
 
 int
@@ -167,6 +216,7 @@ main (int argc, char **argv)
   genome_set_t g;
 
   biomcmc_get_time (time0);
+  biomcmc_random_number_init (0);
   arg_parameters params = get_parameters_from_argv (argc, argv);
   tatajuba_options_t opt = get_options_from_argtable (params);
   print_tatajuba_options (opt);
@@ -184,6 +234,7 @@ main (int argc, char **argv)
   del_genome_set (g);
   del_arg_parameters (params);
   del_tatajuba_options (opt);
+  biomcmc_random_number_finalize ();
   return EXIT_SUCCESS;
 }
 

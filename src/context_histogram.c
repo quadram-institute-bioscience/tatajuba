@@ -35,6 +35,7 @@ print_tatajuba_options (tatajuba_options_t opt)
   biomcmc_fprintf_colour (stderr, 0, 2, PACKAGE_STRING, "\n");
   fprintf (stderr, "Reference genome fasta file: %s\n", opt.reference_fasta_filename);
   fprintf (stderr, "Reference GFF3 file prefix:  %s\n", opt.gff->file_basename);
+  fprintf (stderr, "Output directory:            %s\n", opt.outdir);
   fprintf (stderr, "Max distance per flanking k-mer:  %6d\n", opt.max_distance_per_flank);
   fprintf (stderr, "Levenshtein distance for merging: %6d\n", opt.levenshtein_distance);
   fprintf (stderr, "Flanking k-mer size (context):    %6d\n", opt.kmer_size);
@@ -61,7 +62,7 @@ new_or_append_hopo_counter_from_file (hopo_counter hc, const char *filename, tat
     hc_local->name = (char*) biomcmc_malloc (sizeof (char) * (name_length + 1));
     strncpy (hc_local->name, filename, name_length);
     hc_local->name[name_length] = '\0';
-    hc_local-> opt = opt;
+    hc_local->opt = opt;
   }
   if (hc_local->idx) biomcmc_error ("This counter has been compared to another; cannot add more reads to it");
   while ((i = bmc2_kseq_read (seq)) >= 0) update_hopo_counter_from_seq (hc_local, seq->seq.s, seq->seq.l, opt.min_tract_size); 
@@ -265,6 +266,7 @@ new_context_histogram_from_hopo_elem (hopo_element he)
   ch->tmp_count[0]  = he.count;
   ch->tmp_length[0] = he.length;
   ch->gffeature = return_null_gff3_field(); // zero, but for struct
+  ch->tract_id = -1; // will be set only in tract->concat, and used to summarise context histograms
   return ch;
 }
 
@@ -370,7 +372,7 @@ finalise_genomic_context_hist (genomic_context_list_t genome)
   genome->ref_start = i;
   biomcmc_fprintf_colour (stderr, 0,2, genome->name, ": %6d out of %6d context+tracts were not found in reference\n", i, genome->n_hist);
   if (i > genome->n_hist/2) 
-    biomcmc_warning ("warning:", "%6d out of %6d (more than half) context+tracts were not found in reference for sample %s\n", i, genome->n_hist, genome->name);
+    biomcmc_warning ("%6d out of %6d (more than half) context+tracts were not found in reference for sample %s\n", i, genome->n_hist, genome->name);
 
   /* 4. merge context_histograms mapped to same ref genome location.BWA may detect that slightly different contexts are 
    *    actually the same, specially when max_flank_distance is too strict */

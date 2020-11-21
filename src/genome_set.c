@@ -3,12 +3,21 @@
  */
 
 #include "genome_set.h"
+
+const char *filename[] = {
+  "selected_traits_unknown.csv",
+  "selected_traits_known.csv"
+};
+
+enum {FNAME_SELECTED_TRAITS_UNKNOWN, FNAME_SELECTED_TRAITS_KNOWN}; 
   
 g_tract_vector_t new_g_tract_vector_from_genomic_context_list (genomic_context_list_t *genome, int n_genome);
 void del_g_tract_vector (g_tract_vector_t tract);
 void g_tract_vector_concatenate_tracts  (g_tract_vector_t tract, genomic_context_list_t *genome, int n_genome);
 void update_g_tract_summary_from_context_histogram (g_tract_vector_t tract, int prev, int curr, int lev_distance, int n_genome);
 void fill_g_tract_summary_tables (g_tract_t *this, context_histogram_t *concat, int prev, int curr);
+
+FILE * open_output_file (tatajuba_options_t opt, const char *file);
 
 genome_set_t
 new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_options_t opt) 
@@ -79,7 +88,7 @@ del_genome_set (genome_set_t g)
   for (i = g->n_genome - 1; i >= 0; i--) del_genomic_context_list (g->genome[i]);
   if (g->genome) free (g->genome);
   del_g_tract_vector (g->tract);
-  free (g);
+  free (g); 
 }
 
 g_tract_vector_t
@@ -93,14 +102,19 @@ new_g_tract_vector_from_genomic_context_list (genomic_context_list_t *genome, in
   tract->n_summary = tract->n_concat = 0;
   g_tract_vector_concatenate_tracts  (tract, genome, n_genome); // updates tract->concat
 
+  tract->concat[0]->tract_id = 0;
   for (prev=0, i = 1; i < tract->n_concat; i++) { // overlap() is true if tracts are the same, false if summary 
     is_same = context_histograms_overlap (tract->concat[i], tract->concat[prev], &lev_distance, genome[0]->opt);
     if (!is_same) {
       update_g_tract_summary_from_context_histogram (tract, prev, i, max_lev_distance, n_genome); // updates tract->summary
+      tract->concat[i]->tract_id = tract->concat[prev]->tract_id + 1;
       prev = i;
       max_lev_distance = 0;
     }
-    else if (max_lev_distance < lev_distance) max_lev_distance = lev_distance; // tracts are similar enough 
+    else {
+      if (max_lev_distance < lev_distance) max_lev_distance = lev_distance; // tracts are similar enough 
+      tract->concat[i]->tract_id = tract->concat[prev]->tract_id;
+    }
   }
   // call context() just to calculate levenshtein distance 
   context_histograms_overlap (tract->concat[i-1], tract->concat[prev], &lev_distance, genome[0]->opt);
@@ -262,6 +276,7 @@ print_selected_g_tract_vector (genome_set_t g)
   g_tract_t *t;
   gff3_fields gfi;
   bool to_print = false;
+  FILE *fout = NULL;
 
   cd_yes = (int*) biomcmc_malloc (g->tract->n_summary * sizeof (int));
   cd_no  = (int*) biomcmc_malloc (g->tract->n_summary * sizeof (int));
@@ -280,24 +295,29 @@ print_selected_g_tract_vector (genome_set_t g)
     }
   } // for i in summary
 
-  printf ("<<%d>>  tract    location    n_genomes    lev_distance | rd_frequency rd_avge_tract_length rd_coverage rd_context_covge rd_entropy\n", n_no); 
+  fout = open_output_file (g->genome[0]->opt, filename[FNAME_SELECTED_TRAITS_UNKNOWN]);
+  fprintf (fout, "<<%d>>  tract    location    n_genomes    lev_distance | rd_frequency rd_avge_tract_length rd_coverage rd_context_covge rd_entropy\n", n_no); 
   for (i = 0; i < n_no; i++) {
     t = g->tract->summary + cd_no[i];
-    printf ("%s\t%-8d %-5d %-5d | ", t->example->name, t->location, t->n_genome_id, t->lev_distance);
-    for (j = 0; j < N_SUMMARY_TABLES; j++) printf ("%8.6lf ", t->reldiff[j]);
-    printf ("\n");
-    // if (t->n_dist > 0) printf ("%12e %12e\n", t->d1[0], t->d2[0]);
-  }
-  printf ("<<%d>>  tract    location  [GFF3_info]  n_genomes    lev_distance | rd_frequency rd_avge_tract_length rd_coverage rd_context_covge rd_entropy\n", n_yes); 
-  for (i = 0; i < n_yes; i++) {
-    t = g->tract->summary + cd_yes[i]; 
-    gfi = t->example->gffeature;
-    printf ("%s\t%-8d [%s %s] %-5d %-5d | ", t->example->name, t->location, gfi.type.str, gfi.attr_id.str, t->n_genome_id, t->lev_distance);
-    for (j = 0; j < N_SUMMARY_TABLES; j++) printf ("%8.6lf ", t->reldiff[j]);
-    printf ("\n");
+    fprintf (fout, "%s\t%-8d %-5d %-5d | ", t->example->name, t->location, t->n_genome_id, t->lev_distance);
+    for (j = 0; j < N_SUMMARY_TABLES; j++) fprintf (fout, "%8.6lf ", t->reldiff[j]);
+    fprintf (fout, "\n");
     // if (t->n_dist > 0) printf ("%12e %12e\n", t->d1[0], t->d2[0]);
   }
 
+  fclose (fout); fout = NULL;
+  fout = open_output_file (g->genome[0]->opt, filename[FNAME_SELECTED_TRAITS_KNOWN]);
+  fprintf (fout, "<<%d>>  tract    location  [GFF3_info]  n_genomes    lev_distance | rd_frequency rd_avge_tract_length rd_coverage rd_context_covge rd_entropy\n", n_yes); 
+  for (i = 0; i < n_yes; i++) {
+    t = g->tract->summary + cd_yes[i]; 
+    gfi = t->example->gffeature;
+    fprintf (fout, "%s\t%-8d [%s %s] %-5d %-5d | ", t->example->name, t->location, gfi.type.str, gfi.attr_id.str, t->n_genome_id, t->lev_distance);
+    for (j = 0; j < N_SUMMARY_TABLES; j++) fprintf (fout, "%8.6lf ", t->reldiff[j]);
+    fprintf (fout, "\n");
+    // if (t->n_dist > 0) printf ("%12e %12e\n", t->d1[0], t->d2[0]);
+  }
+
+  fclose (fout); 
   if (cd_yes) free (cd_yes);
   if (cd_no)  free (cd_no);
 }
@@ -314,4 +334,17 @@ print_debug_g_tract_vector (genome_set_t g)
     for (j = 0; j < N_SUMMARY_TABLES; j++) printf ("%9.7e ", t->reldiff[j]);
     printf ("\n");
   }
+}
+
+FILE *
+open_output_file (tatajuba_options_t opt, const char *file)
+{
+  char *filename = NULL;
+  FILE *fout = NULL;
+  size_t len = strlen (opt.outdir) + strlen (file) + 1;
+  filename = biomcmc_malloc (sizeof (char) * len);
+  strcpy (filename, opt.outdir); strcat (filename, file); filename[len-1] = '\0';
+  fout = biomcmc_fopen (filename, "w");
+  if (filename) free (filename);
+  return fout;
 }
