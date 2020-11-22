@@ -18,8 +18,8 @@ void g_tract_vector_concatenate_tracts  (g_tract_vector_t tract, genomic_context
 void update_g_tract_summary_from_context_histogram (g_tract_vector_t tract, int prev, int curr, int lev_distance, int n_genome);
 void fill_g_tract_summary_tables (g_tract_s *this, context_histogram_t *concat, int prev, int curr);
 void create_tract_in_reference_structure (genome_set_t g);
-
 FILE * open_output_file (tatajuba_options_t opt, const char *file);
+int lookup_bruteforce (char_vector haystack, const char *needle);
 
 genome_set_t
 new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_options_t opt) 
@@ -404,6 +404,7 @@ create_tract_in_reference_structure (genome_set_t g)
   size_t len;
   for (tid = 0; tid < g->n_tract_ref; tid++) {
     i = lookup_hashtable (aln->taxlabel_hash, g->tract_ref[tid].contig_name);
+    if (i < 0) i = lookup_bruteforce (aln->taxlabel, g->tract_ref[tid].contig_name);
     if (i < 0) biomcmc_error ("Contig/genome sequence %s not found in fasta file", g->tract_ref[tid].contig_name);
     s = aln->character->string[i] + g->tract_ref[tid].contig_location;
     len = g->tract_ref[tid].max_length + 2 * g->genome[0]->opt.kmer_size;
@@ -436,4 +437,16 @@ print_tract_list (genome_set_t g)
   fclose (fout); fout = NULL;
 }
 
+int
+lookup_bruteforce (char_vector haystack, const char *needle)
+{
+  int i, j, minlen;
+  size_t n_len = strlen (needle);
+  for (i = 0; i < haystack->nstrings; i++) {
+    minlen = BIOMCMC_MIN(n_len, haystack->nchars[i]);
+    for (j = 0; (j < minlen) && (needle[j] == haystack->string[i][j]); j++);
+    if (j == minlen) return i;
+  }
+  return -1;
+}
 
