@@ -10,6 +10,7 @@
 #define _context_histogram_h_
 
 #include <kalign.h> // biomcmc is included here
+#include <biomcmc.h>
 #include <wrapper_bwa.h>
 
 extern uint8_t dna_in_2_bits[256][2];

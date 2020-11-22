@@ -27,8 +27,9 @@ typedef struct
 
 typedef struct
 {
-  int tract_length;
-  char *contig_name; // just a pointer to char_vector
+  int tract_length, contig_location, max_length, first_idx; // first_idx is idx in concat[]
+  char *contig_name; // contig_name is just a pointer to char_vector
+  char *seq;
 } tract_in_reference_s;
 
 struct g_tract_vector_struct
@@ -53,5 +54,6 @@ genome_set_t new_genome_set_from_files (const char **filenames, int n_filenames,
 void del_genome_set (genome_set_t g);
 void print_selected_g_tract_vector (genome_set_t g);
 void print_debug_g_tract_vector (genome_set_t g);
+void print_tract_list (genome_set_t g);
 
 #endif

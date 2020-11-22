@@ -6,16 +6,18 @@
 
 const char *filename[] = {
   "selected_traits_unknown.csv",
-  "selected_traits_annotated.csv"
+  "selected_traits_annotated.csv",
+  "tract_list.csv"
 };
 
-enum {FNAME_SELECTED_TRAITS_UNKNOWN, FNAME_SELECTED_TRAITS_ANNOTATED}; 
+enum {FNAME_SELECTED_TRAITS_UNKNOWN, FNAME_SELECTED_TRAITS_ANNOTATED, FNAME_TRACT_LIST}; 
   
 g_tract_vector_t new_g_tract_vector_from_genomic_context_list (genomic_context_list_t *genome, int n_genome);
 void del_g_tract_vector (g_tract_vector_t tract);
 void g_tract_vector_concatenate_tracts  (g_tract_vector_t tract, genomic_context_list_t *genome, int n_genome);
 void update_g_tract_summary_from_context_histogram (g_tract_vector_t tract, int prev, int curr, int lev_distance, int n_genome);
 void fill_g_tract_summary_tables (g_tract_s *this, context_histogram_t *concat, int prev, int curr);
+void create_tract_in_reference_structure (genome_set_t g);
 
 FILE * open_output_file (tatajuba_options_t opt, const char *file);
 
@@ -93,7 +95,7 @@ del_genome_set (genome_set_t g)
   for (i = g->n_genome - 1; i >= 0; i--) del_genomic_context_list (g->genome[i]);
   if (g->genome) free (g->genome);
   if (g->tract_ref) {
-    //for (i = g->n_tract_ref-1; i >= 0; i--) if (g->tract_ref[i].ref_contig_name) free (g->tract_ref[i].ref_contig_name); 
+    for (i = g->n_tract_ref-1; i >= 0; i--) if (g->tract_ref[i].seq) free (g->tract_ref[i].seq); 
     free (g->tract_ref);
   }
   del_char_vector (g->ref_names);
@@ -304,9 +306,10 @@ print_selected_g_tract_vector (genome_set_t g)
       else cd_no[n_no++] = i;
     }
   } // for i in summary
+  printf ("From %d tracts, %d interesting ones are annotated and %d interesting ones are not annotated\n", g->tract->n_summary, n_yes, n_no);
 
   fout = open_output_file (g->genome[0]->opt, filename[FNAME_SELECTED_TRAITS_UNKNOWN]);
-  fprintf (fout, "<<%d>>  tract    location    n_genomes    lev_distance | rd_frequency rd_avge_tract_length rd_coverage rd_context_covge rd_entropy\n", n_no); 
+  fprintf (fout, "tract    location    n_genomes    lev_distance | rd_frequency rd_avge_tract_length rd_coverage rd_context_covge rd_entropy\n"); 
   for (i = 0; i < n_no; i++) {
     t = g->tract->summary + cd_no[i];
     fprintf (fout, "%s\t%-8d %-5d %-5d | ", t->example->name, t->location, t->n_genome_id, t->lev_distance);
@@ -316,8 +319,8 @@ print_selected_g_tract_vector (genome_set_t g)
   }
 
   fclose (fout); fout = NULL;
-  fout = open_output_file (g->genome[0]->opt, filename[FNAME_SELECTED_TRAITS_KNOWN]);
-  fprintf (fout, "<<%d>>  tract    location  [GFF3_info]  n_genomes    lev_distance | rd_frequency rd_avge_tract_length rd_coverage rd_context_covge rd_entropy\n", n_yes); 
+  fout = open_output_file (g->genome[0]->opt, filename[FNAME_SELECTED_TRAITS_ANNOTATED]);
+  fprintf (fout, "tract    location  [GFF3_info]  n_genomes    lev_distance | rd_frequency rd_avge_tract_length rd_coverage rd_context_covge rd_entropy\n"); 
   for (i = 0; i < n_yes; i++) {
     t = g->tract->summary + cd_yes[i]; 
     gfi = t->example->gffeature;
@@ -362,17 +365,75 @@ open_output_file (tatajuba_options_t opt, const char *file)
 void
 create_tract_in_reference_structure (genome_set_t g)
 {
-  int i;
+  int i, tid;
+  /* 1. create a list of reference genome names in same order as bwa's index */
   bwase_match_t match = new_bwase_match_t(g->genome[0]->opt.reference_fasta_filename); // obtain ref seq names
+  g->ref_names = new_char_vector (match->bns->n_seqs);
+  for (i = 0; i < match->bns->n_seqs; i++) char_vector_add_string (g->ref_names, match->bns->anns[i].name);
+  del_bwase_match_t (match);
 
+  /* 2. initialise tract_ref[] with reference genomes tract lengths etc. */
   g->n_tract_ref = g->tract->concat[g->tract->n_concat-1]->tract_id;
   g->tract_ref = (tract_in_reference_s*) biomcmc_malloc (g->n_tract_ref * sizeof (tract_in_reference_s));
   for (i = 0; i < g->n_tract_ref; i++) { 
     g->tract_ref[i].tract_length = -1;
-    g->tract_ref[i].ref_contig_name = NULL;
+    g->tract_ref[i].contig_name = NULL;
+    g->tract_ref[i].seq = NULL;
   }
 
+  /* 3. store information from context_histogram concat[] which will be used in copying reference sequence segments */
   for (i = 0; i < g->tract->n_concat; i++) {
-    g->tract->concat[i]
+    tid = g->tract->concat[i]->tract_id;
+    if (!g->tract_ref[tid].contig_name) { // first time tid is met
+      g->tract_ref[tid].contig_name = g->ref_names->string[ g->tract->concat[i]->loc2d[0] ];
+      g->tract_ref[tid].contig_location = g->tract->concat[i]->loc2d[1];
+      g->tract_ref[tid].max_length = g->tract->concat[i]->mode_context_length;
+      g->tract_ref[tid].first_idx = i; 
+    }
+    else { // tid is present more than once: sequence in reference will be longest 
+      if (g->tract_ref[tid].contig_location > g->tract->concat[i]->loc2d[1]) 
+        g->tract_ref[tid].contig_location = g->tract->concat[i]->loc2d[1]; // leftmost location 
+      if (g->tract_ref[tid].max_length < g->tract->concat[i]->mode_context_length) 
+        g->tract_ref[tid].max_length = g->tract->concat[i]->mode_context_length;
+    }
   }
+
+  /* 4. read fasta file with references and copy tract info from it */
+  alignment aln = read_fasta_alignment_from_file (g->genome[0]->opt.reference_fasta_filename); 
+  char *s;
+  size_t len;
+  for (tid = 0; tid < g->n_tract_ref; tid++) {
+    i = lookup_hashtable (aln->taxlabel_hash, g->tract_ref[tid].contig_name);
+    if (i < 0) biomcmc_error ("Contig/genome sequence %s not found in fasta file", g->tract_ref[tid].contig_name);
+    s = aln->character->string[i] + g->tract_ref[tid].contig_location;
+    len = g->tract_ref[tid].max_length + 2 * g->genome[0]->opt.kmer_size;
+    g->tract_ref[tid].seq = (char*) biomcmc_malloc (sizeof (char) * len + 1);
+    strncpy (g->tract_ref[tid].seq, s, len);
+    g->tract_ref[tid].seq[len] = '\0';
+  }
+  del_alignment (aln);
 }
+
+void
+print_tract_list (genome_set_t g)
+{
+  FILE *fout = NULL;
+  int tid;
+  context_histogram_t hist;
+  fout = open_output_file (g->genome[0]->opt, filename[FNAME_TRACT_LIST]);
+
+  for (tid = 0; tid < g->n_tract_ref; tid++) {
+    fprintf (fout, "tid_%06d\t", tid); 
+    fprintf (fout, "%s\t", g->tract_ref[tid].contig_name); 
+    hist = g->tract->concat[ g->tract_ref[tid].first_idx ]; 
+    if (gff3_fields_is_valid (hist->gffeature))
+      fprintf (fout, "%s\t%s\t", hist->gffeature.type.str, hist->gffeature.attr_id.str);
+    else
+      fprintf (fout, "nc\tunnanotated\t");
+
+    fprintf (fout, "\n");
+  }
+  fclose (fout); fout = NULL;
+}
+
+

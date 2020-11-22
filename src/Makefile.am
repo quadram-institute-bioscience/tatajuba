@@ -4,7 +4,7 @@ LDADD = $(top_builddir)/kalign/libkalign.la $(top_builddir)/submodules/bwa/libbw
 				$(GTKDEPS_LIBS) @ZLIB_LIBS@ @LZMA_LIBS@ $(AM_LDFLAGS)
 
 bin_PROGRAMS = tatajuba 
-tatajuba_SOURCES = main.c kseq.h genome_set.c genome_set.h  context_histogram.c context_histogram.h
+tatajuba_SOURCES = main.c kseq.h genome_set.c genome_set.h context_histogram.c context_histogram.h
 tatajuba_LDADD = $(LDADD)
 
 BUILT_SOURCES =  histogram_comparison.c
