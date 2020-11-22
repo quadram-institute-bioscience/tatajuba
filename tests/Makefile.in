@@ -109,8 +109,11 @@ CONFIG_CLEAN_VPATH_FILES =
 check_bwa_SOURCES = check_bwa.c
 check_bwa_OBJECTS = check_bwa.$(OBJEXT)
 check_bwa_LDADD = $(LDADD)
-check_bwa_DEPENDENCIES = ../kalign/libkalign.la ../bwa/libbwa.la \
-	../biomcmc-lib/lib/libbiomcmc_static.la
+am__DEPENDENCIES_1 =
+check_bwa_DEPENDENCIES = $(top_builddir)/kalign/libkalign.la \
+	$(top_builddir)/submodules/bwa/libbwa.la \
+	$(top_builddir)/@BIOMCMCLIB@/lib/libbiomcmc_static.la \
+	$(am__DEPENDENCIES_1)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -118,13 +121,17 @@ am__v_lt_1 =
 debug_bwa_SOURCES = debug_bwa.c
 debug_bwa_OBJECTS = debug_bwa.$(OBJEXT)
 debug_bwa_LDADD = $(LDADD)
-debug_bwa_DEPENDENCIES = ../kalign/libkalign.la ../bwa/libbwa.la \
-	../biomcmc-lib/lib/libbiomcmc_static.la
+debug_bwa_DEPENDENCIES = $(top_builddir)/kalign/libkalign.la \
+	$(top_builddir)/submodules/bwa/libbwa.la \
+	$(top_builddir)/@BIOMCMCLIB@/lib/libbiomcmc_static.la \
+	$(am__DEPENDENCIES_1)
 debug_bwamem_SOURCES = debug_bwamem.c
 debug_bwamem_OBJECTS = debug_bwamem.$(OBJEXT)
 debug_bwamem_LDADD = $(LDADD)
-debug_bwamem_DEPENDENCIES = ../kalign/libkalign.la ../bwa/libbwa.la \
-	../biomcmc-lib/lib/libbiomcmc_static.la
+debug_bwamem_DEPENDENCIES = $(top_builddir)/kalign/libkalign.la \
+	$(top_builddir)/submodules/bwa/libbwa.la \
+	$(top_builddir)/@BIOMCMCLIB@/lib/libbiomcmc_static.la \
+	$(am__DEPENDENCIES_1)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -527,10 +534,12 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_CPPFLAGS = $(GTKDEPS_CFLAGS) -I$(srcdir)/../src -I$(srcdir)/../kalign -I$(srcdir)/../bwa \
-							-I$(srcdir)/../@BIOMCMCLIB@/lib @OPENMP_CPPFLAGS@  @ZLIB_CFLAGS@ @LZMA_CFLAGS@ -DTEST_FILE_DIR='"$(srcdir)/files/"'
+AM_CPPFLAGS = $(GTKDEPS_CFLAGS) -I$(top_srcdir)/src  -I$(top_srcdir)/kalign -I$(top_srcdir)/submodules/bwa -I$(top_srcdir)/@BIOMCMCLIB@/lib \
+							@OPENMP_CPPFLAGS@  @ZLIB_CFLAGS@ @LZMA_CFLAGS@ -DTEST_FILE_DIR='"$(srcdir)/files/"'
 
-LDADD = ../kalign/libkalign.la ../bwa/libbwa.la ../biomcmc-lib/lib/libbiomcmc_static.la 
+LDADD = $(top_builddir)/kalign/libkalign.la $(top_builddir)/submodules/bwa/libbwa.la $(top_builddir)/@BIOMCMCLIB@/lib/libbiomcmc_static.la \
+				$(GTKDEPS_LIBS) @CHECK_LIBS@  @ZLIB_LIBS@ @LZMA_LIBS@ $(AM_LDFLAGS)
+
 EXTRA_DIST = files # directory with fasta etc files (accessed with #define TEST_FILE_DIR above)
 # list of test programs (duplicate, since we want all to be compiled only with 'make check'):
 TESTS = $(check_PROGRAMS)           
@@ -1013,7 +1022,6 @@ uninstall-am:
 
 .PRECIOUS: Makefile
 
-				$(GTKDEPS_LIBS) @CHECK_LIBS@  @ZLIB_LIBS@ @LZMA_LIBS@ $(AM_LDFLAGS)
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

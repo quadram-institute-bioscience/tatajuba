@@ -23,13 +23,19 @@ typedef struct
   double *gentab[N_SUMMARY_TABLES], reldiff[N_SUMMARY_TABLES]; // reldiff are relative differences of extreme values from genome table
   int n_genome_total, n_genome_id, *genome_id;
   context_histogram_t example;
-} g_tract_t;
+} g_tract_s;
+
+typedef struct
+{
+  int tract_length;
+} tract_in_reference_s;
 
 struct g_tract_vector_struct
 {
-  g_tract_t *summary; // summary of tracts over genomes
+  g_tract_s *summary; // summary of tracts over genomes
   context_histogram_t *concat; // tracts pooled over genomes, which can be found in reference
-  int n_summary, n_concat;
+  tract_in_reference_t *ref;
+  int n_summary, n_concat, n_trait;
 };
 
 struct genome_set_struct 

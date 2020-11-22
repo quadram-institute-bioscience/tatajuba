@@ -436,6 +436,7 @@ genomic_context_find_reference_location (genomic_context_list_t genome)
   char_vector readname, readseqs;
   char *read;
   int i, j, n_features;
+  uint32_t *refseq_offset;
   gff3_fields *features;
   bwase_match_t match;
   bwase_options_t bopt = new_bwase_options_t (0);
@@ -453,9 +454,17 @@ genomic_context_find_reference_location (genomic_context_list_t genome)
   del_char_vector(readname);
   del_char_vector(readseqs);
 
+  /* use info from BWA's index for each reference sequence (contig/genome) */
+  refseq_offset = (uint32_t*) biomcmc_malloc (sizeof (uint32_t) * match->bns->n_seqs);
+  refseq_offset[0] = 0; // equiv to concatenating ref contigs (one-dim "location")
+  for (i = 1; i < match->bns->n_seqs; i++) refseq_offset[i] = refseq_offset[i-1] + match->bns->anns[i-1].len;
+
   for (i = 0; i < match->n_m; i++) { // TODO: we assume only one bwa hit per histogram
-    genome->hist[match->m[i].query_id]->location = match->m[i].position;
-    features = find_gff3_fields_within_position_all_genomes (genome->opt.gff, match->m[i].position, &n_features);
+    genome->hist[match->m[i].query_id]->loc2d[0] = match->m[i].ref_id;   // genome/contig ID 
+    genome->hist[match->m[i].query_id]->loc2d[1] = match->m[i].position; // location within genome/contig
+    genome->hist[match->m[i].query_id]->location = refseq_offset[match->m[i].ref_id] + match->m[i].position; // one-dimensional (flat) index 
+    // find_gff3_fields_within_position (gff struct, name of reference genome exactly as in gff, position within ref genome, number of features found)
+    features = find_gff3_fields_within_position (genome->opt.gff, match->bns->anns[match->m[i].ref_id].name, match->m[i].position, &n_features);
     for (j = 0; j < n_features; j++) if (features[j].type.id != GFF3_TYPE_region) {
       genome->hist[match->m[i].query_id]->gffeature = features[j]; // store any feature (may be a gene, cds, ...); however ... 
       //printf ("DBG::%6d %6d | (%6d-%6d:%6d)  %s [%d]\n", i, j, features[j].start, features[j].end, match->m[i].position, features[j].attr_id.str, features[j].type.id);
@@ -464,6 +473,7 @@ genomic_context_find_reference_location (genomic_context_list_t genome)
     if (features) free (features); 
   }
   del_bwase_match_t (match);
+  if (refseq_offset) free (refseq_offset);
 }
 
 void

@@ -6,16 +6,16 @@
 
 const char *filename[] = {
   "selected_traits_unknown.csv",
-  "selected_traits_known.csv"
+  "selected_traits_annotated.csv"
 };
 
-enum {FNAME_SELECTED_TRAITS_UNKNOWN, FNAME_SELECTED_TRAITS_KNOWN}; 
+enum {FNAME_SELECTED_TRAITS_UNKNOWN, FNAME_SELECTED_TRAITS_ANNOTATED}; 
   
 g_tract_vector_t new_g_tract_vector_from_genomic_context_list (genomic_context_list_t *genome, int n_genome);
 void del_g_tract_vector (g_tract_vector_t tract);
 void g_tract_vector_concatenate_tracts  (g_tract_vector_t tract, genomic_context_list_t *genome, int n_genome);
 void update_g_tract_summary_from_context_histogram (g_tract_vector_t tract, int prev, int curr, int lev_distance, int n_genome);
-void fill_g_tract_summary_tables (g_tract_t *this, context_histogram_t *concat, int prev, int curr);
+void fill_g_tract_summary_tables (g_tract_s *this, context_histogram_t *concat, int prev, int curr);
 
 FILE * open_output_file (tatajuba_options_t opt, const char *file);
 
@@ -121,6 +121,8 @@ new_g_tract_vector_from_genomic_context_list (genomic_context_list_t *genome, in
   if (max_lev_distance < lev_distance) max_lev_distance = lev_distance; // tracts are similar enough 
   update_g_tract_summary_from_context_histogram (tract, prev, i-1, max_lev_distance, n_genome); //  last block i == tract->n_concat
 
+  create_tract_in_reference_structure (tract, genome[0]->opt);
+
   return tract;
 }
 
@@ -188,8 +190,8 @@ update_g_tract_summary_from_context_histogram (g_tract_vector_t tract, int prev,
   double result[2];
 
   tract->n_summary++;
-  tract->summary = (g_tract_t*) biomcmc_realloc ((g_tract_t*) tract->summary, tract->n_summary * sizeof (g_tract_t));
-  g_tract_t *this = tract->summary + (tract->n_summary-1);
+  tract->summary = (g_tract_s*) biomcmc_realloc ((g_tract_s*) tract->summary, tract->n_summary * sizeof (g_tract_s));
+  g_tract_s *this = tract->summary + (tract->n_summary-1);
 
   this->location = tract->concat[prev]->location;
   this->d1 = NULL;
@@ -230,7 +232,7 @@ update_g_tract_summary_from_context_histogram (g_tract_vector_t tract, int prev,
 }
 
 void  
-fill_g_tract_summary_tables (g_tract_t *this, context_histogram_t *concat, int prev, int curr)
+fill_g_tract_summary_tables (g_tract_s *this, context_histogram_t *concat, int prev, int curr)
 {
   int i1, i2, j;
   double x1, x2, **gentab = this->gentab;
@@ -273,7 +275,7 @@ void
 print_selected_g_tract_vector (genome_set_t g)
 {
   int i, j, *cd_yes, *cd_no, n_yes=0, n_no=0;
-  g_tract_t *t;
+  g_tract_s *t;
   gff3_fields gfi;
   bool to_print = false;
   FILE *fout = NULL;
@@ -326,7 +328,7 @@ void
 print_debug_g_tract_vector (genome_set_t g)
 {
   int i,j;
-  g_tract_t *t;
+  g_tract_s *t;
   printf ("tract location n_genomes lev_distance | relative_differences \n"); 
   for (i = 0; i < g->tract->n_summary; i++) { 
     t = g->tract->summary + i;
@@ -347,4 +349,10 @@ open_output_file (tatajuba_options_t opt, const char *file)
   fout = biomcmc_fopen (filename, "w");
   if (filename) free (filename);
   return fout;
+}
+
+void
+create_tract_in_reference_structure (g_tract_vector_t tract, tatajuba_options_t opt)
+{
+
 }
