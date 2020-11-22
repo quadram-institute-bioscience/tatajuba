@@ -227,7 +227,8 @@ main (int argc, char **argv)
 
   biomcmc_fprintf_colour (stderr, 0,2, "Internal (threaded) timer::", " %15lf secs to read and generate initial histograms\n", g->secs[0]);
   biomcmc_fprintf_colour (stderr, 0,2, "Internal (threaded) timer::", " %15lf secs to merge and map histograms\n", g->secs[1]);
-  biomcmc_fprintf_colour (stderr, 0,2, "Internal (threaded) timer::", " %15lf secs to compare across genomes\n", g->secs[2]);
+  biomcmc_fprintf_colour (stderr, 0,2, "Internal (threaded) timer::", " %15lf secs to compare across sample genomes\n", g->secs[2]);
+  biomcmc_fprintf_colour (stderr, 0,2, "Internal (threaded) timer::", " %15lf secs to compare with reference\n", g->secs[3]);
   biomcmc_fprintf_colour (stderr, 0,2, "Non-threaded timing      ::", " %15lf secs\n\n", biomcmc_update_elapsed_time (time0)); 
   biomcmc_fprintf_fortune (stderr);
 

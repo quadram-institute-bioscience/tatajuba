@@ -28,8 +28,10 @@ new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_opt
   genome_set_t g = (genome_set_t) biomcmc_malloc (sizeof (struct genome_set_struct));
   g->n_genome = n_filenames;
   g->ref_counter = 1;
+  g->ref_names = NULL;
+  g->tract_ref = NULL; // set by create_tract_by_ref()
   double secs[2];
-  g->secs[0] = g->secs[1] = g->secs[2] = 0.;
+  g->secs[0] = g->secs[1] =  g->secs[2] = g->secs[3] = 0.;
   secs[0] = secs[1] = 0.;
 
   if (opt.paired_end) g->n_genome /= 2;
@@ -74,7 +76,10 @@ new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_opt
   for (i = 0; i < g->n_genome; i++) for (j = 0; j < g->genome[i]->n_hist; j++) g->genome[i]->hist[j]->index = i;
   /* generate comparisons between genomes */
   g->tract = new_g_tract_vector_from_genomic_context_list (g->genome, g->n_genome);
-  biomcmc_get_time (time1); g->secs[2] += biomcmc_elapsed_time (time1, time0); time0[0] = time1[0]; time0[1] = time1[1];
+  biomcmc_get_time (time1); g->secs[2] = biomcmc_elapsed_time (time1, time0); time0[0] = time1[0]; time0[1] = time1[1];
+
+  create_tract_in_reference_structure (g);
+  biomcmc_get_time (time1); g->secs[3] = biomcmc_elapsed_time (time1, time0); time0[0] = time1[0]; time0[1] = time1[1];
 
   return g;
 }
@@ -87,6 +92,11 @@ del_genome_set (genome_set_t g)
   if (--g->ref_counter) return;
   for (i = g->n_genome - 1; i >= 0; i--) del_genomic_context_list (g->genome[i]);
   if (g->genome) free (g->genome);
+  if (g->tract_ref) {
+    //for (i = g->n_tract_ref-1; i >= 0; i--) if (g->tract_ref[i].ref_contig_name) free (g->tract_ref[i].ref_contig_name); 
+    free (g->tract_ref);
+  }
+  del_char_vector (g->ref_names);
   del_g_tract_vector (g->tract);
   free (g); 
 }
@@ -120,8 +130,6 @@ new_g_tract_vector_from_genomic_context_list (genomic_context_list_t *genome, in
   context_histograms_overlap (tract->concat[i-1], tract->concat[prev], &lev_distance, genome[0]->opt);
   if (max_lev_distance < lev_distance) max_lev_distance = lev_distance; // tracts are similar enough 
   update_g_tract_summary_from_context_histogram (tract, prev, i-1, max_lev_distance, n_genome); //  last block i == tract->n_concat
-
-  create_tract_in_reference_structure (tract, genome[0]->opt);
 
   return tract;
 }
@@ -352,7 +360,19 @@ open_output_file (tatajuba_options_t opt, const char *file)
 }
 
 void
-create_tract_in_reference_structure (g_tract_vector_t tract, tatajuba_options_t opt)
+create_tract_in_reference_structure (genome_set_t g)
 {
+  int i;
+  bwase_match_t match = new_bwase_match_t(g->genome[0]->opt.reference_fasta_filename); // obtain ref seq names
 
+  g->n_tract_ref = g->tract->concat[g->tract->n_concat-1]->tract_id;
+  g->tract_ref = (tract_in_reference_s*) biomcmc_malloc (g->n_tract_ref * sizeof (tract_in_reference_s));
+  for (i = 0; i < g->n_tract_ref; i++) { 
+    g->tract_ref[i].tract_length = -1;
+    g->tract_ref[i].ref_contig_name = NULL;
+  }
+
+  for (i = 0; i < g->tract->n_concat; i++) {
+    g->tract->concat[i]
+  }
 }

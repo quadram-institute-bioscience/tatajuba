@@ -28,22 +28,24 @@ typedef struct
 typedef struct
 {
   int tract_length;
+  char *contig_name; // just a pointer to char_vector
 } tract_in_reference_s;
 
 struct g_tract_vector_struct
 {
   g_tract_s *summary; // summary of tracts over genomes
   context_histogram_t *concat; // tracts pooled over genomes, which can be found in reference
-  tract_in_reference_t *ref;
-  int n_summary, n_concat, n_trait;
+  int n_summary, n_concat;
 };
 
 struct genome_set_struct 
 {
   genomic_context_list_t *genome;
   g_tract_vector_t tract;
-  int n_genome;
-  double secs[3];
+  tract_in_reference_s *tract_ref; /*! \brief all tracts found in reference (idx mapped to concat[]->tract_id) with extra reference info */
+  char_vector ref_names; 
+  int n_genome, n_tract_ref;
+  double secs[4];
   int ref_counter;
 };
 
