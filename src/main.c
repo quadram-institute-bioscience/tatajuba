@@ -1,4 +1,7 @@
+#ifndef _tatajuba_main_c_
+#define _tatajuba_main_c_
 #include "genome_set.h"
+#endif
 
 typedef struct
 {

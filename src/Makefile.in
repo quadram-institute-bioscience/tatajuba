@@ -109,11 +109,10 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_tatajuba_OBJECTS = main.$(OBJEXT) genome_set.$(OBJEXT) \
-	context_histogram.$(OBJEXT)
+	context_histogram.$(OBJEXT) histogram_comparison.$(OBJEXT)
 tatajuba_OBJECTS = $(am_tatajuba_OBJECTS)
 am__DEPENDENCIES_1 =
-am__DEPENDENCIES_2 = $(top_builddir)/kalign/libkalign.la \
-	$(top_builddir)/submodules/bwa/libbwa.la \
+am__DEPENDENCIES_2 = $(top_builddir)/submodules/bwa/libbwa.la \
 	$(top_builddir)/@BIOMCMCLIB@/lib/libbiomcmc_static.la \
 	$(am__DEPENDENCIES_1)
 tatajuba_DEPENDENCIES = $(am__DEPENDENCIES_2)
@@ -137,7 +136,8 @@ DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/biomcmc-lib/lib
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/context_histogram.Po \
-	./$(DEPDIR)/genome_set.Po ./$(DEPDIR)/main.Po
+	./$(DEPDIR)/genome_set.Po ./$(DEPDIR)/histogram_comparison.Po \
+	./$(DEPDIR)/main.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -320,15 +320,13 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_CPPFLAGS = $(GTKDEPS_CFLAGS) -I$(top_srcdir)/kalign -I$(top_srcdir)/submodules/bwa -I$(top_srcdir)/@BIOMCMCLIB@/lib @OPENMP_CPPFLAGS@ @ZLIB_CFLAGS@ @LZMA_CFLAGS@  
-LDADD = $(top_builddir)/kalign/libkalign.la $(top_builddir)/submodules/bwa/libbwa.la $(top_builddir)/@BIOMCMCLIB@/lib/libbiomcmc_static.la \
+AM_CPPFLAGS = $(GTKDEPS_CFLAGS) -I$(top_srcdir)/submodules/bwa -I$(top_srcdir)/@BIOMCMCLIB@/lib @OPENMP_CPPFLAGS@ @ZLIB_CFLAGS@ @LZMA_CFLAGS@  
+LDADD = $(top_builddir)/submodules/bwa/libbwa.la $(top_builddir)/@BIOMCMCLIB@/lib/libbiomcmc_static.la \
 				$(GTKDEPS_LIBS) @ZLIB_LIBS@ @LZMA_LIBS@ $(AM_LDFLAGS)
 
-tatajuba_SOURCES = main.c kseq.h genome_set.c genome_set.h  context_histogram.c context_histogram.h
+tatajuba_SOURCES = main.c kseq.h genome_set.c genome_set.h context_histogram.c context_histogram.h histogram_comparison.c histogram_comparison.h
 tatajuba_LDADD = $(LDADD)
-BUILT_SOURCES = histogram_comparison.c
-all: $(BUILT_SOURCES)
-	$(MAKE) $(AM_MAKEFLAGS) all-am
+all: all-am
 
 .SUFFIXES:
 .SUFFIXES: .c .lo .o .obj
@@ -423,6 +421,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/context_histogram.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/genome_set.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/histogram_comparison.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/main.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
@@ -544,15 +543,13 @@ distdir-am: $(DISTFILES)
 	  fi; \
 	done
 check-am: all-am
-check: $(BUILT_SOURCES)
-	$(MAKE) $(AM_MAKEFLAGS) check-am
+check: check-am
 all-am: Makefile $(PROGRAMS)
 installdirs:
 	for dir in "$(DESTDIR)$(bindir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
-install: $(BUILT_SOURCES)
-	$(MAKE) $(AM_MAKEFLAGS) install-am
+install: install-am
 install-exec: install-exec-am
 install-data: install-data-am
 uninstall: uninstall-am
@@ -582,7 +579,6 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
-	-test -z "$(BUILT_SOURCES)" || rm -f $(BUILT_SOURCES)
 clean: clean-am
 
 clean-am: clean-binPROGRAMS clean-generic clean-libtool mostlyclean-am
@@ -590,6 +586,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-libtool mostlyclean-am
 distclean: distclean-am
 		-rm -f ./$(DEPDIR)/context_histogram.Po
 	-rm -f ./$(DEPDIR)/genome_set.Po
+	-rm -f ./$(DEPDIR)/histogram_comparison.Po
 	-rm -f ./$(DEPDIR)/main.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
@@ -638,6 +635,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 		-rm -f ./$(DEPDIR)/context_histogram.Po
 	-rm -f ./$(DEPDIR)/genome_set.Po
+	-rm -f ./$(DEPDIR)/histogram_comparison.Po
 	-rm -f ./$(DEPDIR)/main.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
@@ -657,7 +655,7 @@ ps-am:
 
 uninstall-am: uninstall-binPROGRAMS
 
-.MAKE: all check install install-am install-strip
+.MAKE: install-am install-strip
 
 .PHONY: CTAGS GTAGS TAGS all all-am am--depfiles check check-am clean \
 	clean-binPROGRAMS clean-generic clean-libtool cscopelist-am \

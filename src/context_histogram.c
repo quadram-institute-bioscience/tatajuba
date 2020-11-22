@@ -2,7 +2,7 @@
  * Copyright (C) 2020-today  Leonardo de Oliveira Martins [ leomrtns at gmail.com;  http://leomrtns.github.io ]
  */
 
-#include "histogram_comparison.c"
+#include "histogram_comparison.h"
 #include "kseq.h"
 
 BMC2_KSEQ_INIT(gzFile, gzread);

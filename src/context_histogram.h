@@ -9,7 +9,7 @@
 #ifndef _context_histogram_h_
 #define _context_histogram_h_
 
-#include <kalign.h> // biomcmc is included here
+//#include <kalign.h> 
 #include <biomcmc.h>
 #include <wrapper_bwa.h>
 

@@ -6,8 +6,8 @@
  *  \brief set of homopolymer counters (set of single end or paired end fastq files)
  */
 
-#ifndef _genome_set_h_
-#define _genome_set_h_
+#ifndef _tata_genome_set_h_
+#define _tata_genome_set_h_
 
 #define N_SUMMARY_TABLES 5 
 
