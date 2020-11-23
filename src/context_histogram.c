@@ -101,18 +101,18 @@ del_hopo_counter (hopo_counter hc)
 }
 
 char*
-leftmost_hopo_name_and_length_from_string (char *seq, size_t len, tatajuba_options_t opt, int *tract_length)
+leftmost_hopo_name_and_length_from_string (char *seq, size_t len, int kmer_size, int min_tract_size, int *tract_length)
 {
-  hopo_counter hc = new_hopo_counter (opt.kmer_size);
-  update_hopo_counter_from_seq (hc, seq, (int) len, opt.min_tract_size);
+  hopo_counter hc = new_hopo_counter (kmer_size);
+  update_hopo_counter_from_seq (hc, seq, (int) len, min_tract_size);
   if (!hc->n_elem) {
-    biomcmc_warning ("No homopolymer was found on sequence (from reference): %s", seq);
+    //biomcmc_warning ("No homopolymer was found on sequence (from reference): %s", seq);
     del_hopo_counter (hc);
     *tract_length = 0;
     return NULL;
   }
   *tract_length = hc->elem[0].length;
-  char *s = generate_name_from_flanking_contexts (hc->elem[0].context, hc->elem[0].base, opt.kmer_size);
+  char *s = generate_name_from_flanking_contexts (hc->elem[0].context, hc->elem[0].base, kmer_size);
   del_hopo_counter (hc);
   return s;
 }

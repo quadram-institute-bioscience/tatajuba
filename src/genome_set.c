@@ -295,11 +295,9 @@ print_selected_g_tract_vector (genome_set_t g)
   cd_yes = (int*) biomcmc_malloc (g->tract->n_summary * sizeof (int));
   cd_no  = (int*) biomcmc_malloc (g->tract->n_summary * sizeof (int));
 
-  fout = open_output_file (g->genome[0]->opt, "DEBUGsummary");
   for (i = 0; i < g->tract->n_summary; i++) { 
     to_print = false;
     t = g->tract->summary + i;
-    fprintf (fout, "%s\t%d\n", t->example->name, t->location);
     if (t->n_genome_id  < t->n_genome_total) to_print = true;
     if ((!to_print) && (t->lev_distance > 0)) to_print = true;
     if ((!to_print) && (t->reldiff[0] > 1e-6)) to_print = true;
@@ -311,7 +309,6 @@ print_selected_g_tract_vector (genome_set_t g)
     }
   } // for i in summary
   printf ("From %d tracts, %d interesting ones are annotated and %d interesting ones are not annotated\n", g->tract->n_summary, n_yes, n_no);
-  fclose (fout); fout = NULL;
 
   fout = open_output_file (g->genome[0]->opt, filename[FNAME_SELECTED_TRAITS_UNKNOWN]);
   fprintf (fout, "tract    location    n_genomes    lev_distance | rd_frequency rd_avge_tract_length rd_coverage rd_context_covge rd_entropy\n"); 
@@ -403,24 +400,33 @@ create_tract_in_reference_structure (genome_set_t g)
   }
 
   /* 4. read fasta file with references and copy tract info from it */
-  alignment aln = read_fasta_alignment_from_file (g->genome[0]->opt.reference_fasta_filename); 
-  printf ("DEBUG::%s\n", aln->character->string[0]);
-  char *s;
+  alignment aln = read_fasta_alignment_from_file (g->genome[0]->opt.reference_fasta_filename, false); 
+ // printf ("DEBUG::%s\n", aln->character->string[0]);
   size_t len;
+  int kmer_size = g->genome[0]->opt.kmer_size;
+  int min_tract_size = g->genome[0]->opt.min_tract_size - 1; // less stringent for ref, and also allows for extra context size
+  int start_location = 0;
+
   for (tid = 0; tid < g->n_tract_ref; tid++) {
     i = lookup_hashtable (aln->taxlabel_hash, g->tract_ref[tid].contig_name);
     if (i < 0) i = lookup_bruteforce (aln->taxlabel, g->tract_ref[tid].contig_name);
     if (i < 0) biomcmc_error ("Contig/genome sequence %s not found in fasta file", g->tract_ref[tid].contig_name);
-    s = aln->character->string[i] + g->tract_ref[tid].contig_location;
-    len = g->tract_ref[tid].max_length + 2 * g->genome[0]->opt.kmer_size;
-    g->tract_ref[tid].seq = (char*) biomcmc_malloc (sizeof (char) * len + 1);
-    strncpy (g->tract_ref[tid].seq, s, len);
-    g->tract_ref[tid].seq[len] = '\0';
+    start_location = g->tract_ref[tid].contig_location - min_tract_size; // left shift (allow for mismatches) must be smaller than min tract length (to avoid finding spurious)
+    if (start_location < 0) start_location = 0;
+    len = g->tract_ref[tid].max_length + 2 * g->genome[0]->opt.kmer_size + min_tract_size;
+    if (len > aln->character->nchars[i]) len = aln->character->nchars[i];
+    //g->tract_ref[tid].seq = (char*) biomcmc_malloc (sizeof (char) * len + 1);   // NOT NEEDED
+    //strncpy (g->tract_ref[tid].seq, aln->character->string[i] + start_location, len);
+    //g->tract_ref[tid].seq[len] = '\0';
     /* 4.1 create context+hopo name for reference as in samples */
-    g->tract_ref[tid].tract_name = leftmost_hopo_name_and_length_from_string (g->tract_ref[tid].seq, len+1, g->genome[0]->opt, &g->tract_ref[tid].tract_length);
+    //g->tract_ref[tid].tract_name = leftmost_hopo_name_and_length_from_string (g->tract_ref[tid].seq, len+1, kmer_size, min_tract_size, &g->tract_ref[tid].tract_length);
+    g->tract_ref[tid].tract_name = leftmost_hopo_name_and_length_from_string (aln->character->string[i] + start_location, len, kmer_size, min_tract_size, &g->tract_ref[tid].tract_length);
+    if (!g->tract_ref[tid].tract_length) { // homopolymer not found (e.g. AAAAA in sample is AATAA in reference)
+      g->tract_ref[tid].tract_name = (char*) biomcmc_malloc (sizeof (char) * 4);
+      strcpy (g->tract_ref[tid].tract_name, "---");
+    }
   }
   del_alignment (aln);
-
 }
 
 void
@@ -441,8 +447,7 @@ print_tract_list (genome_set_t g)
     else
       fprintf (fout, "nc\tunnanotated\t");
     fprintf (fout, "%d\t%d\t", g->tract_ref[tid].contig_location, g->tract_ref[tid].max_length);
-    //fprintf (fout, "%d\t%s\t", g->tract_ref[tid].tract_length, g->tract_ref[tid].tract_name);
-    fprintf (fout, "(%s \t %s)\t", g->tract_ref[tid].seq, g->tract_ref[tid].tract_name);
+    fprintf (fout, "%d\t%s\t", g->tract_ref[tid].tract_length, g->tract_ref[tid].tract_name);
     fprintf (fout, "%s\t", hist->name);
 
     fprintf (fout, "\n");
