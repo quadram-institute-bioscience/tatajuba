@@ -84,6 +84,7 @@ void print_tatajuba_options (tatajuba_options_t opt);
 hopo_counter new_or_append_hopo_counter_from_file (hopo_counter hc, const char *filename, tatajuba_options_t opt);
 void del_hopo_counter (hopo_counter hc);
 void del_context_histogram (context_histogram_t ch);
+char* leftmost_hopo_name_and_length_from_string (char *seq, size_t len, tatajuba_options_t opt, int *tract_length);
 
 void print_debug_genomic_context_hist (genomic_context_list_t genome);
 genomic_context_list_t  new_genomic_context_list (hopo_counter hc);

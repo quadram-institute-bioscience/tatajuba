@@ -25,6 +25,7 @@ void context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, i
 
 char* context_histogram_tract_as_string (context_histogram_t ch, int kmer_size);
 char* context_histogram_generate_name (context_histogram_t ch, int kmer_size);
+char* generate_name_from_flanking_contexts (uint64_t *context, int8_t base, int kmer_size);
 void genomic_context_find_reference_location (genomic_context_list_t genome);
 void genomic_context_merge_histograms_at_same_location (genomic_context_list_t genome);
 void accumulate_from_context_histogram (context_histogram_t to, context_histogram_t from);
@@ -97,6 +98,23 @@ del_hopo_counter (hopo_counter hc)
   if (hc->idx) free (hc->idx);
   free (hc);
   return;
+}
+
+char*
+leftmost_hopo_name_and_length_from_string (char *seq, size_t len, tatajuba_options_t opt, int *tract_length)
+{
+  hopo_counter hc = new_hopo_counter (opt.kmer_size);
+  update_hopo_counter_from_seq (hc, seq, (int) len, opt.min_tract_size);
+  if (!hc->n_elem) {
+    biomcmc_warning ("No homopolymer was found on sequence (from reference): %s", seq);
+    del_hopo_counter (hc);
+    *tract_length = 0;
+    return NULL;
+  }
+  *tract_length = hc->elem[0].length;
+  char *s = generate_name_from_flanking_contexts (hc->elem[0].context, hc->elem[0].base, opt.kmer_size);
+  del_hopo_counter (hc);
+  return s;
 }
 
 static void
@@ -417,6 +435,27 @@ context_histogram_tract_as_string (context_histogram_t ch, int kmer_size)
 
 char*
 context_histogram_generate_name (context_histogram_t ch, int kmer_size)
+{
+  return generate_name_from_flanking_contexts (ch->context + (2 * ch->mode_context_id), ch->base, kmer_size); // assuming consecutive context[]
+}
+
+char*
+generate_name_from_flanking_contexts (uint64_t *context, int8_t base, int kmer_size)
+{
+  int i, j=0, length = 2 * kmer_size + 4;
+  char *s = (char*) biomcmc_malloc (sizeof (char) * length);
+  uint64_t ctx = context[0];
+
+  for (i = 0; i < kmer_size; i++) s[i] = bit_2_dna[ (ctx >> (2 * i)) & 3 ]; // left context
+  s[i++] = '-'; s[i++] = bit_2_dna[base]; s[i++] = '-';// homopolymer tract represented as "-A-" or "-T-"
+  ctx = context[1];
+  for (j = 0; j < kmer_size; j++, i++) s[i] =  bit_2_dna[ (ctx >> (2 * j)) & 3 ]; 
+  s[i] = '\0';
+  return s;
+}
+
+char*
+context_histogram_generate_name_bkp (context_histogram_t ch, int kmer_size)
 {
   int i, j=0, length = 2 * kmer_size + 4;
   char *s = (char*) biomcmc_malloc (sizeof (char) * length);

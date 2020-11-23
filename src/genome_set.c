@@ -94,8 +94,9 @@ del_genome_set (genome_set_t g)
   if (--g->ref_counter) return;
   for (i = g->n_genome - 1; i >= 0; i--) del_genomic_context_list (g->genome[i]);
   if (g->genome) free (g->genome);
-  if (g->tract_ref) {
-    for (i = g->n_tract_ref-1; i >= 0; i--) if (g->tract_ref[i].seq) free (g->tract_ref[i].seq); 
+  if (g->tract_ref) { // do not free contig_name (which is just a pointer to char_vector ref_names)
+    for (i = g->n_tract_ref-1; i >= 0; i--) if (g->tract_ref[i].seq)        free (g->tract_ref[i].seq); 
+    for (i = g->n_tract_ref-1; i >= 0; i--) if (g->tract_ref[i].tract_name) free (g->tract_ref[i].tract_name); 
     free (g->tract_ref);
   }
   del_char_vector (g->ref_names);
@@ -103,6 +104,7 @@ del_genome_set (genome_set_t g)
   free (g); 
 }
 
+// FIXME: aim is to deprecate tract_summary (i.e. recalculate after reference is added; not as we go, below) 
 g_tract_vector_t
 new_g_tract_vector_from_genomic_context_list (genomic_context_list_t *genome, int n_genome)
 {
@@ -293,9 +295,11 @@ print_selected_g_tract_vector (genome_set_t g)
   cd_yes = (int*) biomcmc_malloc (g->tract->n_summary * sizeof (int));
   cd_no  = (int*) biomcmc_malloc (g->tract->n_summary * sizeof (int));
 
+  fout = open_output_file (g->genome[0]->opt, "DEBUGsummary");
   for (i = 0; i < g->tract->n_summary; i++) { 
     to_print = false;
     t = g->tract->summary + i;
+    fprintf (fout, "%s\t%d\n", t->example->name, t->location);
     if (t->n_genome_id  < t->n_genome_total) to_print = true;
     if ((!to_print) && (t->lev_distance > 0)) to_print = true;
     if ((!to_print) && (t->reldiff[0] > 1e-6)) to_print = true;
@@ -307,6 +311,7 @@ print_selected_g_tract_vector (genome_set_t g)
     }
   } // for i in summary
   printf ("From %d tracts, %d interesting ones are annotated and %d interesting ones are not annotated\n", g->tract->n_summary, n_yes, n_no);
+  fclose (fout); fout = NULL;
 
   fout = open_output_file (g->genome[0]->opt, filename[FNAME_SELECTED_TRAITS_UNKNOWN]);
   fprintf (fout, "tract    location    n_genomes    lev_distance | rd_frequency rd_avge_tract_length rd_coverage rd_context_covge rd_entropy\n"); 
@@ -373,12 +378,11 @@ create_tract_in_reference_structure (genome_set_t g)
   del_bwase_match_t (match);
 
   /* 2. initialise tract_ref[] with reference genomes tract lengths etc. */
-  g->n_tract_ref = g->tract->concat[g->tract->n_concat-1]->tract_id;
+  g->n_tract_ref = g->tract->concat[g->tract->n_concat-1]->tract_id + 1; // if last tract_id is 2 then there are 3 distinct tracts
   g->tract_ref = (tract_in_reference_s*) biomcmc_malloc (g->n_tract_ref * sizeof (tract_in_reference_s));
   for (i = 0; i < g->n_tract_ref; i++) { 
     g->tract_ref[i].tract_length = -1;
-    g->tract_ref[i].contig_name = NULL;
-    g->tract_ref[i].seq = NULL;
+    g->tract_ref[i].contig_name = g->tract_ref[i].seq = g->tract_ref[i].tract_name = NULL;
   }
 
   /* 3. store information from context_histogram concat[] which will be used in copying reference sequence segments */
@@ -400,6 +404,7 @@ create_tract_in_reference_structure (genome_set_t g)
 
   /* 4. read fasta file with references and copy tract info from it */
   alignment aln = read_fasta_alignment_from_file (g->genome[0]->opt.reference_fasta_filename); 
+  printf ("DEBUG::%s\n", aln->character->string[0]);
   char *s;
   size_t len;
   for (tid = 0; tid < g->n_tract_ref; tid++) {
@@ -411,8 +416,11 @@ create_tract_in_reference_structure (genome_set_t g)
     g->tract_ref[tid].seq = (char*) biomcmc_malloc (sizeof (char) * len + 1);
     strncpy (g->tract_ref[tid].seq, s, len);
     g->tract_ref[tid].seq[len] = '\0';
+    /* 4.1 create context+hopo name for reference as in samples */
+    g->tract_ref[tid].tract_name = leftmost_hopo_name_and_length_from_string (g->tract_ref[tid].seq, len+1, g->genome[0]->opt, &g->tract_ref[tid].tract_length);
   }
   del_alignment (aln);
+
 }
 
 void
@@ -423,6 +431,7 @@ print_tract_list (genome_set_t g)
   context_histogram_t hist;
   fout = open_output_file (g->genome[0]->opt, filename[FNAME_TRACT_LIST]);
 
+  fprintf (fout, "tract_id\tcontig_name\tfeature_type\tfeature\tlocation_in_contig\tmax_tract_length\ttract\t\n");
   for (tid = 0; tid < g->n_tract_ref; tid++) {
     fprintf (fout, "tid_%06d\t", tid); 
     fprintf (fout, "%s\t", g->tract_ref[tid].contig_name); 
@@ -431,12 +440,18 @@ print_tract_list (genome_set_t g)
       fprintf (fout, "%s\t%s\t", hist->gffeature.type.str, hist->gffeature.attr_id.str);
     else
       fprintf (fout, "nc\tunnanotated\t");
+    fprintf (fout, "%d\t%d\t", g->tract_ref[tid].contig_location, g->tract_ref[tid].max_length);
+    //fprintf (fout, "%d\t%s\t", g->tract_ref[tid].tract_length, g->tract_ref[tid].tract_name);
+    fprintf (fout, "(%s \t %s)\t", g->tract_ref[tid].seq, g->tract_ref[tid].tract_name);
+    fprintf (fout, "%s\t", hist->name);
 
     fprintf (fout, "\n");
   }
   fclose (fout); fout = NULL;
 }
 
+/*! \brief hash lookup is based on strict identity of strings; if fails, we assume one of them is shorter (always the
+ * case for BWA (before space) and our fasta (whole line) */
 int
 lookup_bruteforce (char_vector haystack, const char *needle)
 {

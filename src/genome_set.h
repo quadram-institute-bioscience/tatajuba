@@ -30,6 +30,7 @@ typedef struct
   int tract_length, contig_location, max_length, first_idx; // first_idx is idx in concat[]
   char *contig_name; // contig_name is just a pointer to char_vector
   char *seq;
+  char *tract_name; /*! \brief string representation of homopolymer plus context (equiv to context_histogram[]->name) */
 } tract_in_reference_s;
 
 struct g_tract_vector_struct
