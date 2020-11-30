@@ -42,7 +42,7 @@ new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_opt
 
   if (opt.paired_end) {
 #ifdef _OPENMP
-#pragma omp parallel for shared(g,opt,filenames) private(time0,time1,hc) schedule(dynamic) reduction(+:secs[:2])
+#pragma omp parallel for shared(g,filenames,opt) private(time0,time1,hc) schedule(dynamic) reduction(+:secs[:2])
 #endif
     for (i = 0; i < g->n_genome; i++) {
       fprintf (stderr, "processing paired files %s and %s\n", filenames[2*i], filenames[2*i+1]);
