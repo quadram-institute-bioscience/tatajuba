@@ -1,5 +1,6 @@
 2020.11.27
 	* multi-genome comparison:
+		. GFF3 reading implemented, and can save FASTA if included (needed by bwa). Safer is to provide both, however.
 		. prokka returns (proper) GFF3 with several contigs (a.k.a. genomes or chromosomes in GFF3 docs)
 		. we transform it into a 1D location indexing by flattening contigs into one 'concatenated' sueprcontig (we reserve
 		the word "concat" to the concatenation of context_histogram_t though)
@@ -8,12 +9,17 @@
 	* TODO:
 		1. splitting new_genomic_context_list() into two functions, one before bwa+gff only for identical contexts and one
 		after (accounting for similar contexts). Currently it is quadratic on number of unique context+tract elements.
+		2. when reading fasta for first time bwa functions complain (non thread safe perhaps)
+		3. allow for comparison of non-canonic descriptors (also or alternatively store protein version)
+		4. after finding equivalent tract on reference re-check neighbour tracts; also leftmost_hopo_name_from_string()
+		could scan _all_ tracts and return closest to input
 2020.08.25
 	* beta version working: 
 		1. imports BWA and gives for each tract a location in reference genome. (BWA creates indices from ref fasta)
 		2. merge tracts from same genome based on similarity and location
 	* TODO:
-		1. needs annotated genome; therefore user gives GFF, we generate the ref fasta that will then be used for bwa indexing
+		1. needs annotated genome; therefore user gives GFF, we generate the ref fasta that will then be used for bwa
+		indexing (DONE 2020.11.27)
 		2. aim is to distinguish tracts by their effects on sample; therefore we want to keep track of (a) coding effect (i.e. 
 		if tract is on coding region or not); and (b) change in length from reference
 2020.02.19
