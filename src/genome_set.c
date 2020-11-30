@@ -311,23 +311,25 @@ print_selected_g_tract_vector (genome_set_t g)
   printf ("From %d tracts, %d interesting ones are annotated and %d interesting ones are not annotated\n", g->tract->n_summary, n_yes, n_no);
 
   fout = open_output_file (g->genome[0]->opt, filename[FNAME_SELECTED_TRAITS_UNKNOWN]);
-  fprintf (fout, "tract    location    n_genomes    lev_distance | rd_frequency rd_avge_tract_length rd_coverage rd_context_covge rd_entropy\n"); 
+  fprintf (fout, "tract_id\tlocation\tn_genomes\tlev_distance\t|\trd_frequency\trd_avge_tract_length\trd_coverage\trd_context_covge\trd_entropy\n"); 
   for (i = 0; i < n_no; i++) {
     t = g->tract->summary + cd_no[i];
-    fprintf (fout, "%s\t%-8d %-5d %-5d | ", t->example->name, t->location, t->n_genome_id, t->lev_distance);
-    for (j = 0; j < N_SUMMARY_TABLES; j++) fprintf (fout, "%8.6lf ", t->reldiff[j]);
+    //fprintf (fout, "%s\t%-8d %-5d %-5d | ", t->example->name, t->location, t->n_genome_id, t->lev_distance);
+    fprintf (fout, "tid_%06d\t%8d\t%5d\t%5d\t|\t", cd_no[i], t->location, t->n_genome_id, t->lev_distance);
+    for (j = 0; j < N_SUMMARY_TABLES; j++) fprintf (fout, "%8.6lf\t", t->reldiff[j]);
     fprintf (fout, "\n");
     // if (t->n_dist > 0) printf ("%12e %12e\n", t->d1[0], t->d2[0]);
   }
 
   fclose (fout); fout = NULL;
   fout = open_output_file (g->genome[0]->opt, filename[FNAME_SELECTED_TRAITS_ANNOTATED]);
-  fprintf (fout, "tract    location  [GFF3_info]  n_genomes    lev_distance | rd_frequency rd_avge_tract_length rd_coverage rd_context_covge rd_entropy\n"); 
+  fprintf (fout, "tract_id\tGFF3_info\tlocation\tn_genomes\tlev_distance\t|\trd_frequency\trd_avge_tract_length\trd_coverage\trd_context_covge\trd_entropy\n"); 
   for (i = 0; i < n_yes; i++) {
     t = g->tract->summary + cd_yes[i]; 
     gfi = t->example->gffeature;
-    fprintf (fout, "%s\t%-8d [%s %s] %-5d %-5d | ", t->example->name, t->location, gfi.type.str, gfi.attr_id.str, t->n_genome_id, t->lev_distance);
-    for (j = 0; j < N_SUMMARY_TABLES; j++) fprintf (fout, "%8.6lf ", t->reldiff[j]);
+    //fprintf (fout, "%s\t%-8d %s %s %-5d %-5d | ", t->example->name, t->location, gfi.type.str, gfi.attr_id.str, t->n_genome_id, t->lev_distance);
+    fprintf (fout, "tid_%06d\t%s\t%8d\t%5d\t%5d\t|\t", cd_yes[i], gfi.attr_id.str, t->location, t->n_genome_id, t->lev_distance);
+    for (j = 0; j < N_SUMMARY_TABLES; j++) fprintf (fout, "%8.6lf\t", t->reldiff[j]);
     fprintf (fout, "\n");
     // if (t->n_dist > 0) printf ("%12e %12e\n", t->d1[0], t->d2[0]);
   }

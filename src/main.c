@@ -135,6 +135,7 @@ get_options_from_argtable (arg_parameters params)
   }
 
   opt.paired_end = (params.paired->count? true: false);
+  opt.n_samples = (params.paired->count? params.fastq->count/2: params.fastq->count);
   opt.kmer_size = params.kmer->ival[0];
   opt.min_tract_size = params.minsize->ival[0];
   opt.min_coverage = params.minread->ival[0]; 

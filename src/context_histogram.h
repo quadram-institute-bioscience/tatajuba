@@ -30,6 +30,7 @@ typedef struct
       min_tract_size,
       levenshtein_distance,
       min_coverage,
+      n_samples,
       n_threads;
 } tatajuba_options_t;
 

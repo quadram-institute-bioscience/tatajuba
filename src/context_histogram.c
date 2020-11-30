@@ -37,6 +37,7 @@ print_tatajuba_options (tatajuba_options_t opt)
   fprintf (stderr, "Reference genome fasta file: %s\n", opt.reference_fasta_filename);
   fprintf (stderr, "Reference GFF3 file prefix:  %s\n", opt.gff->file_basename);
   fprintf (stderr, "Output directory:            %s\n", opt.outdir);
+  fprintf (stderr, "Number of samples:           %5d (%s)\n", opt.n_samples, (opt.paired_end?"paired-end":"single-end"));
   fprintf (stderr, "Max distance per flanking k-mer:  %6d\n", opt.max_distance_per_flank);
   fprintf (stderr, "Levenshtein distance for merging: %6d\n", opt.levenshtein_distance);
   fprintf (stderr, "Flanking k-mer size (context):    %6d\n", opt.kmer_size);
