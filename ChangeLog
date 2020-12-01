@@ -13,6 +13,7 @@
 		3. allow for comparison of non-canonic descriptors (also or alternatively store protein version)
 		4. after finding equivalent tract on reference re-check neighbour tracts; also leftmost_hopo_name_from_string()
 		could scan _all_ tracts and return closest to input
+		5. when translating to protein, use Miyata79 and Grantham74 a.a. distances doi:10.1126/science.185.4154.862 doi:10.1007/bf01732340
 2020.08.25
 	* beta version working: 
 		1. imports BWA and gives for each tract a location in reference genome. (BWA creates indices from ref fasta)
