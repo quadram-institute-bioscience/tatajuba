@@ -439,7 +439,7 @@ print_tract_list (genome_set_t g)
   context_histogram_t hist;
   fout = open_output_file (g->genome[0]->opt, filename[FNAME_TRACT_LIST]);
 
-  fprintf (fout, "tract_id\tcontig_name\tfeature_type\tfeature\tlocation_in_contig\tmax_tract_length\ttract\t\n");
+  fprintf (fout, "tract_id\tcontig_name\tfeature_type\tfeature\tlocation_in_contig\tmax_tract_length\tref_tract_length\t\ttract\tref_tract\n");
   for (tid = 0; tid < g->n_tract_ref; tid++) {
     fprintf (fout, "tid_%06d\t", tid); 
     fprintf (fout, "%s\t", g->tract_ref[tid].contig_name); 
@@ -449,9 +449,9 @@ print_tract_list (genome_set_t g)
     else
       fprintf (fout, "nc\tunnanotated\t");
     fprintf (fout, "%d\t%d\t", g->tract_ref[tid].contig_location, g->tract_ref[tid].max_length);
-    fprintf (fout, "%d\t%s\t", g->tract_ref[tid].tract_length, g->tract_ref[tid].tract_name);
+    fprintf (fout, "%d\t", g->tract_ref[tid].tract_length);
     fprintf (fout, "%s\t", hist->name);
-
+    fprintf (fout, "%s", g->tract_ref[tid].tract_name);
     fprintf (fout, "\n");
   }
   fclose (fout); fout = NULL;

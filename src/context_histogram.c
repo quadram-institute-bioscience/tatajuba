@@ -15,7 +15,7 @@ static void initialize_dna_to_bit_tables (void);
 hopo_counter new_hopo_counter (int kmer_size);
 void update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int min_tract_size);
 void add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_int, int hopo_size);
-void copy_hopo_element_start_count (hopo_element *to, hopo_element *from);
+void copy_hopo_element_start_count_at (hopo_element *to, hopo_element *from, int count);
 int hopo_counter_histogram_integral (hopo_counter hc, int start);
 void estimate_coverage_hopo_counter (hopo_counter hc);
 void finalise_hopo_counter (hopo_counter hc);
@@ -192,13 +192,13 @@ add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_i
 }
 
 void
-copy_hopo_element_start_count (hopo_element *to, hopo_element *from)
+copy_hopo_element_start_count_at (hopo_element *to, hopo_element *from, int count)
 {
   to->base    =  from->base; 
   to->length  =  from->length;
   to->context[0] = from->context[0];
   to->context[1] = from->context[1];
-  to->count = 1;
+  to->count = count;
 }
 
 void
@@ -208,18 +208,24 @@ finalise_hopo_counter (hopo_counter hc)
   int i, n1 = 0;
   qsort (hc->elem, hc->n_elem, sizeof (hopo_element), compare_hopo_element_decreasing);
   efreq = (hopo_element*) biomcmc_malloc (hc->n_elem * sizeof (hopo_element));
-  copy_hopo_element_start_count (&(efreq[0]), &(hc->elem[0]));
+  copy_hopo_element_start_count_at (&(efreq[0]), &(hc->elem[0]), 1);
   n1 = 0; hc->n_idx = 0;
 
   /* frequency of each polymer, in context, into efreq[] vector of elements  */
   for (i=1; i < hc->n_elem; i++) {
     if (compare_hopo_element_decreasing ((const void*) &(hc->elem[i-1]), (const void*) &(hc->elem[i]))) 
-      copy_hopo_element_start_count (&(efreq[++n1]), &(hc->elem[i]));
+      copy_hopo_element_start_count_at (&(efreq[++n1]), &(hc->elem[i]), 1);
     else efreq[n1].count++; // same context _and_tract length
   }
+  n1++; // n1 is (zero-based) index of existing hopo_element (and below we use it as _number_of_elements)
+  /* remove context_tract_lengths seen only once (but keep original depth whenever count > 1) */
+
+  hc->n_elem = n1;
+  for (i = 0, n1 = 0; i < hc->n_elem; i++) if (efreq[i].count > 1) copy_hopo_element_start_count_at (&(efreq[n1++]), &(efreq[i]), efreq[i].count);
+
   /* new efreq[] becomes hc->elem[] */
   pivot = hc->elem;
-  hc->n_alloc = hc->n_elem = n1 + 1;
+  hc->n_alloc = hc->n_elem = n1; 
   hc->elem = (hopo_element*) biomcmc_realloc ((hopo_element*) efreq, hc->n_alloc * sizeof (hopo_element));
   free (pivot);
 
@@ -341,10 +347,12 @@ new_genomic_context_list (hopo_counter hc)
   genome->name = hc->name;
   hc->name = NULL;
 
+  int dbg_count = -1;
   /* 2. accumulate histograms of 'equivalent' (almost identical) contexts */
   for (i1 = 0; i1 < hc->n_idx - 1; i1++) {
     read_coverage = hopo_counter_histogram_integral (hc, i1);
     if (read_coverage < genome->opt.min_coverage) continue; // too few reads, skip this context+homopolymer
+    dbg_count++;
     idx_match = -1; // will become context element of j if contexts match exactly 
     best_dist=0xffff; distance = 0xffff; best_h=-1;
     for (j = 0; (j < genome->n_hist) && (idx_match < 0); j++) {
@@ -362,6 +370,7 @@ new_genomic_context_list (hopo_counter hc)
 
     for (; i2 < hc->idx[i1+1]; i2++) context_histogram_add_hopo_elem (genome->hist[best_h], hc->elem[i2], idx_match);
   }
+  printf ("DEBUG::hopo_counters=  %12d dbg_count =   %12d  n_hist=  %12d\n", hc->n_idx, dbg_count, genome->n_hist);
   /* 3. generate empfreq histograms, name each histogram and find location in ref genome */
   finalise_genomic_context_hist (genome);
   return genome;
@@ -499,7 +508,7 @@ genomic_context_find_reference_location (genomic_context_list_t genome)
   refseq_offset[0] = 0; // equiv to concatenating ref contigs (one-dim "location")
   for (i = 1; i < match->bns->n_seqs; i++) refseq_offset[i] = refseq_offset[i-1] + match->bns->anns[i-1].len;
 
-  for (i = 0; i < match->n_m; i++) { // TODO: we assume only one bwa hit per histogram
+  for (i = 0; i < match->n_m; i++) { // FIXME: we assume only one bwa hit per histogram but paralogs exist; break ties by leftmost location?
     genome->hist[match->m[i].query_id]->loc2d[0] = match->m[i].ref_id;   // genome/contig ID 
     genome->hist[match->m[i].query_id]->loc2d[1] = match->m[i].position; // location within genome/contig
     genome->hist[match->m[i].query_id]->location = refseq_offset[match->m[i].ref_id] + match->m[i].position; // one-dimensional (flat) index 
