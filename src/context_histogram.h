@@ -9,49 +9,10 @@
 #ifndef _context_histogram_h_
 #define _context_histogram_h_
 
-//#include <kalign.h> 
-#include <biomcmc.h>
-#include <wrapper_bwa.h>
+#include "hopo_counter.h" 
 
-extern uint8_t dna_in_2_bits[256][2];
-extern char bit_2_dna[];
-
-typedef struct hopo_counter_struct* hopo_counter;
 typedef struct context_histogram_struct* context_histogram_t;
 typedef struct genomic_context_list_struct* genomic_context_list_t;
-
-typedef struct 
-{
-  char *reference_fasta_filename, *outdir; 
-  bool paired_end;
-  gff3_t gff;
-  int max_distance_per_flank, 
-      kmer_size,
-      min_tract_size,
-      levenshtein_distance,
-      min_coverage,
-      n_samples,
-      n_threads;
-} tatajuba_options_t;
-
-typedef struct
-{ 
-  uint64_t context[2]; // flanking kmers (bitstring, not hashed)
-  /* bit fields below are signed to faciliate arithm comparisons, thus we lose one bit for signal */
-  int64_t base:2,    // base: 0=AT 1=CG (forward or reverse, we use canonical which is A side or C side)  
-          length:16, // (former base_size) length of homopolymeric tract (in bases)
-          count:32;  // frequency of homopolymer in this context (due to coverage)
-} hopo_element;
-
-struct hopo_counter_struct
-{
-  hopo_element *elem;
-  char *name;
-  int n_elem, n_alloc, kmer_size, coverage;
-  int *idx, n_idx;
-  tatajuba_options_t opt;
-  int ref_counter;
-};
 
 struct context_histogram_struct
 {
@@ -81,12 +42,12 @@ struct genomic_context_list_struct
   int n_hist, coverage, ref_start;  /*! \brief ref_start is index of first hist found on ref genome (all before were not found) */
 };
 
-void print_tatajuba_options (tatajuba_options_t opt);
-hopo_counter new_or_append_hopo_counter_from_file (hopo_counter hc, const char *filename, tatajuba_options_t opt);
-void del_hopo_counter (hopo_counter hc);
-void del_context_histogram (context_histogram_t ch);
-char* leftmost_hopo_name_and_length_from_string (char *seq, size_t len, int kmer_size, int min_tract_size, int *tract_length);
+int distance_between_context_histogram_and_hopo_context (context_histogram_t ch, hopo_element he, int max_distance, int *idx_match);
+int distance_between_context_histograms (context_histogram_t c1, context_histogram_t c2, double *result);
+int compare_context_histogram_for_qsort (const void *a, const void *b);
+bool context_histograms_overlap (context_histogram_t c1, context_histogram_t c2, int *distance, tatajuba_options_t opt);
 
+void del_context_histogram (context_histogram_t ch);
 void print_debug_genomic_context_hist (genomic_context_list_t genome);
 genomic_context_list_t  new_genomic_context_list (hopo_counter hc);
 void del_genomic_context_list (genomic_context_list_t genome);

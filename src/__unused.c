@@ -637,3 +637,68 @@ update_g_tract_summary_from_context_histogram (g_tract_vector_t tract, int prev,
   qsort (tract->summary[this].d2, tract->summary[this].n_dist, sizeof (double), compare_double_decreasing);
   return;
 }
+
+void
+create_tract_in_reference_structure (genome_set_t g)
+{
+  int i, tid;
+  /* 1. create a list of reference genome names in same order as bwa's index */
+  bwase_match_t match = new_bwase_match_t(g->genome[0]->opt.reference_fasta_filename); // obtain ref seq names
+  g->ref_names = new_char_vector (match->bns->n_seqs);
+  for (i = 0; i < match->bns->n_seqs; i++) char_vector_add_string (g->ref_names, match->bns->anns[i].name);
+  del_bwase_match_t (match);
+
+  /* 2. initialise tract_ref[] with reference genomes tract lengths etc. */
+  g->n_tract_ref = g->tract->concat[g->tract->n_concat-1]->tract_id + 1; // if last tract_id is 2 then there are 3 distinct tracts
+  g->tract_ref = (tract_in_reference_s*) biomcmc_malloc (g->n_tract_ref * sizeof (tract_in_reference_s));
+  for (i = 0; i < g->n_tract_ref; i++) { 
+    g->tract_ref[i].tract_length = -1;
+    g->tract_ref[i].contig_name = g->tract_ref[i].seq = g->tract_ref[i].tract_name = NULL;
+  }
+
+  /* 3. store information from context_histogram concat[] which will be used in copying reference sequence segments */
+  for (i = 0; i < g->tract->n_concat; i++) {
+    tid = g->tract->concat[i]->tract_id;
+    if (!g->tract_ref[tid].contig_name) { // first time tid is met
+      g->tract_ref[tid].contig_name = g->ref_names->string[ g->tract->concat[i]->loc2d[0] ];
+      g->tract_ref[tid].contig_location = g->tract->concat[i]->loc2d[1];
+      g->tract_ref[tid].max_length = g->tract->concat[i]->mode_context_length;
+      g->tract_ref[tid].first_idx = i; 
+    }
+    else { // tid is present more than once: sequence in reference will be longest 
+      if (g->tract_ref[tid].contig_location > g->tract->concat[i]->loc2d[1]) 
+        g->tract_ref[tid].contig_location = g->tract->concat[i]->loc2d[1]; // leftmost location 
+      if (g->tract_ref[tid].max_length < g->tract->concat[i]->mode_context_length) 
+        g->tract_ref[tid].max_length = g->tract->concat[i]->mode_context_length;
+    }
+  }
+
+  /* 4. read fasta file with references and copy tract info from it */
+  alignment aln = read_fasta_alignment_from_file (g->genome[0]->opt.reference_fasta_filename, false); 
+ // printf ("DEBUG::%s\n", aln->character->string[0]);
+  size_t len;
+  int kmer_size = g->genome[0]->opt.kmer_size;
+  int min_tract_size = g->genome[0]->opt.min_tract_size - 1; // less stringent for ref, and also allows for extra context size
+  int start_location = 0;
+
+  for (tid = 0; tid < g->n_tract_ref; tid++) {
+    i = lookup_hashtable (aln->taxlabel_hash, g->tract_ref[tid].contig_name);
+    if (i < 0) i = lookup_bruteforce (aln->taxlabel, g->tract_ref[tid].contig_name);
+    if (i < 0) biomcmc_error ("Contig/genome sequence %s not found in fasta file", g->tract_ref[tid].contig_name);
+    start_location = g->tract_ref[tid].contig_location - min_tract_size; // left shift (allow for mismatches) must be smaller than min tract length (to avoid finding spurious)
+    if (start_location < 0) start_location = 0;
+    len = g->tract_ref[tid].max_length + 2 * g->genome[0]->opt.kmer_size + 2 * min_tract_size;
+    if (len > aln->character->nchars[i]) len = aln->character->nchars[i];
+    //g->tract_ref[tid].seq = (char*) biomcmc_malloc (sizeof (char) * len + 1);   // NOT NEEDED
+    //strncpy (g->tract_ref[tid].seq, aln->character->string[i] + start_location, len);
+    //g->tract_ref[tid].seq[len] = '\0';
+    /* 4.1 create context+hopo name for reference as in samples */
+    //g->tract_ref[tid].tract_name = leftmost_hopo_name_and_length_from_string (g->tract_ref[tid].seq, len+1, kmer_size, min_tract_size, &g->tract_ref[tid].tract_length);
+    g->tract_ref[tid].tract_name = leftmost_hopo_name_and_length_from_string (aln->character->string[i] + start_location, len, kmer_size, min_tract_size, &g->tract_ref[tid].tract_length);
+    if (!g->tract_ref[tid].tract_length) { // homopolymer not found (e.g. AAAAA in sample is AATAA in reference)
+      g->tract_ref[tid].tract_name = (char*) biomcmc_malloc (sizeof (char) * 4);
+      strcpy (g->tract_ref[tid].tract_name, "---");
+    }
+  }
+  del_alignment (aln);
+}
