@@ -55,7 +55,9 @@ int compare_hopo_context (hopo_element a, hopo_element b);
 int distance_between_context_kmer (uint64_t *c1, uint64_t *c2, int max_dist);
 
 void print_tatajuba_options (tatajuba_options_t opt);
+hopo_counter new_hopo_counter (int kmer_size);
 hopo_counter new_or_append_hopo_counter_from_file (hopo_counter hc, const char *filename, tatajuba_options_t opt);
+void update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int min_tract_size);
 void del_hopo_counter (hopo_counter hc);
 char* leftmost_hopo_name_and_length_from_string (char *seq, size_t len, int kmer_size, int min_tract_size, int *tract_length);
 

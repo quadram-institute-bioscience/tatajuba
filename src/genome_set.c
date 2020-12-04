@@ -407,10 +407,6 @@ create_tract_in_reference_structure (genome_set_t g)
   /* 4. read fasta file with references and copy tract info from it */
   alignment aln = read_fasta_alignment_from_file (g->genome[0]->opt.reference_fasta_filename, false); 
  // printf ("DEBUG::%s\n", aln->character->string[0]);
-  size_t len;
-  int kmer_size = g->genome[0]->opt.kmer_size;
-  int min_tract_size = g->genome[0]->opt.min_tract_size - 1; // less stringent for ref, and also allows for extra context size
-  int start_location = 0;
 
   for (tid = 0; tid < g->n_tract_ref; tid++) {
     i = lookup_hashtable (aln->taxlabel_hash, g->tract_ref[tid].contig_name);
@@ -433,7 +429,7 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
   start_location = ref_tid->contig_location - min_tract_size; // left shift (allow for mismatches) must be smaller than min tract length (to avoid finding spurious) 
   if (start_location < 0) start_location = 0;
   len = ref_tid->max_length + 2 * opt.kmer_size + 2 * min_tract_size;
-  if (len > dnacontig_len) len = dnacontig_len;
+  if (len > (int) dnacontig_len) len = (int) dnacontig_len;
 
   update_hopo_counter_from_seq (hc, dnacontig + start_location, len, min_tract_size);
   if (!hc->n_elem) {
@@ -444,7 +440,7 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
     return;
   }
   for (i = 0; (i < hc->n_elem) && (best_dist > 0); i++) {
-    dist = distance_between_context_kmer (hc->elem[i].context, hist->context[hist->mode_context_id], opt.kmer_size);
+    dist = distance_between_context_kmer (hc->elem[i].context, hist->context + hist->mode_context_id, opt.kmer_size);
     if (dist < best_dist) { best_dist = dist; best_id = i; }
   }
   ref_tid->tract_length = hc->elem[best_id].length;

@@ -12,8 +12,6 @@ char bit_2_dna[] = {'A', 'C', 'G', 'T'};
 
 static void initialize_dna_to_bit_tables (void);
 
-hopo_counter new_hopo_counter (int kmer_size);
-void update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int min_tract_size);
 void add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_int, int hopo_size);
 void copy_hopo_element_start_count_at (hopo_element *to, hopo_element *from, int count);
 void estimate_coverage_hopo_counter (hopo_counter hc);
