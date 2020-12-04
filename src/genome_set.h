@@ -27,7 +27,7 @@ typedef struct
 
 typedef struct
 {
-  int tract_length, contig_location, max_length, first_idx; // first_idx is idx in concat[]
+  int tract_length, contig_location, max_length, concat_idx; 
   char *contig_name; // contig_name is just a pointer to char_vector
   char *seq;
   char *tract_name; /*! \brief string representation of homopolymer plus context (equiv to context_histogram[]->name) */

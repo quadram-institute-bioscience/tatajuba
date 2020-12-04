@@ -20,6 +20,7 @@ void fill_g_tract_summary_tables (g_tract_s *this, context_histogram_t *concat, 
 void create_tract_in_reference_structure (genome_set_t g);
 FILE * open_output_file (tatajuba_options_t opt, const char *file);
 int lookup_bruteforce (char_vector haystack, const char *needle);
+void find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnacontig, size_t dnacontig_len, tatajuba_options_t  opt, context_histogram_t hist);
 
 genome_set_t
 new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_options_t opt) 
@@ -391,12 +392,12 @@ create_tract_in_reference_structure (genome_set_t g)
       g->tract_ref[tid].contig_name = g->ref_names->string[ g->tract->concat[i]->loc2d[0] ];
       g->tract_ref[tid].contig_location = g->tract->concat[i]->loc2d[1];
       g->tract_ref[tid].max_length = g->tract->concat[i]->mode_context_length;
-      g->tract_ref[tid].first_idx = i; 
+      g->tract_ref[tid].concat_idx = i; 
     }
     else { // tid is present more than once: sequence in reference will be longest 
       if (g->tract_ref[tid].contig_location > g->tract->concat[i]->loc2d[1]) {
         g->tract_ref[tid].contig_location = g->tract->concat[i]->loc2d[1]; // leftmost location 
-        g->tract_ref[tid].first_idx = i; 
+        g->tract_ref[tid].concat_idx = i; 
       }
       if (g->tract_ref[tid].max_length < g->tract->concat[i]->mode_context_length) 
         g->tract_ref[tid].max_length = g->tract->concat[i]->mode_context_length;
@@ -415,27 +416,42 @@ create_tract_in_reference_structure (genome_set_t g)
     i = lookup_hashtable (aln->taxlabel_hash, g->tract_ref[tid].contig_name);
     if (i < 0) i = lookup_bruteforce (aln->taxlabel, g->tract_ref[tid].contig_name);
     if (i < 0) biomcmc_error ("Contig/genome sequence %s not found in fasta file", g->tract_ref[tid].contig_name);
-    start_location = g->tract_ref[tid].contig_location - min_tract_size; // left shift (allow for mismatches) must be smaller than min tract length (to avoid finding spurious)
-    if (start_location < 0) start_location = 0;
-    len = g->tract_ref[tid].max_length + 2 * g->genome[0]->opt.kmer_size + 2 * min_tract_size;
-    if (len > aln->character->nchars[i]) len = aln->character->nchars[i];
     /* 4.1 create context+hopo name for reference as in samples */
-    find_best_context_name_for_reference (&(g->tract_ref[tid]), aln->character->string[i], g->genome[0]->opt, g->tract->concat);
-    
-    g->tract_ref[tid].tract_name = leftmost_hopo_name_and_length_from_string (aln->character->string[i] + start_location, len, kmer_size, min_tract_size, &g->tract_ref[tid].tract_length);
-    if (!g->tract_ref[tid].tract_length) { // homopolymer not found (e.g. AAAAA in sample is AATAA in reference)
-      g->tract_ref[tid].tract_name = (char*) biomcmc_malloc (sizeof (char) * 4);
-      strcpy (g->tract_ref[tid].tract_name, "---");
-    }
+    find_best_context_name_for_reference (&(g->tract_ref[tid]), aln->character->string[i], aln->character->nchars[i], g->genome[0]->opt, 
+                                          g->tract->concat[g->tract_ref[tid].concat_idx]);
   }
   del_alignment (aln);
 }
 
 void
-find_best_context_name_for_reference (tract_in_reference_s *t_in_ref, char *dnacontig, tatajuba_options_t  opt, context_histogram_t *concat)
+find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnacontig, size_t dnacontig_len, tatajuba_options_t  opt, context_histogram_t hist)
 {
-// STOPHERE
+  int min_tract_size, start_location, len, i, best_id, dist, best_dist = 0xffff; 
+  hopo_counter hc = new_hopo_counter (opt.kmer_size);
+
+  min_tract_size = opt.min_tract_size - 1; // less stringent for ref, and also allows for extra context size
+  start_location = ref_tid->contig_location - min_tract_size; // left shift (allow for mismatches) must be smaller than min tract length (to avoid finding spurious) 
+  if (start_location < 0) start_location = 0;
+  len = ref_tid->max_length + 2 * opt.kmer_size + 2 * min_tract_size;
+  if (len > dnacontig_len) len = dnacontig_len;
+
+  update_hopo_counter_from_seq (hc, dnacontig + start_location, len, min_tract_size);
+  if (!hc->n_elem) {
+    ref_tid->tract_length = 0;
+    ref_tid->tract_name = (char*) biomcmc_malloc (sizeof (char) * 4);
+    strcpy (ref_tid->tract_name, "---");
+    del_hopo_counter (hc);
+    return;
+  }
+  for (i = 0; (i < hc->n_elem) && (best_dist > 0); i++) {
+    dist = distance_between_context_kmer (hc->elem[i].context, hist->context[hist->mode_context_id], opt.kmer_size);
+    if (dist < best_dist) { best_dist = dist; best_id = i; }
+  }
+  ref_tid->tract_length = hc->elem[best_id].length;
+  ref_tid->tract_name = generate_name_from_flanking_contexts (hc->elem[best_id].context, hc->elem[best_id].base, opt.kmer_size);
+  del_hopo_counter (hc);
 }
+
 void
 print_tract_list (genome_set_t g)
 {
@@ -448,7 +464,7 @@ print_tract_list (genome_set_t g)
   for (tid = 0; tid < g->n_tract_ref; tid++) {
     fprintf (fout, "tid_%06d\t", tid); 
     fprintf (fout, "%s\t", g->tract_ref[tid].contig_name); 
-    hist = g->tract->concat[ g->tract_ref[tid].first_idx ]; 
+    hist = g->tract->concat[ g->tract_ref[tid].concat_idx ]; 
     if (gff3_fields_is_valid (hist->gffeature))
       fprintf (fout, "%s\t%s\t", hist->gffeature.type.str, hist->gffeature.attr_id.str);
     else
