@@ -440,10 +440,11 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
     return;
   }
   for (i = 0; (i < hc->n_elem) && (best_dist > 0); i++) {
-    dist = distance_between_context_kmer (hc->elem[i].context, hist->context + hist->mode_context_id, opt.kmer_size);
+    dist = distance_between_context_kmer_pair (hc->elem[i].context, hist->context + hist->mode_context_id);
     if (dist < best_dist) { best_dist = dist; best_id = i; }
   }
   ref_tid->tract_length = hc->elem[best_id].length;
+  ref_tid->tract_location =  hc->elem[best_id].location_in_read;
   ref_tid->tract_name = generate_name_from_flanking_contexts (hc->elem[best_id].context, hc->elem[best_id].base, opt.kmer_size);
   del_hopo_counter (hc);
 }

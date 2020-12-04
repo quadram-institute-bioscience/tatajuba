@@ -20,9 +20,9 @@ distance_between_context_histogram_and_hopo_context (context_histogram_t ch, hop
   *idx_match = -1;
   if (ch->base != he.base) return 2 * max_distance + 1; // homopolymer tracts are different
   for (i = 0; i < ch->n_context; i++) {
-    distance = distance_between_context_kmer (&(ch->context[2*i]), &(he.context[0]), 2 * max_distance);
+    distance  = distance_between_single_context_kmer (&(ch->context[2*i]), &(he.context[0]), 2 * max_distance);
     if (distance >= 2 * max_distance) return distance;
-    distance += distance_between_context_kmer (&(ch->context[2*i + 1]), &(he.context[1]), 2 * max_distance - distance);
+    distance += distance_between_single_context_kmer (&(ch->context[2*i + 1]), &(he.context[1]), 2 * max_distance - distance);
     if (distance >= 2 * max_distance) return distance;
     if (distance > this_max) this_max = distance;
     if (distance == 0) {

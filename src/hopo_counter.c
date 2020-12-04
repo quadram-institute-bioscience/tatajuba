@@ -12,7 +12,7 @@ char bit_2_dna[] = {'A', 'C', 'G', 'T'};
 
 static void initialize_dna_to_bit_tables (void);
 
-void add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_int, int hopo_size);
+void add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_int, int hopo_size, int start_mono);
 void copy_hopo_element_start_count_at (hopo_element *to, hopo_element *from, int count);
 void estimate_coverage_hopo_counter (hopo_counter hc);
 
@@ -42,11 +42,22 @@ compare_hopo_context (hopo_element a, hopo_element b)
 
 /*! \brief max_dist must be positive, and is the max allowed distance _per_ flanking region */
 int
-distance_between_context_kmer (uint64_t *c1, uint64_t *c2, int max_dist)
+distance_between_single_context_kmer (uint64_t *c1, uint64_t *c2, int max_dist)
 {
   uint64_t d = *c1 ^ *c2; // XOR is one if bits are different, zero o.w. 
   int dist = 0;
   while (d && (dist < max_dist)) { if (d & 3) dist++; d >>= 2; } // every two bits, check if there is any difference  
+  return dist;
+}
+
+int // pointer *c1 since we look at both flanking contexts
+distance_between_context_kmer_pair (uint64_t *c1, uint64_t *c2)
+{
+  uint64_t d = c1[0] ^ c2[0]; // XOR is one if bits are different, zero o.w. 
+  int dist = 0;
+  while (d) { if (d & 3) dist++; d >>= 2; } // every two bits, check if there is any difference  
+  d = c1[1] ^ c2[1]; 
+  while (d) { if (d & 3) dist++; d >>= 2; } // every two bits, check if there is any difference  
   return dist;
 }
 
@@ -155,7 +166,7 @@ initialize_dna_to_bit_tables (void)
 void
 update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int min_tract_size)
 {
-  int i, j, k, count_same = 0, start_mono = -1;
+  int i, j, k, count_same = 0, start_mono = -1, loc_tract = -1;
   uint8_t context[2 * hc->kmer_size], hopo_base_int; 
   char prev_char = '$';
   count_same = 0; // zero because previous is "$" 
@@ -170,21 +181,18 @@ update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int mi
           for (k =0, j = start_mono - hc->kmer_size; j < start_mono; k++, j++) context[k] = dna_in_2_bits[ (int)seq[j] ][0]; 
           for (j = i + 1; j <= i + hc->kmer_size; k++, j++) context[k] = dna_in_2_bits[ (int)seq[j] ][0]; 
           hopo_base_int = dna_in_2_bits[(int)prev_char][0];
+          loc_tract = start_mono;
         }
         else if (dna_in_2_bits[(int)prev_char][0] > dna_in_2_bits[(int)prev_char][1]) { // T/U or G : reverse strand
           k = 0; // it would be easier to copy above, but with k--; however I wanna implement rolling hash in future
           for (j = i + hc->kmer_size; j > i; j--) context[k++] = dna_in_2_bits[ (int)seq[j] ][1]; 
           for (j = start_mono - 1; j >= start_mono - hc->kmer_size; j--) context[k++] = dna_in_2_bits[ (int)seq[j] ][1]; 
           hopo_base_int = dna_in_2_bits[(int)prev_char][1];
+          loc_tract = i;
         } // elsif (dna[0] > dna[1]); notice that if dna[0] == dna[1] then do nothing (not an unambiguous base)
-        add_kmer_to_hopo_counter (hc, context, hopo_base_int, count_same);
-/*
-        printf ("BDG: ");
-        for (j=0; j < hc->kmer_size; j++) printf ("%c", bit_2_dna[context[j]]); //DEBUG
-        printf ("-%c-", bit_2_dna[hopo_base_int]); //DEBUG
-        for (; j < 2 * hc->kmer_size; j++) printf ("%c", bit_2_dna[context[j]]); //DEBUG
-        printf ("\n");
-*/
+        add_kmer_to_hopo_counter (hc, context, hopo_base_int, count_same, loc_tract);
+        //for (j=0; j < hc->kmer_size; j++) printf ("%c", bit_2_dna[context[j]]); printf ("-%c-", bit_2_dna[hopo_base_int]); //DEBUG
+        //for (; j < 2 * hc->kmer_size; j++) printf ("%c", bit_2_dna[context[j]]); //DEBUG
       } // if (count_same>2) [i.e. we found valid homopolymer]
     } else { 
       count_same = 1;
@@ -195,7 +203,7 @@ update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int mi
 }
 
 void
-add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_int, int hopo_size)
+add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_int, int hopo_size, int start_mono)
 {
   int i;
   if (hc->n_elem == hc->n_alloc) {
@@ -205,6 +213,7 @@ add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_i
   hc->elem[hc->n_elem].base   = hopo_base_int; // zero (AT) or one (CG) but always store direction with A or C
   hc->elem[hc->n_elem].length = hopo_size;     // homopolymer track length, in bases
   hc->elem[hc->n_elem].count  = 1;
+  hc=>elem[hc->n_elem].location_in_read = start_mono;
   hc->elem[hc->n_elem].context[0] = hc->elem[hc->n_elem].context[1] = 0ULL; // left context 
   for (i = 0; i < hc->kmer_size; i++) hc->elem[hc->n_elem].context[0] |= ((context[i] & 3ULL) << (2 * i));
   for (i = 0; i < hc->kmer_size; i++) hc->elem[hc->n_elem].context[1] |= ((context[hc->kmer_size + i] & 3ULL) << (2 * i));
@@ -216,6 +225,7 @@ copy_hopo_element_start_count_at (hopo_element *to, hopo_element *from, int coun
 {
   to->base    =  from->base; 
   to->length  =  from->length;
+  to->location_in_read =  from->location_in_read;
   to->context[0] = from->context[0];
   to->context[1] = from->context[1];
   to->count = count;

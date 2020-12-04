@@ -27,7 +27,11 @@ typedef struct
 
 typedef struct
 {
-  int tract_length, contig_location, max_length, concat_idx; 
+  uint64_t tract_length:10, /*! \brief length of tract in reference */
+           max_length:10,   /*! \brief max length of tract amongst samples (used only to alloc memory search) */
+           tract_location:27, /*! \brief location (from left/start of contig in fasta) of first tract site */
+           contig_location:27, /*! \brief location in contig (from fasta) of beginning of context (2^24=1e8) */ 
+           concat_idx:27;   /*! \brief index in concat[] of longest length tract (used as example) */   
   char *contig_name; // contig_name is just a pointer to char_vector
   char *seq;
   char *tract_name; /*! \brief string representation of homopolymer plus context (equiv to context_histogram[]->name) */

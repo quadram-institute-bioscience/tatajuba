@@ -33,11 +33,13 @@ typedef struct
 
 typedef struct
 { 
-  uint64_t context[2]; // flanking kmers (bitstring, not hashed)
+  uint64_t context[2]; /*! \brief flanking kmers (bitstring, not hashed) */
   /* bit fields below are signed to faciliate arithm comparisons, thus we lose one bit for signal */
-  int64_t base:2,    // base: 0=AT 1=CG (forward or reverse, we use canonical which is A side or C side)  
-          length:16, // (former base_size) length of homopolymeric tract (in bases)
-          count:32;  // frequency of homopolymer in this context (due to coverage)
+  int64_t base:2,    /*! \brief base: 0=AT 1=CG (forward or reverse, we use canonical which is A side or C side) */
+          length:10, /*! \brief  (former base_size) length of homopolymeric tract (in bases) */
+          count:22,  /*! \brief frequency of homopolymer in this context (due to coverage) */
+          location_in_read:24; /*! \brief start of tract in read */
+          //txt_line:24, /*! \brief line number in fastq file where this tract was found */
 } hopo_element;
 
 struct hopo_counter_struct
@@ -52,7 +54,8 @@ struct hopo_counter_struct
 
 int compare_hopo_element_decreasing (const void *a, const void *b);
 int compare_hopo_context (hopo_element a, hopo_element b);
-int distance_between_context_kmer (uint64_t *c1, uint64_t *c2, int max_dist);
+int distance_between_single_context_kmer (uint64_t *c1, uint64_t *c2, int max_dist);
+int distance_between_context_kmer_pair (uint64_t *c1, uint64_t *c2);
 
 void print_tatajuba_options (tatajuba_options_t opt);
 hopo_counter new_hopo_counter (int kmer_size);
