@@ -35,19 +35,22 @@ typedef struct
 { 
   uint64_t context[2]; /*! \brief flanking kmers (bitstring, not hashed) */
   /* bit fields below are signed to faciliate arithm comparisons, thus we lose one bit for signal */
-  int64_t base:2,    /*! \brief base: 0=AT 1=CG (forward or reverse, we use canonical which is A side or C side) */
+  int32_t base:2,    /*! \brief base: 0=AT 1=CG (forward or reverse, we use canonical which is A side or C side) */
           length:10, /*! \brief  (former base_size) length of homopolymeric tract (in bases) */
-          count:22,  /*! \brief frequency of homopolymer in this context (due to coverage) */
-          location_in_read:24; /*! \brief start of tract in read */
-          //txt_line:24, /*! \brief line number in fastq file where this tract was found */
+          count:20;  /*! \brief frequency of homopolymer in this context (due to coverage) */
+  int32_t read_offset,  /*! \brief start of context+tract in read (when searching in reference fasta) or 1D flattened location from bwa */
+          loc_ref_id,
+          loc_pos;        /*! \brief 2D BWA location [ref_id,position] which are ref sequence ID and site position within this refseq */
+  uint16_t mismatches:12, /*! \brief mismatches plus indels from bwa */
+           multi:4;       /*! \brief more than one match */
 } hopo_element;
 
 struct hopo_counter_struct
 {
   hopo_element *elem;
   char *name;
-  int n_elem, n_alloc, kmer_size, coverage;
-  int *idx, n_idx;
+  int ref_start, n_elem, n_alloc, kmer_size, coverage;
+  int *idx_initial, *idx_final, n_idx;
   tatajuba_options_t opt;
   int ref_counter;
 };
@@ -66,6 +69,7 @@ char* leftmost_hopo_name_and_length_from_string (char *seq, size_t len, int kmer
 
 int hopo_counter_histogram_integral (hopo_counter hc, int start);
 void finalise_hopo_counter (hopo_counter hc);
+char* generate_tract_as_string (uint64_t *context, int8_t base, int kmer_size, int tract_length);
 char* generate_name_from_flanking_contexts (uint64_t *context, int8_t base, int kmer_size);
 
 #endif

@@ -382,6 +382,7 @@ create_tract_in_reference_structure (genome_set_t g)
   g->tract_ref = (tract_in_reference_s*) biomcmc_malloc (g->n_tract_ref * sizeof (tract_in_reference_s));
   for (i = 0; i < g->n_tract_ref; i++) { 
     g->tract_ref[i].tract_length = -1;
+    g->tract_ref[i].contig_location = -1;
     g->tract_ref[i].contig_name = g->tract_ref[i].seq = g->tract_ref[i].tract_name = NULL;
   }
 
@@ -422,16 +423,18 @@ create_tract_in_reference_structure (genome_set_t g)
 void
 find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnacontig, size_t dnacontig_len, tatajuba_options_t  opt, context_histogram_t hist)
 {
-  int min_tract_size, start_location, len, i, best_id, dist, best_dist = 0xffff; 
+  int extra_borders, min_tract_size, start_location, len, i, best_id, dist, best_dist = 0xffff; 
   hopo_counter hc = new_hopo_counter (opt.kmer_size);
 
-  min_tract_size = opt.min_tract_size - 1; // allows for extra context size in flanks 
-  start_location = ref_tid->contig_location - min_tract_size; // left shift (allow for mismatches) must be smaller than min tract length (to avoid finding spurious) 
-  if (start_location < 0) start_location = 0;
-  len = ref_tid->max_length + 2 * opt.kmer_size + 2 * min_tract_size;
+  min_tract_size = opt.min_tract_size - 2; 
+  if (min_tract_size < 2) min_tract_size = 2;
+  extra_borders = opt.min_tract_size + 2;
+  start_location = ref_tid->contig_location - extra_borders; // left shift (allow for mismatches) can even be longer than min tract length
+  if (start_location < 0) start_location = 0;                 // since we handle spurious matches by chosing one with best distance
+  len = ref_tid->max_length + 2 * opt.kmer_size + 2 * extra_borders; 
   if (len > (int) dnacontig_len) len = (int) dnacontig_len;
 
-  update_hopo_counter_from_seq (hc, dnacontig + start_location, len, opt.min_tract_size); // here is same min_tract_size as others
+  update_hopo_counter_from_seq (hc, dnacontig + start_location, len, min_tract_size); 
   if (!hc->n_elem) {
     ref_tid->tract_length = 0;
     ref_tid->tract_name = (char*) biomcmc_malloc (sizeof (char) * 4);
@@ -444,7 +447,7 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
     if (dist < best_dist) { best_dist = dist; best_id = i; }
   }
   ref_tid->tract_length = hc->elem[best_id].length;
-  ref_tid->tract_location =  hc->elem[best_id].location_in_read;
+  ref_tid->contig_location =  start_location + hc->elem[best_id].read_offset; // corrects read-based location by ref-based location
   ref_tid->tract_name = generate_name_from_flanking_contexts (hc->elem[best_id].context, hc->elem[best_id].base, opt.kmer_size);
   del_hopo_counter (hc);
 }

@@ -138,6 +138,8 @@ del_context_histogram (context_histogram_t ch)
   free (ch);
 }
 
+// STOPHERE must use hc->ref_start, location etc.
+
 void
 context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, int idx_match)
 {
@@ -177,7 +179,6 @@ new_genomic_context_list (hopo_counter hc)
   genome->name = hc->name;
   hc->name = NULL;
 
-  int dbg_count = -1;
   /* 2. accumulate histograms of 'equivalent' (almost identical) contexts */
   for (i1 = 0; i1 < hc->n_idx - 1; i1++) {
     read_coverage = hopo_counter_histogram_integral (hc, i1);
@@ -257,20 +258,8 @@ del_genomic_context_list (genomic_context_list_t genome)
 
 char*
 context_histogram_tract_as_string (context_histogram_t ch, int kmer_size)
-{
-  int i = 0, j = 0, best_length;
-  char *s; 
-  uint64_t ctx = ch->context[2 * ch->mode_context_id]; 
-
-  best_length = ch->h->i[0].idx; // alternative is ch->mode_context_length
-  s = (char*) biomcmc_malloc (sizeof (char) * (2 * kmer_size + best_length + 1));
-
-  for (i = 0; i < kmer_size; i++) s[i] = bit_2_dna[ (ctx >> (2 * i)) & 3 ]; // left context
-  for (; i < kmer_size + best_length; i++) s[i] = bit_2_dna[ch->base]; // homopolymer tract
-  ctx = ch->context[2 * ch->mode_context_id + 1]; // right context
-  for (j = 0; j < kmer_size; j++, i++) s[i] =  bit_2_dna[ (ctx >> (2 * j)) & 3 ]; 
-  s[i] = '\0';
-  return s;
+{// alternative to ch->h->i[0].idx is is ch->mode_context_length
+  return generate_tract_as_string (ch->context + (2 * ch->mode_context_id), ch->base, kmer_size, ch->h->i[0].idx); 
 }
 
 char*
