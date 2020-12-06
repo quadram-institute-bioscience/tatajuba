@@ -138,8 +138,6 @@ del_context_histogram (context_histogram_t ch)
   free (ch);
 }
 
-// STOPHERE must use hc->ref_start, location etc.
-
 void
 context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, int idx_match)
 {
@@ -167,7 +165,8 @@ context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, int id
 genomic_context_list_t
 new_genomic_context_list (hopo_counter hc)
 {
-  int i1, i2, idx_match, j, distance, best_dist=0xffff, best_h=-1, read_coverage;
+  int i, i2, idx_match, j, distance, best_dist=0xffff, best_h=-1, read_coverage;
+  char *name;
   genomic_context_list_t genome = (genomic_context_list_t) biomcmc_malloc (sizeof (struct genomic_context_list_struct));
   genome->hist = NULL;
   genome->n_hist = 0;
@@ -178,18 +177,14 @@ new_genomic_context_list (hopo_counter hc)
   genome->coverage = hc->coverage;
   genome->name = hc->name;
   hc->name = NULL;
-
+// STOPHERE
+  i = hc->ref_start;
+  name = generate_name_from_flanking_contexts (ch->context + (2 * ch->mode_context_id), ch->base, kmer_size); // assuming consecutive context[]
+  context_histogram_add_hopo_elem (genome->hist[best_h], hc->elem[i2], idx_match);
   /* 2. accumulate histograms of 'equivalent' (almost identical) contexts */
-  for (i1 = 0; i1 < hc->n_idx - 1; i1++) {
-    read_coverage = hopo_counter_histogram_integral (hc, i1);
-    if (read_coverage < genome->opt.min_coverage) continue; // too few reads, skip this context+homopolymer
-    dbg_count++;
-    idx_match = -1; // will become context element of j if contexts match exactly 
-    best_dist=0xffff; distance = 0xffff; best_h=-1;
-    for (j = 0; (j < genome->n_hist) && (idx_match < 0); j++) {
-      distance = distance_between_context_histogram_and_hopo_context (genome->hist[j], hc->elem[hc->idx[i1]], genome->opt.max_distance_per_flank, &idx_match);
-      if (distance < best_dist) { best_dist = distance; best_h = j; } // even if distance = 0 we need best_j 
-    }
+  for (i = hc->ref_start; i < hc->n_elem; i++) {
+    distance = distance_between_context_histogram_and_hopo_context (genome->hist[j], hc->elem[hc->idx[i1]], genome->opt.max_distance_per_flank, &idx_match);
+    if (distance < best_dist) { best_dist = distance; best_h = j; } // even if distance = 0 we need best_j 
     if (distance >= 2 * genome->opt.max_distance_per_flank) { // no similar context found (or first context ever)
       genome->hist = (context_histogram_t*) biomcmc_realloc ((context_histogram_t*) genome->hist, (genome->n_hist+1) * sizeof (context_histogram_t));
       genome->hist[genome->n_hist] = new_context_histogram_from_hopo_elem (hc->elem[hc->idx[i1]]);
@@ -326,7 +321,7 @@ print_debug_genomic_context_hist (genomic_context_list_t genome)
 }
 
 void  // FIXME: CTCT.3xA.CCCC at position 1 and GCTC.4xA.CCCC at position zero are the same (w/ T->A subst)
-genomic_context_merge_histograms_at_same_location (genomic_context_list_t genome)
+genomic_context_merge_histograms_at_same_location (genomic_context_list_t genome) // OBSOLETE
 {
   context_histogram_t *new_h;
   int i, j;
