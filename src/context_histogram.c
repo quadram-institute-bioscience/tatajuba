@@ -4,8 +4,9 @@
 
 #include "context_histogram.h"
 
-context_histogram_t new_context_histogram_from_hopo_elem (hopo_element he);
-void context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, int idx_match);
+void add_new_context_histogram_from_hopo_elem (genomic_context_list_t genome, hopo_element he, char *name);
+context_histogram_t new_context_histogram_from_hopo_elem (hopo_element he, char *name);
+void context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, char *name, int idx_match);
 
 char* context_histogram_tract_as_string (context_histogram_t ch, int kmer_size);
 char* context_histogram_generate_name (context_histogram_t ch, int kmer_size);
@@ -97,10 +98,18 @@ context_histograms_overlap (context_histogram_t c1, context_histogram_t c2, int 
   return false;
 }
 
+void
+add_new_context_histogram_from_hopo_elem (genomic_context_list_t genome, hopo_element he, char *name)
+{ 
+  genome->hist = (context_histogram_t*) biomcmc_realloc ((context_histogram_t*) genome->hist, (genome->n_hist+1) * sizeof (context_histogram_t));
+  genome->hist[genome->n_hist++] = new_context_histogram_from_hopo_elem (he, name);
+}
+
 context_histogram_t
-new_context_histogram_from_hopo_elem (hopo_element he)
+new_context_histogram_from_hopo_elem (hopo_element he, char *name)
 {
   context_histogram_t ch = (context_histogram_t) biomcmc_malloc (sizeof (struct context_histogram_struct));
+
   ch->context = (uint64_t*) biomcmc_malloc (2 * sizeof (uint64_t));
   ch->ref_counter = 1;
   ch->n_context = 1; // how many context pairs 
@@ -113,8 +122,8 @@ new_context_histogram_from_hopo_elem (hopo_element he)
   ch->context[0] = he.context[0];
   ch->context[1] = he.context[1];
   ch->integral = he.count;
-  ch->name = NULL; // defined on finalise()
-  ch->h= NULL; // empfreq created at the end (finalise_genomic_context)
+  ch->name = name;  
+  ch->h = NULL; // empfreq created at the end (finalise_genomic_context)
   ch->index = 1; // index in genome_set (here used provisorily as n_tmp 
   ch->tmp_count  = (int*) biomcmc_malloc (sizeof (int));
   ch->tmp_length = (int*) biomcmc_malloc (sizeof (int));
@@ -139,7 +148,7 @@ del_context_histogram (context_histogram_t ch)
 }
 
 void
-context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, int idx_match)
+context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, char *name, int idx_match)
 {
   if (idx_match < 0) { // new context, but still within distance boundary (since this function was called...)
     // printf ("DBG::realloc::%6d\n", ch->n_context); // short kmer and big files cause realloc corruption
@@ -153,7 +162,11 @@ context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, int id
     ch->mode_context_count = he.count;
     ch->mode_context_length = he.length; // may be same length, diff context
     ch->mode_context_id = idx_match; 
+    if (ch->name) free (name);
+    ch->name = name;
   }
+  else if (name) free (name);
+
   ch->integral += he.count;
 
   ch->tmp_count  = (int*) biomcmc_realloc ((int*) ch->tmp_count,  (ch->index +1) * sizeof (int));
@@ -165,8 +178,8 @@ context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, int id
 genomic_context_list_t
 new_genomic_context_list (hopo_counter hc)
 {
-  int i, i2, idx_match, j, distance, best_dist=0xffff, best_h=-1, read_coverage;
-  char *name;
+  int i, idx_match, j, distance;
+  char *histname;
   genomic_context_list_t genome = (genomic_context_list_t) biomcmc_malloc (sizeof (struct genomic_context_list_struct));
   genome->hist = NULL;
   genome->n_hist = 0;
@@ -177,26 +190,21 @@ new_genomic_context_list (hopo_counter hc)
   genome->coverage = hc->coverage;
   genome->name = hc->name;
   hc->name = NULL;
-// STOPHERE
-  i = hc->ref_start;
-  name = generate_name_from_flanking_contexts (ch->context + (2 * ch->mode_context_id), ch->base, kmer_size); // assuming consecutive context[]
-  context_histogram_add_hopo_elem (genome->hist[best_h], hc->elem[i2], idx_match);
-  /* 2. accumulate histograms of 'equivalent' (almost identical) contexts */
-  for (i = hc->ref_start; i < hc->n_elem; i++) {
-    distance = distance_between_context_histogram_and_hopo_context (genome->hist[j], hc->elem[hc->idx[i1]], genome->opt.max_distance_per_flank, &idx_match);
-    if (distance < best_dist) { best_dist = distance; best_h = j; } // even if distance = 0 we need best_j 
-    if (distance >= 2 * genome->opt.max_distance_per_flank) { // no similar context found (or first context ever)
-      genome->hist = (context_histogram_t*) biomcmc_realloc ((context_histogram_t*) genome->hist, (genome->n_hist+1) * sizeof (context_histogram_t));
-      genome->hist[genome->n_hist] = new_context_histogram_from_hopo_elem (hc->elem[hc->idx[i1]]);
-      idx_match = 0; // he->idx gives list with same context so we dont need to compare until idx[i1+1]
-      best_h = genome->n_hist++; // outside if/else we need both idx_match, best_h, and i2
-      i2 = hc->idx[i1] + 1; // skip first element, which was used to create context_histogram_t 
-    }
-    else i2 = hc->idx[i1]; // do not skip first element, add it to context_histogram_t in for() loop below 
 
-    for (; i2 < hc->idx[i1+1]; i2++) context_histogram_add_hopo_elem (genome->hist[best_h], hc->elem[i2], idx_match);
+  i = hc->ref_start;
+  histname = generate_name_from_flanking_contexts (hc->elem[i].context, hc->elem[i].base, genome->opt.kmer_size);
+  add_new_context_histogram_from_hopo_elem (genome, hc->elem[i], histname);
+
+  /* 2. accumulate histograms of 'equivalent' contexts */
+  for (++i; i < hc->n_elem; i++) {
+    j = genome->n_hist - 1; 
+    histname = generate_name_from_flanking_contexts (hc->elem[i].context, hc->elem[i].base, genome->opt.kmer_size);
+    distance = distance_between_context_histogram_and_hopo_context (genome->hist[j], hc->elem[i], genome->opt.max_distance_per_flank, &idx_match);
+    if (distance < genome->opt.max_distance_per_flank)  
+      context_histogram_add_hopo_elem (genome->hist[j], hc->elem[i], histname, idx_match);
+    else 
+      add_new_context_histogram_from_hopo_elem (genome, hc->elem[i], histname);
   }
-  printf ("DEBUG::hopo_counters=  %12d dbg_count =   %12d  n_hist=  %12d\n", hc->n_idx, dbg_count, genome->n_hist);
   /* 3. generate empfreq histograms, name each histogram and find location in ref genome */
   finalise_genomic_context_hist (genome);
   return genome;
