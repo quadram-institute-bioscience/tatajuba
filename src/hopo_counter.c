@@ -16,7 +16,7 @@ void add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_b
 void copy_hopo_element_start_count_at (hopo_element *to, hopo_element *from, int count);
 void copy_hopo_element_locations (hopo_element *to, hopo_element *from);
 void estimate_coverage_hopo_counter (hopo_counter hc);
-void find_reference_location_and_sort_hopo_counter (hc);
+void find_reference_location_and_sort_hopo_counter (hopo_counter hc);
 
 int
 compare_hopo_element_decreasing (const void *a, const void *b)
@@ -295,7 +295,7 @@ finalise_hopo_counter (hopo_counter hc)
   for (i=1; i < hc->n_elem; i++) if (compare_hopo_context (hc->elem[i-1], hc->elem[i])) {
     coverage = 0;
     for (j = hc->idx_initial[hc->n_idx]; j < i; j++) coverage += hc->elem[j].count;
-    if (coverage >= ch->opt.min_coverage) { 
+    if (coverage >= hc->opt.min_coverage) { 
       hc->idx_final[hc->n_idx++] = i;
       hc->idx_initial[hc->n_idx] = i; // n_idx was incremented, we are adding a new line
     }
@@ -303,7 +303,7 @@ finalise_hopo_counter (hopo_counter hc)
   }
   coverage = 0; // last block c in "aaa.bbbb.cccc" since last compare_context will be "b.c" 
   for (j = hc->idx_initial[hc->n_idx]; j < i; j++) coverage += hc->elem[j].count;
-  if (coverage >= ch->opt.min_coverage) hc->idx_final[hc->n_idx++] = i;
+  if (coverage >= hc->opt.min_coverage) hc->idx_final[hc->n_idx++] = i;
 
   hc->idx_initial = (int*) biomcmc_realloc ((int*) hc->idx_initial, hc->n_idx * sizeof (int));
   hc->idx_final   = (int*) biomcmc_realloc ((int*) hc->idx_final,   hc->n_idx * sizeof (int));
@@ -336,7 +336,7 @@ estimate_coverage_hopo_counter (hopo_counter hc)
 int hopo_counter_histogram_integral (hopo_counter hc, int start) // OBSOLETE
 {
   int i, cov = 0;
-  for (i = hc->idx[start]; i < hc->idx[start+1]; i++) cov += hc->elem[i].count;
+  for (i = hc->idx_initial[start]; i < hc->idx_final[start]; i++) cov += hc->elem[i].count;
   return cov;
 }
 
@@ -345,11 +345,11 @@ generate_tract_as_string (uint64_t *context, int8_t base, int kmer_size, int tra
 {
   int i = 0, j = 0;
   char *s = (char*) biomcmc_malloc (sizeof (char) * (2 * kmer_size + tract_length + 1));
-  uint64_t ctx = ch->context[0]; 
+  uint64_t ctx = context[0]; 
 
   for (i = 0; i < kmer_size; i++) s[i] = bit_2_dna[ (ctx >> (2 * i)) & 3 ]; // left context
   for (; i < kmer_size + tract_length; i++) s[i] = bit_2_dna[base]; // homopolymer tract
-  ctx = ch->context[1]; // right context
+  ctx = context[1]; // right context
   for (j = 0; j < kmer_size; j++, i++) s[i] =  bit_2_dna[ (ctx >> (2 * j)) & 3 ]; 
   s[i] = '\0';
   return s;
@@ -371,7 +371,7 @@ generate_name_from_flanking_contexts (uint64_t *context, int8_t base, int kmer_s
 }
 
 void
-find_reference_location_and_sort_hopo_counter (hc)
+find_reference_location_and_sort_hopo_counter (hopo_counter hc)
 {
   char_vector readseqs;
   char *read;
@@ -386,10 +386,13 @@ find_reference_location_and_sort_hopo_counter (hc)
   readseqs = new_char_vector (hc->n_idx);
 
   /* 0.  preprocessing: make sure read_offset (originally with location info within fastq read) can be used as flattened location */
-  for (i = 0; i < hc->n_elem; i++) hc->[i]->read_offset = -1;  
+  for (i = 0; i < hc->n_elem; i++) hc->elem[i].read_offset = -1;  
   /* 0.  preprocessing: generating DNA segments with context+tract fror BWA, and dummy sequence names */
   for (i = 0; i < hc->n_idx; i++) { // link_string() assumes char* was allocated outside, but assumes control of if (i.e. will free() it)
-    read = generate_tract_as_string (hc->elem[hc->idx_initial[i]].context, hc->opt.kmer_size, hc->elem[hc->idx_initial[i]].length); // longest
+    read = generate_tract_as_string (hc->elem[hc->idx_initial[i]].context, 
+                                     hc->elem[hc->idx_initial[i]].base,
+                                     hc->opt.kmer_size, 
+                                     hc->elem[hc->idx_initial[i]].length); // longest
     char_vector_link_string_at_position (readseqs, read, readseqs->next_avail); // just link 
   }
 
@@ -428,7 +431,7 @@ find_reference_location_and_sort_hopo_counter (hc)
   
   /* 5.  sort according to location, with unknown elements first */
   qsort (hc->elem, hc->n_elem, sizeof (hopo_element), compare_hopo_element_location);
-  for (i = 0; (i < hc->n_elem) && (hc->[i]->read_offset < 0); i++); // just scan i
+  for (i = 0; (i < hc->n_elem) && (hc->elem[i].read_offset < 0); i++); // just scan i
   hc->ref_start = i; // downstream analysis will use only these
 
   if (refseq_offset)   free (refseq_offset);
