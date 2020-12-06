@@ -431,7 +431,7 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
   len = ref_tid->max_length + 2 * opt.kmer_size + 2 * min_tract_size;
   if (len > (int) dnacontig_len) len = (int) dnacontig_len;
 
-  update_hopo_counter_from_seq (hc, dnacontig + start_location, len, opt.min_tract_size); // here is same min_tract_size as others
+  update_hopo_counter_from_seq (hc, dnacontig + start_location, len, opt.min_tract_size -1); // here is same min_tract_size as others
   if (!hc->n_elem) {
     ref_tid->tract_length = 0;
     ref_tid->tract_name = (char*) biomcmc_malloc (sizeof (char) * 4);

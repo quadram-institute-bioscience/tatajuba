@@ -213,7 +213,7 @@ add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_i
   hc->elem[hc->n_elem].base   = hopo_base_int; // zero (AT) or one (CG) but always store direction with A or C
   hc->elem[hc->n_elem].length = hopo_size;     // homopolymer track length, in bases
   hc->elem[hc->n_elem].count  = 1;
-  hc=>elem[hc->n_elem].location_in_read = start_mono;
+  hc->elem[hc->n_elem].location_in_read = start_mono;
   hc->elem[hc->n_elem].context[0] = hc->elem[hc->n_elem].context[1] = 0ULL; // left context 
   for (i = 0; i < hc->kmer_size; i++) hc->elem[hc->n_elem].context[0] |= ((context[i] & 3ULL) << (2 * i));
   for (i = 0; i < hc->kmer_size; i++) hc->elem[hc->n_elem].context[1] |= ((context[hc->kmer_size + i] & 3ULL) << (2 * i));
