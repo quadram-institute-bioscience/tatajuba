@@ -92,19 +92,14 @@ del_genome_set (genome_set_t g)
 {
   int i;
   if (!g) return;
-  printf ("DEBUG::0::\n");
   if (--g->ref_counter) return;
-  printf ("DEBUG::1::\n");
   for (i = g->n_genome - 1; i >= 0; i--) del_genomic_context_list (g->genome[i]);
-  printf ("DEBUG::2::\n");
   if (g->genome) free (g->genome);
-  printf ("DEBUG::3::\n");
   if (g->tract_ref) { // do not free contig_name (which is just a pointer to char_vector ref_names)
     for (i = g->n_tract_ref-1; i >= 0; i--) if (g->tract_ref[i].seq)        free (g->tract_ref[i].seq); 
     for (i = g->n_tract_ref-1; i >= 0; i--) if (g->tract_ref[i].tract_name) free (g->tract_ref[i].tract_name); 
     free (g->tract_ref);
   }
-  printf ("DEBUG::4::\n");
   del_char_vector (g->ref_names);
   del_g_tract_vector (g->tract);
   free (g); 
@@ -172,19 +167,18 @@ g_tract_vector_concatenate_tracts (g_tract_vector_t tract, genomic_context_list_
    * genome B: b2 | b5 | b6
    * concat: a1 | b2| a5 | b5| b6 | a8
    */
-  /* 1. skip genomes without (genome-location) annotated histograms and start new histogram */ 
-  for (i = 0; genome[i]->ref_start == genome[i]->n_hist; i++); // do nothing besides loop
-  tract->n_concat = genome[i]->n_hist - genome[i]->ref_start;
+  /* 1. start new histogram */ 
+  tract->n_concat = genome[0]->n_hist;
   tract->concat   = (context_histogram_t*) biomcmc_malloc (sizeof (context_histogram_t) * tract->n_concat);
-  for (j=0, k1 = genome[i]->ref_start; k1 < genome[i]->n_hist; j++, k1++) tract->concat[j] = genome[i]->hist[k1];
+  for (j=0; j < genome[0]->n_hist; j++) tract->concat[j] = genome[0]->hist[j];
   new_h = tract->concat;
   n_new_h = tract->n_concat;
 
   /* 2. concat[] will be new_h and genome[i]->hist merged, in order (both are ordered) */
-  for (i+=1; i < n_genome; i++) if (genome[i]->n_hist > genome[i]->ref_start) {
-    tract->n_concat = n_new_h + genome[i]->n_hist - genome[i]->ref_start; // sum of lengths
+  for (i = 1; i < n_genome; i++) {
+    tract->n_concat = n_new_h + genome[i]->n_hist; // sum of lengths
     tract->concat = (context_histogram_t*) biomcmc_malloc (tract->n_concat * sizeof (context_histogram_t));
-    for (j = 0, k1 = 0, k2 = genome[i]->ref_start; (k1 < n_new_h) && (k2 < genome[i]->n_hist); ) { 
+    for (j = 0, k1 = 0, k2 = 0; (k1 < n_new_h) && (k2 < genome[i]->n_hist); ) { 
       dif = new_h[k1]->location - genome[i]->hist[k2]->location;
       if (dif > 0) tract->concat[j++] = genome[i]->hist[k2++]; // k2 steps forward (if equal both step forward)
       else if (dif < 0) tract->concat[j++] = new_h[k1++];      // k1 steps forward
@@ -423,6 +417,8 @@ create_tract_in_reference_structure (genome_set_t g)
                                           g->tract->concat[g->tract_ref[tid].concat_idx]);
   }
   del_alignment (aln);
+
+  /* 5.  accumulate context_histogram from same ref.contig_location (i.e. merge tract_id) TODO */
 }
 
 void
@@ -452,7 +448,7 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
     if (dist < best_dist) { best_dist = dist; best_id = i; }
   }
   ref_tid->tract_length = hc->elem[best_id].length;
-  ref_tid->contig_location =  start_location + hc->elem[best_id].read_offset; // corrects read-based location by ref-based location
+  ref_tid->contig_location = start_location + hc->elem[best_id].read_offset; // corrects read-based location by ref-based location
   ref_tid->tract_name = generate_name_from_flanking_contexts (hc->elem[best_id].context, hc->elem[best_id].base, opt.kmer_size);
   del_hopo_counter (hc);
 }

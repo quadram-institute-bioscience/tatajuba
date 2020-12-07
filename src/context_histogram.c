@@ -96,7 +96,6 @@ context_histograms_overlap (context_histogram_t c1, context_histogram_t c2, int 
   }
 
   tract_length = BIOMCMC_MIN (c1->mode_context_length, c2->mode_context_length);
-//  printf ("DBG::LEN::%6d :: %6d %6d\n", c1->location, n_bases_apart, tract_length);
   if (n_bases_apart > (tract_length - 1) || (c1->base != c2->base)) { // bases SHOULD be the same, but you never know...
     if (distance) *distance = -1; // should NOT be used
     return false; // locations too different
@@ -106,7 +105,6 @@ context_histograms_overlap (context_histogram_t c1, context_histogram_t c2, int 
   i1 = strlen (c1->name); // name = "ATTGC-A-CCCAG"
   i2 = biomcmc_levenshtein_distance (c1->name, i1, c2->name, i1, 1, 1, true); // allows for indels
   if (distance) *distance = (int) i2;
-//  printf ("DBG::DIST::%6d :: %8u\t", c1->location, i2);
   if (i2 <= (uint32_t)(opt.levenshtein_distance)) return true;
   return false;
 }
@@ -182,7 +180,7 @@ context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, char *
     ch->location = he.read_offset;
     ch->loc2d[0] = he.loc_ref_id;
     ch->loc2d[1] = he.loc_pos;
-    if (ch->name) free (name);
+    if (ch->name) free (ch->name);
     ch->name = name;
   }
   else if (name) free (name);
@@ -268,7 +266,7 @@ finalise_genomic_context_hist (genomic_context_list_t genome)
  // qsort (genome->hist, genome->n_hist, sizeof (context_histogram_t), compare_context_histogram_for_qsort);
   genome->ref_start = 0;
 
-  /* 4. merge context_histograms mapped to same ref genome location.BWA may detect that slightly different contexts are 
+  /* 4. merge context_histograms mapped to same ref genome location. BWA may detect that slightly different contexts are 
    *    actually the same, specially when max_flank_distance is too strict */
   genomic_context_merge_histograms_at_same_location (genome);
   //print_debug_genomic_context_hist (genome);
@@ -313,7 +311,8 @@ genomic_context_find_features (genomic_context_list_t genome)
   /* BWA was calculated in hopo_counter for each reference sequence (contig/genome) */
   for (i = 0; i < genome->n_hist; i++) {
     // find_gff3_fields_within_position (gff struct, name of reference genome exactly as in gff, position within ref genome, number of features found)
-    features = find_gff3_fields_within_position (genome->opt.gff, match->bns->anns[genome->hist[i]->loc2d[0]].name, genome->hist[i]->loc2d[1], &n_features);
+    j = genome->hist[i]->loc2d[1] + genome->opt.kmer_size;  // location of beginning of tract (after kmer-sized context)
+    features = find_gff3_fields_within_position (genome->opt.gff, match->bns->anns[genome->hist[i]->loc2d[0]].name, j, &n_features);
     for (j = 0; j < n_features; j++) if (features[j].type.id != GFF3_TYPE_region) {
       genome->hist[i]->gffeature = features[j]; // store any feature (may be a gene, cds, ...); however ... 
       //printf ("DBG::%6d %6d | (%6d-%6d:%6d)  %s [%d]\n", i, j, features[j].start, features[j].end, match->m[i].position, features[j].attr_id.str, features[j].type.id);
@@ -382,14 +381,12 @@ void  // FIXME: CTCT.3xA.CCCC at position 1 and GCTC.4xA.CCCC at position zero a
 genomic_context_merge_histograms_at_same_location (genomic_context_list_t genome) // OBSOLETE
 {
   context_histogram_t *new_h;
-  int i, j;
+  int i, j = 0;
 
-  if (genome->ref_start == genome->n_hist) return; // nothing to do if no contexts were found in ref genome 
   new_h = (context_histogram_t*) biomcmc_malloc (genome->n_hist * sizeof (context_histogram_t));
 
-  for (j = 0; j < genome->ref_start; j++) new_h[j] = genome->hist[j]; // negative locations are neglected
-  new_h[j] = genome->hist[j]; 
-  for (i = j + 1; i < genome->n_hist; i++) {
+  new_h[0] = genome->hist[0]; 
+  for (i = 1; i < genome->n_hist; i++) {
     // NULL is pointer, it means that we don't want to store the actual levenshtein distance 
     if (context_histograms_overlap (new_h[j], genome->hist[i], NULL, genome->opt)) accumulate_from_context_histogram (new_h[j], genome->hist[i]);
     else new_h[++j] = genome->hist[i];
@@ -417,6 +414,9 @@ accumulate_from_context_histogram (context_histogram_t to, context_histogram_t f
     to->mode_context_count  = from->mode_context_count;
     to->mode_context_length = from->mode_context_length;
     to->mode_context_id     = from->mode_context_id;
+    to->loc2d[0] = from->loc2d[0];
+    to->loc2d[1] = from->loc2d[1];
+
     n1 = to->n_context; to->n_context = from->n_context; from->n_context = n1; // swap
     c1 = to->context;   to->context =   from->context;   from->context = c1;
     s1 = to->name;      to->name =      from->name;      from->name = s1;

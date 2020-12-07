@@ -438,7 +438,7 @@ find_reference_location_and_sort_hopo_counter (hopo_counter hc)
   qsort (hc->elem, hc->n_elem, sizeof (hopo_element), compare_hopo_element_location);
   for (i = 0; (i < hc->n_elem) && (hc->elem[i].read_offset < 0); i++); // just scan i
   hc->ref_start = i; // downstream analysis will use only these
-  biomcmc_fprintf_colour (stderr, 0,2, hc->name, ": %6d out of %6d context+tracts were not found in reference\n", i, hc->n_elem);
+  biomcmc_fprintf_colour (stderr, 0,2, hc->name, ": %6d found and %6d context+tracts were not found in reference\n", hc->n_elem - i, i);
   if (i > hc->n_elem/2) biomcmc_warning ("%6d out of %6d (more than half) context+tracts were not found in reference for sample %s\n", i, hc->n_elem, hc->name);
 
   if (refseq_offset)   free (refseq_offset);
