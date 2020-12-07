@@ -92,14 +92,19 @@ del_genome_set (genome_set_t g)
 {
   int i;
   if (!g) return;
+  printf ("DEBUG::0::\n");
   if (--g->ref_counter) return;
+  printf ("DEBUG::1::\n");
   for (i = g->n_genome - 1; i >= 0; i--) del_genomic_context_list (g->genome[i]);
+  printf ("DEBUG::2::\n");
   if (g->genome) free (g->genome);
+  printf ("DEBUG::3::\n");
   if (g->tract_ref) { // do not free contig_name (which is just a pointer to char_vector ref_names)
     for (i = g->n_tract_ref-1; i >= 0; i--) if (g->tract_ref[i].seq)        free (g->tract_ref[i].seq); 
     for (i = g->n_tract_ref-1; i >= 0; i--) if (g->tract_ref[i].tract_name) free (g->tract_ref[i].tract_name); 
     free (g->tract_ref);
   }
+  printf ("DEBUG::4::\n");
   del_char_vector (g->ref_names);
   del_g_tract_vector (g->tract);
   free (g); 

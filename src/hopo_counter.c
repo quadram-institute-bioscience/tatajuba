@@ -33,7 +33,9 @@ compare_hopo_element_decreasing (const void *a, const void *b)
 int
 compare_hopo_element_location (const void *a, const void *b)
 {
-  return ((hopo_element *)a)->read_offset - ((hopo_element *)b)->read_offset;
+  int result = ((hopo_element *)a)->read_offset - ((hopo_element *)b)->read_offset;
+  if (result) return result; 
+  return ((hopo_element *)b)->length - ((hopo_element *)a)->length; // same context and homopolymer base, thus sort by tract length
 }
 
 int
@@ -412,9 +414,12 @@ find_reference_location_and_sort_hopo_counter (hopo_counter hc)
     mismatch = match->m[i].mm + match->m[i].gape + match->m[i].gapo;
     read_offset = refseq_offset[match->m[i].ref_id] + match->m[i].position; // one-dimensional (flat) index 
 
+    // FIXME: maybe choses worse mistmatch if offset is smaller
     if (hc->elem[qid].loc_pos < 0) skip_match = false; // first time this element is seen 
     if (skip_match && (hc->elem[qid].mismatches > mismatch)) { hc->elem[qid].multi = true; skip_match = false; } 
-    if (skip_match && (hc->elem[qid].read_offset < read_offset)) { hc->elem[qid].multi = true; skip_match = false; } 
+    if (skip_match && (hc->elem[qid].read_offset > read_offset)) { hc->elem[qid].multi = true; skip_match = false; } 
+
+    if (hc->elem[qid].multi) printf ("DEBUG::hopo::%d mism=%d %d offset=%d %d\n", match->m[i].ref_id,hc->elem[qid].mismatches, mismatch, hc->elem[qid].read_offset, read_offset);
 
     if (!skip_match) {
       hc->elem[qid].mismatches = mismatch;
@@ -433,6 +438,8 @@ find_reference_location_and_sort_hopo_counter (hopo_counter hc)
   qsort (hc->elem, hc->n_elem, sizeof (hopo_element), compare_hopo_element_location);
   for (i = 0; (i < hc->n_elem) && (hc->elem[i].read_offset < 0); i++); // just scan i
   hc->ref_start = i; // downstream analysis will use only these
+  biomcmc_fprintf_colour (stderr, 0,2, hc->name, ": %6d out of %6d context+tracts were not found in reference\n", i, hc->n_elem);
+  if (i > hc->n_elem/2) biomcmc_warning ("%6d out of %6d (more than half) context+tracts were not found in reference for sample %s\n", i, hc->n_elem, hc->name);
 
   if (refseq_offset)   free (refseq_offset);
   if (hc->idx_initial) free (hc->idx_initial);

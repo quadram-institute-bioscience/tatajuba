@@ -42,7 +42,7 @@ typedef struct
           loc_ref_id,
           loc_pos;        /*! \brief 2D BWA location [ref_id,position] which are ref sequence ID and site position within this refseq */
   uint16_t mismatches:12, /*! \brief mismatches plus indels from bwa */
-           multi:4;       /*! \brief more than one match */
+           multi:3;       /*! \brief more than one match */
 } hopo_element;
 
 struct hopo_counter_struct
