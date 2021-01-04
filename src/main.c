@@ -34,10 +34,10 @@ get_parameters_from_argv (int argc, char **argv)
     .help    = arg_litn("h","help",0, 1, "print a longer help and exit"),
     .version = arg_litn("v","version",0, 1, "print version and exit"),
     .paired  = arg_litn("p","paired", 0, 1, "paired end (pairs of) files"),
-    .kmer    = arg_int0("k","kmer","{2,...,32}", "kmer size flanking each side of homopolymer (default=8)"),
-    .minsize = arg_int0("m","minsize","{1,...,32}", "minimum homopolymer tract length to be compared"),
-    .minread = arg_int0("i","minreads",NULL, "minimum number of reads for tract+context to be considered"),
-    .maxdist = arg_int0("d","maxdist",NULL, "maximum distance between kmers of a flanking region to merge them into one context"),
+    .kmer    = arg_int0("k","kmer","{2,...,32}", "kmer size flanking each side of homopolymer (default=25)"),
+    .minsize = arg_int0("m","minsize","{1,...,32}", "minimum homopolymer tract length to be compared (default=4)"),
+    .minread = arg_int0("i","minreads",NULL, "minimum number of reads for tract+context to be considered (default=5)"),
+    .maxdist = arg_int0("d","maxdist",NULL, "maximum distance between kmers of a flanking region to merge them into one context (default=1)"),
     .leven   = arg_int0("l","leven",NULL, "levenshtein distance between flanking regions to merge them into one context (after ref genome mapping)"),
     .threads = arg_int0("t","nthreads",NULL, "suggested number of threads (default is to let system decide; I may not honour your suggestion btw)"),
     .gff     = arg_file1("g", "gff", "<genome.gff3|genome.gff3.gz>", "reference genome file in GFF3, preferencially with sequence"),
@@ -49,9 +49,9 @@ get_parameters_from_argv (int argc, char **argv)
   void* argtable[] = {params.help, params.version, params.paired, params.kmer, params.minsize, params.minread, params.maxdist, params.leven, 
     params.threads, params.gff, params.fna, params.fastq, params.outdir, params.end};
   params.argtable = argtable; 
-  params.kmer->ival[0]    = 16; // default values must be before parsing
-  params.minsize->ival[0] = 4; 
-  params.minread->ival[0] = 3;
+  params.kmer->ival[0]    = 25; // default values must be before parsing
+  params.minsize->ival[0] = 4;
+  params.minread->ival[0] = 5;
   params.maxdist->ival[0] = 1;
   params.leven->ival[0] = -1;
   /* actual parsing: */
