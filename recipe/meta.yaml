@@ -1,5 +1,5 @@
 {% set version="1.0.1" %}
-{% set revision="a21f07c32e99c811f9c3bfd8678721c6e1a51333" %}
+{% set revision="d34958fa0ede22a995dc2f7f6c9bdd5788775988" %}
 
 package:
   name: tatajuba 
@@ -41,7 +41,7 @@ test:
 about:
   home: https://github.com/quadram-institute-bioscience/tatajuba
   license: 'GPLv3'
-  license_file: https://github.com/quadram-institute-bioscience/tatajuba/blob/master/LICENSE
+  license_file: LICENSE 
   summary: 'Identification and classification of homopolymeric tracts from reads (EXPERIMENTAL)'
 
 extra:

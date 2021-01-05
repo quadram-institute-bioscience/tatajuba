@@ -85,7 +85,7 @@ print_usage (arg_parameters params, char *progname)
   if (params.version->count) { printf ("%s\n", PACKAGE_VERSION); del_arg_parameters (params); exit (EXIT_SUCCESS); }
   if (!params.end->count && (!params.help->count)) return;
 
-  if (params.end->count) {  // params.end holds error messages
+  if (params.end->count && (!params.help->count)) {  // params.end holds error messages
     biomcmc_fprintf_colour (stdout, 0,1, "Error when reading arguments from command line:\n", NULL);
     arg_print_errors(stdout, params.end, basename(progname));
     printf ("\n");
