@@ -1,5 +1,5 @@
 {% set version="1.0.1" %}
-{% set revision="9f0cf02a8bb08853ad690f2eaefae7dbd504762f" %}
+{% set revision="a21f07c32e99c811f9c3bfd8678721c6e1a51333" %}
 
 package:
   name: tatajuba 
@@ -22,11 +22,17 @@ requirements:
     - make
     - check
     - zlib
+    - xz
+    - bzip2
   host:
     - check
     - zlib
+    - xz
+    - bzip2
   run:
     - zlib
+    - xz
+    - bzip2
 
 test:
   commands:

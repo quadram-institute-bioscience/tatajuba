@@ -50,7 +50,16 @@ AC_CHECK_HEADER(bzlib.h,
                   AC_DEFINE([HAVE_BZIP2],[1],[set to one if bz2 compression library found]),
                   [AC_MSG_NOTICE([optional bzip2 headers not found])]  )
 AC_SEARCH_LIBS([BZ2_bzlibVersion], [bz2]) #  unlike AC_CHECK_LIB, does not define HAVE_LIBBZ2 (thus our custom define above)
-AC_SEARCH_LIBS([sqrt], [m])
+
+dnl a few checks below that are used by biomcmc in fact
+AC_SEARCH_LIBS([sqrt], [m])  # modern equivalent of AC_CHECK_LIB ([m],[main])
+AC_SEARCH_LIBS([clock_gettime],[rt])#  clock_gettime function in rt library (linking with -lrt if found)
+AC_HEADER_STDC # Check for the 15 Standard C (ANSI-C/ISO-C) headers
+AC_CHECK_HEADERS(unistd.h sys/time.h sys/times.h) # Check for additional headers
+dnl will add lines #define SIZEOF_INT to config.h etc.
+AC_CHECK_SIZEOF(int)
+AC_CHECK_SIZEOF(double)
+AC_CHECK_SIZEOF(long long int)
 
 AC_MSG_RESULT([ ===  configuration options specific to $PACKAGE_NAME]) # library checks (math etc.) are done by biomcmc-lib
 

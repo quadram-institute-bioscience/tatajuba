@@ -20,7 +20,12 @@ Tatajuba (_Bagassa guianensis_) is a South American tree, also known as Tatajub√
 It means "yellow fire" in [Tupi](https://en.wikipedia.org/wiki/Tupi_language).
 
 ## Installation
-You should download this repository with `git clone --recursive` to ensure it also downloads
+
+### conda
+
+### github
+If for any reason installing through conda is not an option, or if you want the latest, very dangerous version of the
+software, you can download and compile it yourself. This repository must be cloned with `git clone --recursive` to ensure it also downloads
 [biomcmc-lib](https://github.com/quadram-institute-bioscience/biomcmc-lib).
 
 This sofware uses `autotools`, so you can install it with `configure` + `make`. 
@@ -57,7 +62,8 @@ Both cases are shown below, if you can install them system-wide:
 /home/simpson/$ apt-get install zlib1g-dev libomp-dev libbz2-dev check liblzma-dev
 ```
 The libraries rely on `pkg-config` to find their location: if your `pkg-config` was installed through conda then you'd
-better install the above libs via conda as well (or, you know, updating environmental variables etc)
+better install the above libs via conda as well (or, you know, updating environmental variables etc).
+The `zlib` library is mandatory, while the others are called `xz` and `bzip2` on a strict conda environment.
 
 ## Model
 At the lowest level (C `struct`), the homopolymeric tracts are stored as the two flanking k-mers (called "context" here) and the base
