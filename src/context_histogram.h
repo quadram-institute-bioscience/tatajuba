@@ -10,6 +10,7 @@
 #define _context_histogram_h_
 
 #include "hopo_counter.h" 
+#define CH_MAX_DIST 0xffff
 
 typedef struct context_histogram_struct* context_histogram_t;
 typedef struct genomic_context_list_struct* genomic_context_list_t;
@@ -17,7 +18,9 @@ typedef struct genomic_context_list_struct* genomic_context_list_t;
 struct context_histogram_struct
 {
   uint64_t *context; /*! \brief now a vector since we store all within distance */
-  int8_t base;       /*! \brief homopolymer base (AT or CG) */
+  int8_t base:2,     /*! \brief homopolymer base (AT or CG) */
+         multi:3,    /*! \brief  0,1,2 (from hopo_counter) if all (1) or some (2) contexts have paralogs */
+         indel:2;    /*! \brief if indel is closer than existing distances for at least one context pair */
   char *name;        /*! \brief context name is flanking kmers with tract base in the middle */
   int n_context,     /*! \brief vector size (of neighbourhood) */
       integral,      /*! \brief sum of frequencies */
@@ -42,7 +45,8 @@ struct genomic_context_list_struct
   int n_hist, coverage, ref_start;  /*! \brief ref_start is index of first hist found on ref genome (all before were not found) */
 };
 
-int distance_between_context_histogram_and_hopo_context (context_histogram_t ch, hopo_element he, int max_distance, int *idx_match);
+int indel_distance_between_context_histogram_and_hopo_context (context_histogram_t ch, char *name);
+int distance_between_context_histogram_and_hopo_context (context_histogram_t ch, hopo_element he, int max_distance, int location_difference, int *idx_match);
 int distance_between_context_histograms (context_histogram_t c1, context_histogram_t c2, double *result);
 int compare_context_histogram_for_qsort (const void *a, const void *b);
 bool context_histograms_overlap (context_histogram_t c1, context_histogram_t c2, int *distance, tatajuba_options_t opt);

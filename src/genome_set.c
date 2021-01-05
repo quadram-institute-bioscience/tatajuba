@@ -167,19 +167,18 @@ g_tract_vector_concatenate_tracts (g_tract_vector_t tract, genomic_context_list_
    * genome B: b2 | b5 | b6
    * concat: a1 | b2| a5 | b5| b6 | a8
    */
-  /* 1. skip genomes without (genome-location) annotated histograms and start new histogram */ 
-  for (i = 0; genome[i]->ref_start == genome[i]->n_hist; i++); // do nothing besides loop
-  tract->n_concat = genome[i]->n_hist - genome[i]->ref_start;
+  /* 1. start new histogram */ 
+  tract->n_concat = genome[0]->n_hist;
   tract->concat   = (context_histogram_t*) biomcmc_malloc (sizeof (context_histogram_t) * tract->n_concat);
-  for (j=0, k1 = genome[i]->ref_start; k1 < genome[i]->n_hist; j++, k1++) tract->concat[j] = genome[i]->hist[k1];
+  for (j=0; j < genome[0]->n_hist; j++) tract->concat[j] = genome[0]->hist[j];
   new_h = tract->concat;
   n_new_h = tract->n_concat;
 
   /* 2. concat[] will be new_h and genome[i]->hist merged, in order (both are ordered) */
-  for (i+=1; i < n_genome; i++) if (genome[i]->n_hist > genome[i]->ref_start) {
-    tract->n_concat = n_new_h + genome[i]->n_hist - genome[i]->ref_start; // sum of lengths
+  for (i = 1; i < n_genome; i++) {
+    tract->n_concat = n_new_h + genome[i]->n_hist; // sum of lengths
     tract->concat = (context_histogram_t*) biomcmc_malloc (tract->n_concat * sizeof (context_histogram_t));
-    for (j = 0, k1 = 0, k2 = genome[i]->ref_start; (k1 < n_new_h) && (k2 < genome[i]->n_hist); ) { 
+    for (j = 0, k1 = 0, k2 = 0; (k1 < n_new_h) && (k2 < genome[i]->n_hist); ) { 
       dif = new_h[k1]->location - genome[i]->hist[k2]->location;
       if (dif > 0) tract->concat[j++] = genome[i]->hist[k2++]; // k2 steps forward (if equal both step forward)
       else if (dif < 0) tract->concat[j++] = new_h[k1++];      // k1 steps forward
@@ -382,6 +381,7 @@ create_tract_in_reference_structure (genome_set_t g)
   g->tract_ref = (tract_in_reference_s*) biomcmc_malloc (g->n_tract_ref * sizeof (tract_in_reference_s));
   for (i = 0; i < g->n_tract_ref; i++) { 
     g->tract_ref[i].tract_length = -1;
+    g->tract_ref[i].contig_location = -1;
     g->tract_ref[i].contig_name = g->tract_ref[i].seq = g->tract_ref[i].tract_name = NULL;
   }
 
@@ -417,21 +417,25 @@ create_tract_in_reference_structure (genome_set_t g)
                                           g->tract->concat[g->tract_ref[tid].concat_idx]);
   }
   del_alignment (aln);
+
+  /* 5.  accumulate context_histogram from same ref.contig_location (i.e. merge tract_id) TODO */
 }
 
 void
 find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnacontig, size_t dnacontig_len, tatajuba_options_t  opt, context_histogram_t hist)
 {
-  int min_tract_size, start_location, len, i, best_id, dist, best_dist = 0xffff; 
+  int extra_borders, min_tract_size, start_location, len, i, best_id, dist, best_dist = 0xffff; 
   hopo_counter hc = new_hopo_counter (opt.kmer_size);
 
-  min_tract_size = opt.min_tract_size - 1; // allows for extra context size in flanks 
-  start_location = ref_tid->contig_location - min_tract_size; // left shift (allow for mismatches) must be smaller than min tract length (to avoid finding spurious) 
-  if (start_location < 0) start_location = 0;
-  len = ref_tid->max_length + 2 * opt.kmer_size + 2 * min_tract_size;
+  min_tract_size = opt.min_tract_size - 2; 
+  if (min_tract_size < 2) min_tract_size = 2;
+  extra_borders = opt.min_tract_size + 2;
+  start_location = ref_tid->contig_location - extra_borders; // left shift (allow for mismatches) can even be longer than min tract length
+  if (start_location < 0) start_location = 0;                 // since we handle spurious matches by chosing one with best distance
+  len = ref_tid->max_length + 2 * opt.kmer_size + 2 * extra_borders; 
   if (len > (int) dnacontig_len) len = (int) dnacontig_len;
 
-  update_hopo_counter_from_seq (hc, dnacontig + start_location, len, opt.min_tract_size -1); // here is same min_tract_size as others
+  update_hopo_counter_from_seq (hc, dnacontig + start_location, len, min_tract_size); 
   if (!hc->n_elem) {
     ref_tid->tract_length = 0;
     ref_tid->tract_name = (char*) biomcmc_malloc (sizeof (char) * 4);
@@ -444,7 +448,7 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
     if (dist < best_dist) { best_dist = dist; best_id = i; }
   }
   ref_tid->tract_length = hc->elem[best_id].length;
-  ref_tid->tract_location =  hc->elem[best_id].location_in_read;
+  ref_tid->contig_location = start_location + hc->elem[best_id].read_offset; // corrects read-based location by ref-based location
   ref_tid->tract_name = generate_name_from_flanking_contexts (hc->elem[best_id].context, hc->elem[best_id].base, opt.kmer_size);
   del_hopo_counter (hc);
 }

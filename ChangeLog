@@ -1,3 +1,8 @@
+2021.01.05
+	* TODO (extra/review):
+		. if SNP is present maybe one of the contexts will be the same; this will indicate potential SNPs
+		. To postpone these exceptions, we can assume that interesting homopol-tracts must be present in all samples and
+		have variation in lengths (we can flag those with potential SNPs above i.e. nearby similar tracts)
 2020.11.27
 	* multi-genome comparison:
 		. GFF3 reading implemented, and can save FASTA if included (needed by bwa). Safer is to provide both, however.
@@ -14,7 +19,7 @@
 		4. after finding equivalent tract on reference re-check neighbour tracts; also leftmost_hopo_name_from_string()
 		could scan _all_ tracts and return closest to input
 		5. when translating to protein, use Miyata79 and Grantham74 a.a. distances doi:10.1126/science.185.4154.862 doi:10.1007/bf01732340
-		6. a context+tract may span two genes/gff3 features (so we should ask for start and final features)
+		6. a context+tract may span two genes/gff3 features (so we should ask for start and final features) 
 2020.08.25
 	* beta version working: 
 		1. imports BWA and gives for each tract a location in reference genome. (BWA creates indices from ref fasta)

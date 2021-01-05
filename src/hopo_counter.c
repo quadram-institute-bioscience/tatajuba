@@ -14,7 +14,9 @@ static void initialize_dna_to_bit_tables (void);
 
 void add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_int, int hopo_size, int start_mono);
 void copy_hopo_element_start_count_at (hopo_element *to, hopo_element *from, int count);
+void copy_hopo_element_locations (hopo_element *to, hopo_element *from);
 void estimate_coverage_hopo_counter (hopo_counter hc);
+void find_reference_location_and_sort_hopo_counter (hopo_counter hc);
 
 int
 compare_hopo_element_decreasing (const void *a, const void *b)
@@ -25,6 +27,14 @@ compare_hopo_element_decreasing (const void *a, const void *b)
   if (((hopo_element *)b)->context[0] < ((hopo_element *)a)->context[0]) return -1; // unsigned is never negative!
   if (((hopo_element *)b)->context[1] > ((hopo_element *)a)->context[1]) return 1;// sort by right kmers
   if (((hopo_element *)b)->context[1] < ((hopo_element *)a)->context[1]) return -1;
+  return ((hopo_element *)b)->length - ((hopo_element *)a)->length; // same context and homopolymer base, thus sort by tract length
+}
+
+int
+compare_hopo_element_location (const void *a, const void *b)
+{
+  int result = ((hopo_element *)a)->read_offset - ((hopo_element *)b)->read_offset;
+  if (result) return result; 
   return ((hopo_element *)b)->length - ((hopo_element *)a)->length; // same context and homopolymer base, thus sort by tract length
 }
 
@@ -97,7 +107,7 @@ new_or_append_hopo_counter_from_file (hopo_counter hc, const char *filename, tat
     hc_local->name[name_length] = '\0';
     hc_local->opt = opt;
   }
-  if (hc_local->idx) biomcmc_error ("This counter has been compared to another; cannot add more reads to it");
+  if (hc_local->idx_initial) biomcmc_error ("This counter has been compared to another; cannot add more reads to it");
   while ((i = bmc2_kseq_read (seq)) >= 0) update_hopo_counter_from_seq (hc_local, seq->seq.s, seq->seq.l, opt.min_tract_size); 
   bmc2_kseq_destroy(seq); // other kseq_t parameters: seq->name.s, seq->seq.l, seq->qual.l
   gzclose(fp);
@@ -114,7 +124,7 @@ new_hopo_counter (int kmer_size)
   hc->coverage = 0.;
   hc->elem = (hopo_element*) biomcmc_malloc (hc->n_alloc * sizeof (hopo_element));
   hc->ref_counter = 1;
-  hc->name = NULL; hc->idx = NULL;
+  hc->name = NULL; hc->idx_initial = hc->idx_final = NULL;
   if (dna_in_2_bits[0][0] == 0xff) initialize_dna_to_bit_tables (); 
 
   return hc;
@@ -127,7 +137,8 @@ del_hopo_counter (hopo_counter hc)
   if (--hc->ref_counter) return;
   if (hc->elem) free (hc->elem);
   if (hc->name) free (hc->name);
-  if (hc->idx) free (hc->idx);
+  if (hc->idx_initial) free (hc->idx_initial);
+  if (hc->idx_final) free (hc->idx_final);
   free (hc);
   return;
 }
@@ -166,7 +177,7 @@ initialize_dna_to_bit_tables (void)
 void
 update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int min_tract_size)
 {
-  int i, j, k, count_same = 0, start_mono = -1, loc_tract = -1;
+  int i, j, k, count_same = 0, start_mono = -1, offset = -1; // offset is leftmost in seq, not in canonic (used only when seq is from fasta ref) 
   uint8_t context[2 * hc->kmer_size], hopo_base_int; 
   char prev_char = '$';
   count_same = 0; // zero because previous is "$" 
@@ -181,16 +192,16 @@ update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int mi
           for (k =0, j = start_mono - hc->kmer_size; j < start_mono; k++, j++) context[k] = dna_in_2_bits[ (int)seq[j] ][0]; 
           for (j = i + 1; j <= i + hc->kmer_size; k++, j++) context[k] = dna_in_2_bits[ (int)seq[j] ][0]; 
           hopo_base_int = dna_in_2_bits[(int)prev_char][0];
-          loc_tract = start_mono;
         }
         else if (dna_in_2_bits[(int)prev_char][0] > dna_in_2_bits[(int)prev_char][1]) { // T/U or G : reverse strand
           k = 0; // it would be easier to copy above, but with k--; however I wanna implement rolling hash in future
           for (j = i + hc->kmer_size; j > i; j--) context[k++] = dna_in_2_bits[ (int)seq[j] ][1]; 
           for (j = start_mono - 1; j >= start_mono - hc->kmer_size; j--) context[k++] = dna_in_2_bits[ (int)seq[j] ][1]; 
           hopo_base_int = dna_in_2_bits[(int)prev_char][1];
-          loc_tract = i;
+        //offset = i + hc->kmer_size;
         } // elsif (dna[0] > dna[1]); notice that if dna[0] == dna[1] then do nothing (not an unambiguous base)
-        add_kmer_to_hopo_counter (hc, context, hopo_base_int, count_same, loc_tract);
+        offset = start_mono - hc->kmer_size; // always leftmost, irrespective of revcomplement
+        add_kmer_to_hopo_counter (hc, context, hopo_base_int, count_same, offset);
         //for (j=0; j < hc->kmer_size; j++) printf ("%c", bit_2_dna[context[j]]); printf ("-%c-", bit_2_dna[hopo_base_int]); //DEBUG
         //for (; j < 2 * hc->kmer_size; j++) printf ("%c", bit_2_dna[context[j]]); //DEBUG
       } // if (count_same>2) [i.e. we found valid homopolymer]
@@ -203,7 +214,7 @@ update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int mi
 }
 
 void
-add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_int, int hopo_size, int start_mono)
+add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_int, int hopo_size, int offset)
 {
   int i;
   if (hc->n_elem == hc->n_alloc) {
@@ -213,7 +224,11 @@ add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_i
   hc->elem[hc->n_elem].base   = hopo_base_int; // zero (AT) or one (CG) but always store direction with A or C
   hc->elem[hc->n_elem].length = hopo_size;     // homopolymer track length, in bases
   hc->elem[hc->n_elem].count  = 1;
-  hc->elem[hc->n_elem].location_in_read = start_mono;
+  hc->elem[hc->n_elem].loc_ref_id = hc->elem[hc->n_elem].loc_pos = -1;
+  hc->elem[hc->n_elem].mismatches = 0xffe; // 12 bits 
+  hc->elem[hc->n_elem].multi = false; 
+  
+  hc->elem[hc->n_elem].read_offset = offset;
   hc->elem[hc->n_elem].context[0] = hc->elem[hc->n_elem].context[1] = 0ULL; // left context 
   for (i = 0; i < hc->kmer_size; i++) hc->elem[hc->n_elem].context[0] |= ((context[i] & 3ULL) << (2 * i));
   for (i = 0; i < hc->kmer_size; i++) hc->elem[hc->n_elem].context[1] |= ((context[hc->kmer_size + i] & 3ULL) << (2 * i));
@@ -223,50 +238,80 @@ add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_i
 void
 copy_hopo_element_start_count_at (hopo_element *to, hopo_element *from, int count)
 {
-  to->base    =  from->base; 
-  to->length  =  from->length;
-  to->location_in_read =  from->location_in_read;
+  to->base        = from->base; 
+  to->length      = from->length;
+  to->read_offset = from->read_offset;
+  to->loc_ref_id  = from->loc_ref_id;
+  to->loc_pos     = from->loc_pos; 
+  to->mismatches  = from->mismatches;
+  to->multi       = from->multi;
   to->context[0] = from->context[0];
   to->context[1] = from->context[1];
   to->count = count;
 }
 
 void
+copy_hopo_element_locations (hopo_element *to, hopo_element *from)
+{
+  to->read_offset = from->read_offset;
+  to->loc_ref_id  = from->loc_ref_id;
+  to->loc_pos     = from->loc_pos; 
+  to->mismatches  = from->mismatches;
+  to->multi       = from->multi;
+}
+
+void
 finalise_hopo_counter (hopo_counter hc)
 {
   hopo_element *pivot, *efreq;
-  int i, n1 = 0;
+  int i, j, coverage = 0, n1 = 0;
+
   qsort (hc->elem, hc->n_elem, sizeof (hopo_element), compare_hopo_element_decreasing);
   efreq = (hopo_element*) biomcmc_malloc (hc->n_elem * sizeof (hopo_element));
   copy_hopo_element_start_count_at (&(efreq[0]), &(hc->elem[0]), 1);
-  n1 = 0; hc->n_idx = 0;
 
-  /* frequency of each polymer, in context, into efreq[] vector of elements  */
+  /* 1.  frequency of each polymer, in context, into efreq[] vector of elements  */
+  n1 = 0;
   for (i=1; i < hc->n_elem; i++) {
     if (compare_hopo_element_decreasing ((const void*) &(hc->elem[i-1]), (const void*) &(hc->elem[i]))) 
       copy_hopo_element_start_count_at (&(efreq[++n1]), &(hc->elem[i]), 1);
     else efreq[n1].count++; // same context _and_tract length
   }
   n1++; // n1 is (zero-based) index of existing hopo_element (and below we use it as _number_of_elements)
-  /* remove context_tract_lengths seen only once (but keep original depth whenever count > 1) */
 
+  /* 2.  remove context_tract_lengths seen only once (but keep original depth whenever count > 1) */
   hc->n_elem = n1;
   for (i = 0, n1 = 0; i < hc->n_elem; i++) if (efreq[i].count > 1) copy_hopo_element_start_count_at (&(efreq[n1++]), &(efreq[i]), efreq[i].count);
 
-  /* new efreq[] becomes hc->elem[] */
+  /* 3.  hc->elem[] will now point to efreq above, that is, non-identical reads with depth > 1 */
   pivot = hc->elem;
   hc->n_alloc = hc->n_elem = n1; 
   hc->elem = (hopo_element*) biomcmc_realloc ((hopo_element*) efreq, hc->n_alloc * sizeof (hopo_element));
-  free (pivot);
+  free (pivot); // free original elem[] 
 
-  /* idx[] will have indices of distinct contexts (i.e. histogram of polymer lengths) */
-  hc->idx = (int*) biomcmc_malloc ((hc->n_elem + 1) * sizeof (int));
-  hc->idx[hc->n_idx++] = 0; 
-  for (i=1; i < hc->n_elem; i++) if (compare_hopo_context (hc->elem[i-1], hc->elem[i])) hc->idx[hc->n_idx++] = i;
-  hc->idx[hc->n_idx++] = i; // last element (plus one) is also on index (to avoid conditional checking */
-  hc->idx = (int*) biomcmc_realloc ((int*) hc->idx, hc->n_idx* sizeof (int));
+  /* 4.  idx_initial[] final[] will have indices of distinct contexts (i.e. histogram of polymer lengths) exceeding coverage dept threshold */
+  hc->n_idx = 0;
+  hc->idx_initial = (int*) biomcmc_malloc (hc->n_elem * sizeof (int));
+  hc->idx_final   = (int*) biomcmc_malloc (hc->n_elem * sizeof (int));
+  hc->idx_initial[hc->n_idx] = 0; 
+  for (i=1; i < hc->n_elem; i++) if (compare_hopo_context (hc->elem[i-1], hc->elem[i])) {
+    coverage = 0;
+    for (j = hc->idx_initial[hc->n_idx]; j < i; j++) coverage += hc->elem[j].count;
+    if (coverage >= hc->opt.min_coverage) { 
+      hc->idx_final[hc->n_idx++] = i;
+      hc->idx_initial[hc->n_idx] = i; // n_idx was incremented, we are adding a new line
+    }
+    else hc->idx_initial[hc->n_idx] = i; 
+  }
+  coverage = 0; // last block c in "aaa.bbbb.cccc" since last compare_context will be "b.c" 
+  for (j = hc->idx_initial[hc->n_idx]; j < i; j++) coverage += hc->elem[j].count;
+  if (coverage >= hc->opt.min_coverage) hc->idx_final[hc->n_idx++] = i;
+
+  hc->idx_initial = (int*) biomcmc_realloc ((int*) hc->idx_initial, hc->n_idx * sizeof (int));
+  hc->idx_final   = (int*) biomcmc_realloc ((int*) hc->idx_final,   hc->n_idx * sizeof (int));
 
   estimate_coverage_hopo_counter (hc);
+  find_reference_location_and_sort_hopo_counter (hc);
 }
 
 /* coverage is estimated through kmer frequency (kmer=each flanking region) */
@@ -290,11 +335,26 @@ estimate_coverage_hopo_counter (hopo_counter hc)
   del_empfreq (ef);
 }
 
-int hopo_counter_histogram_integral (hopo_counter hc, int start)
+int hopo_counter_histogram_integral (hopo_counter hc, int start) // OBSOLETE
 {
   int i, cov = 0;
-  for (i = hc->idx[start]; i < hc->idx[start+1]; i++) cov += hc->elem[i].count;
+  for (i = hc->idx_initial[start]; i < hc->idx_final[start]; i++) cov += hc->elem[i].count;
   return cov;
+}
+
+char*
+generate_tract_as_string (uint64_t *context, int8_t base, int kmer_size, int tract_length)
+{
+  int i = 0, j = 0;
+  char *s = (char*) biomcmc_malloc (sizeof (char) * (2 * kmer_size + tract_length + 1));
+  uint64_t ctx = context[0]; 
+
+  for (i = 0; i < kmer_size; i++) s[i] = bit_2_dna[ (ctx >> (2 * i)) & 3 ]; // left context
+  for (; i < kmer_size + tract_length; i++) s[i] = bit_2_dna[base]; // homopolymer tract
+  ctx = context[1]; // right context
+  for (j = 0; j < kmer_size; j++, i++) s[i] =  bit_2_dna[ (ctx >> (2 * j)) & 3 ]; 
+  s[i] = '\0';
+  return s;
 }
 
 char*
@@ -310,4 +370,79 @@ generate_name_from_flanking_contexts (uint64_t *context, int8_t base, int kmer_s
   for (j = 0; j < kmer_size; j++, i++) s[i] =  bit_2_dna[ (ctx >> (2 * j)) & 3 ]; 
   s[i] = '\0';
   return s;
+}
+
+void
+find_reference_location_and_sort_hopo_counter (hopo_counter hc)
+{
+  char_vector readseqs;
+  char *read;
+  int i, j, qid;
+  uint32_t *refseq_offset;
+  uint16_t mismatch;
+  int32_t read_offset; 
+  bool skip_match;
+  bwase_match_t match;
+  bwase_options_t bopt = new_bwase_options_t (0);
+
+  readseqs = new_char_vector (hc->n_idx);
+
+  /* 0.  preprocessing: make sure read_offset (originally with location info within fastq read) can be used as flattened location */
+  for (i = 0; i < hc->n_elem; i++) hc->elem[i].read_offset = -1;  
+  /* 0.  preprocessing: generating DNA segments with context+tract fror BWA, and dummy sequence names */
+  for (i = 0; i < hc->n_idx; i++) { // link_string() assumes char* was allocated outside, but assumes control of if (i.e. will free() it)
+    read = generate_tract_as_string (hc->elem[hc->idx_initial[i]].context, 
+                                     hc->elem[hc->idx_initial[i]].base,
+                                     hc->opt.kmer_size, 
+                                     hc->elem[hc->idx_initial[i]].length); // longest
+    char_vector_link_string_at_position (readseqs, read, readseqs->next_avail); // just link 
+  }
+
+  /* 1.  run BWA; notice that first "readseqs" is usually the sequence name but we dont care */ 
+  match = new_bwase_match_from_bwa_and_char_vector (hc->opt.reference_fasta_filename, readseqs, readseqs, 1, bopt);
+  del_char_vector(readseqs);
+
+  /* 2.  use info from BWA's index for each reference sequence (contig/genome) */
+  refseq_offset = (uint32_t*) biomcmc_malloc (sizeof (uint32_t) * match->bns->n_seqs);
+  refseq_offset[0] = 0; // equiv to concatenating ref contigs (one-dim "location")
+  for (i = 1; i < match->bns->n_seqs; i++) refseq_offset[i] = refseq_offset[i-1] + match->bns->anns[i-1].len;
+
+  /* 3. fill first hc->elem[] from each distinct context+tract with info from BWA (best match, and leftmost) */
+  for (i = 0; i < match->n_m; i++) { 
+    skip_match = true; // we assume that this match is worse than one already seen
+    qid = hc->idx_initial[match->m[i].query_id]; 
+    mismatch = match->m[i].mm + match->m[i].gape + match->m[i].gapo;
+    read_offset = refseq_offset[match->m[i].ref_id] + match->m[i].position; // one-dimensional (flat) index 
+
+    // FIXME: maybe choses worse mistmatch if offset is smaller
+    if (hc->elem[qid].loc_pos < 0) skip_match = false; // first time this element is seen 
+    if (skip_match && (hc->elem[qid].mismatches > mismatch)) { hc->elem[qid].multi = true; skip_match = false; } 
+    if (skip_match && (hc->elem[qid].read_offset > read_offset)) { hc->elem[qid].multi = true; skip_match = false; } 
+
+    if (hc->elem[qid].multi) printf ("DEBUG::hopo::%d mism=%d %d offset=%d %d\n", match->m[i].ref_id,hc->elem[qid].mismatches, mismatch, hc->elem[qid].read_offset, read_offset);
+
+    if (!skip_match) {
+      hc->elem[qid].mismatches = mismatch;
+      hc->elem[qid].loc_ref_id = match->m[i].ref_id;   // genome/contig ID 
+      hc->elem[qid].loc_pos    = match->m[i].position; // location within genome/contig
+      hc->elem[qid].read_offset = read_offset;         // one-dimensional (flat) index 
+    }
+  }
+  del_bwase_match_t (match);
+
+  /* 4.  copy location info to all elements from same context+tract */
+  for (i = 0; i < hc->n_idx; i++) for (j = hc->idx_initial[i] + 1; j < hc->idx_final[i]; j++) 
+    copy_hopo_element_locations (&(hc->elem[j]), &(hc->elem[hc->idx_initial[i]]));
+  
+  /* 5.  sort according to location, with unknown elements first */
+  qsort (hc->elem, hc->n_elem, sizeof (hopo_element), compare_hopo_element_location);
+  for (i = 0; (i < hc->n_elem) && (hc->elem[i].read_offset < 0); i++); // just scan i
+  hc->ref_start = i; // downstream analysis will use only these
+  biomcmc_fprintf_colour (stderr, 0,2, hc->name, ": %6d found and %6d context+tracts were not found in reference\n", hc->n_elem - i, i);
+  if (i > hc->n_elem/2) biomcmc_warning ("%6d out of %6d (more than half) context+tracts were not found in reference for sample %s\n", i, hc->n_elem, hc->name);
+
+  if (refseq_offset)   free (refseq_offset);
+  if (hc->idx_initial) free (hc->idx_initial);
+  if (hc->idx_final)   free (hc->idx_final);
+  hc->idx_initial = hc->idx_final = NULL;
 }
