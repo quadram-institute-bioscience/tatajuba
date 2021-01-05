@@ -4,7 +4,10 @@ __Leonardo de Oliveira Martins<sup>1</sup>__
 <br>
 <sub>1. Quadram Institute Bioscience, Norwich Research Park, NR4 7UQ, UK</sub>
 
-# Distribution of homopolymeric tracts
+[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-brightgreen.svg)](https://github.com/quadram-institute-bioscience/tatajuba/blob/master/LICENSE)
+
+### (THIS PROJECT IS STILL EXPERIMENTAL)
+# Distribution of homopolymeric tracts 
 
 Instead of assuming a fixed length for a given homopolymer tract, tatajubá allows for its whole distribution of sizes to
 be analysed. 
@@ -20,13 +23,19 @@ Tatajuba (_Bagassa guianensis_) is a South American tree, also known as Tatajub�
 It means "yellow fire" in [Tupi](https://en.wikipedia.org/wiki/Tupi_language).
 
 ## Installation
+### Conda
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/tatajuba/badges/platforms.svg)](https://anaconda.org/bioconda/tatajuba)
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/tatajuba/badges/latest_release_date.svg)](https://anaconda.org/bioconda/tatajuba)
+After you install [miniconda](https://conda.io/en/latest/miniconda.html), simply run
+```[bash]
+conda install -c bioconda tatajuba
+```
 
-### conda
-
-### github
-If for any reason installing through conda is not an option, or if you want the latest, very dangerous version of the
-software, you can download and compile it yourself. This repository must be cloned with `git clone --recursive` to ensure it also downloads
-[biomcmc-lib](https://github.com/quadram-institute-bioscience/biomcmc-lib).
+### Compiling from source
+If for any reason installing through conda is not an option, or if you want the latest, dangerous and potentially
+soul-crushing version of the software, you can download it and compile it yourself. 
+This repository must be cloned with `git clone --recursive` to ensure it also downloads
+[biomcmc-lib](https://github.com/quadram-institute-bioscience/biomcmc-lib) and [our modified version of BWA](https://github.com/leomrtns/bwa).
 
 This sofware uses `autotools`, so you can install it with `configure` + `make`. 
 You may need to define where you want it installed with `configure --prefix=DIR` which is where are your unix-like
@@ -119,3 +128,4 @@ version (http://www.gnu.org/copyleft/gpl.html).
 
 Tatajubá contains code from [bwa](https://github.com/lh3/bwa) by Heng Li and [kalign](https://github.com/TimoLassmann/kalign.git) by Timo Lassmann,
 both released under a GPL-3.0 license.
+(We do not currently compile or use this modified kalign, btw)
