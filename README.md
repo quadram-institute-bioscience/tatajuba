@@ -50,7 +50,7 @@ Both cases are shown below, if you can install them system-wide:
 
 ```[bash]
 ## 'bootstrap' the configuration files (needed when cloning from github):
-/home/simpson/$ apt-get install autotools-dev autoconf automake libtool
+/home/simpson/$ apt-get install pkg-config autotools-dev autoconf automake libtool
 /home/simpson/$ (cd tatajuba && autoreconf)  ## the parentheses avoid entering the directory afterwards
 
 ## install libraries possibly missing (only check is mandatory, but zlib and omp are strongly suggested)

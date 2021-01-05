@@ -39,18 +39,16 @@ PKG_CHECK_MODULES([CHECK], [check >= 0.9.10],  # unit tests in for "make check"
                   [AC_MSG_NOTICE([testing library `check` found])],
                   [AC_MSG_NOTICE([library `check` NOT found, you won't be able to run the battery of tests])]
                   )
-PKG_CHECK_MODULES([ZLIB], [zlib],
-                  AC_DEFINE([HAVE_ZLIB],[1],[]),
-                  AC_DEFINE([HAVE_ZLIB],[0],[set to one if gz compression library found])
+PKG_CHECK_MODULES([ZLIB], [zlib], 
+                  AC_DEFINE([HAVE_ZLIB],[1],[set to one if gz compression library found]),
+                  [AC_MSG_ERROR([zlib library needed, please install it as "zlib1g-dev" in linux, "zlib" in conda])] 
                   )
 PKG_CHECK_MODULES([LZMA], [liblzma],
-                  AC_DEFINE([HAVE_LZMA],[1],[]),
-                  AC_DEFINE([HAVE_LZMA],[0],[set to one if xz compression library found])
-                  )
+                  AC_DEFINE([HAVE_LZMA],[1],[set to one if xz compression library found]),
+                  [AC_MSG_NOTICE([optional lzma headers not found])]   )
 AC_CHECK_HEADER(bzlib.h,
-                  AC_DEFINE([HAVE_BZIP2],[1],[]),
-                  AC_DEFINE([HAVE_BZIP2],[0],[set to one if bz2 compression library found])
-                  )
+                  AC_DEFINE([HAVE_BZIP2],[1],[set to one if bz2 compression library found]),
+                  [AC_MSG_NOTICE([optional bzip2 headers not found])]  )
 AC_SEARCH_LIBS([BZ2_bzlibVersion], [bz2]) #  unlike AC_CHECK_LIB, does not define HAVE_LIBBZ2 (thus our custom define above)
 AC_SEARCH_LIBS([sqrt], [m])
 
