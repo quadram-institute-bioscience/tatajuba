@@ -130,3 +130,5 @@ version (http://www.gnu.org/copyleft/gpl.html).
 Tatajubá contains code from [bwa](https://github.com/lh3/bwa) by Heng Li and [kalign](https://github.com/TimoLassmann/kalign.git) by Timo Lassmann,
 both released under a GPL-3.0 license.
 (We do not currently compile or use this modified kalign, btw)
+
+![Anurag's github stats](https://github-readme-stats.vercel.app/api?username=leomrtns&count_private=true&show_icons=true&theme=calm)
