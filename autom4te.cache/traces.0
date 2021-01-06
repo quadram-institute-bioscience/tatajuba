@@ -3342,11 +3342,9 @@ m4trace:configure.ac:38: -1- PKG_CHECK_EXISTS([check >= 0.9.10], [pkg_cv_[]CHECK
 		      test "x$?" != "x0" && pkg_failed=yes ], [pkg_failed=yes])
 m4trace:configure.ac:38: -1- _PKG_SHORT_ERRORS_SUPPORTED
 m4trace:configure.ac:43: -2- m4_pattern_allow([^HAVE_ZLIB$])
-m4trace:configure.ac:44: -2- m4_pattern_allow([^HAVE_ZLIB$])
-m4trace:configure.ac:42: -1- PKG_CHECK_MODULES([ZLIB], [zlib], [$as_echo "@%:@define HAVE_ZLIB 1" >>confdefs.h
-], [
-$as_echo "@%:@define HAVE_ZLIB 0" >>confdefs.h
-
+m4trace:configure.ac:42: -1- PKG_CHECK_MODULES([ZLIB], [zlib], [
+$as_echo "@%:@define HAVE_ZLIB 1" >>confdefs.h
+], [AC_MSG_ERROR([zlib library needed, please install it as "zlib1g-dev" in linux, "zlib" in conda]) 
                   ])
 m4trace:configure.ac:42: -1- m4_pattern_allow([^ZLIB_CFLAGS$])
 m4trace:configure.ac:42: -1- m4_pattern_allow([^ZLIB_LIBS$])
@@ -3356,12 +3354,9 @@ m4trace:configure.ac:42: -1- PKG_CHECK_EXISTS([zlib], [pkg_cv_[]ZLIB_LIBS=`$PKG_
 		      test "x$?" != "x0" && pkg_failed=yes ], [pkg_failed=yes])
 m4trace:configure.ac:42: -1- _PKG_SHORT_ERRORS_SUPPORTED
 m4trace:configure.ac:47: -2- m4_pattern_allow([^HAVE_LZMA$])
-m4trace:configure.ac:48: -2- m4_pattern_allow([^HAVE_LZMA$])
-m4trace:configure.ac:46: -1- PKG_CHECK_MODULES([LZMA], [liblzma], [$as_echo "@%:@define HAVE_LZMA 1" >>confdefs.h
-], [
-$as_echo "@%:@define HAVE_LZMA 0" >>confdefs.h
-
-                  ])
+m4trace:configure.ac:46: -1- PKG_CHECK_MODULES([LZMA], [liblzma], [
+$as_echo "@%:@define HAVE_LZMA 1" >>confdefs.h
+], [AC_MSG_NOTICE([optional lzma headers not found])   ])
 m4trace:configure.ac:46: -1- m4_pattern_allow([^LZMA_CFLAGS$])
 m4trace:configure.ac:46: -1- m4_pattern_allow([^LZMA_LIBS$])
 m4trace:configure.ac:46: -1- PKG_CHECK_EXISTS([liblzma], [pkg_cv_[]LZMA_CFLAGS=`$PKG_CONFIG --[]cflags "liblzma" 2>/dev/null`
@@ -3369,25 +3364,28 @@ m4trace:configure.ac:46: -1- PKG_CHECK_EXISTS([liblzma], [pkg_cv_[]LZMA_CFLAGS=`
 m4trace:configure.ac:46: -1- PKG_CHECK_EXISTS([liblzma], [pkg_cv_[]LZMA_LIBS=`$PKG_CONFIG --[]libs "liblzma" 2>/dev/null`
 		      test "x$?" != "x0" && pkg_failed=yes ], [pkg_failed=yes])
 m4trace:configure.ac:46: -1- _PKG_SHORT_ERRORS_SUPPORTED
-m4trace:configure.ac:51: -2- m4_pattern_allow([^HAVE_BZIP2$])
-m4trace:configure.ac:52: -2- m4_pattern_allow([^HAVE_BZIP2$])
-m4trace:configure.ac:63: -1- m4_pattern_allow([^BIOMCMC_DEBUG$])
-m4trace:configure.ac:83: -1- m4_pattern_allow([^AM_CFLAGS$])
-m4trace:configure.ac:84: -1- m4_pattern_allow([^AM_LDFLAGS$])
-m4trace:configure.ac:85: -1- m4_pattern_allow([^MPI_CXXLIBS$])
-m4trace:configure.ac:86: -1- m4_pattern_allow([^MPI_CXXFLAGS$])
-m4trace:configure.ac:89: -1- _m4_warn([cross], [cannot check for file existence when cross compiling], [../../lib/autoconf/general.m4:2788: AC_CHECK_FILE is expanded from...
-configure.ac:89: the top level])
-m4trace:configure.ac:90: -1- _m4_warn([cross], [cannot check for file existence when cross compiling], [../../lib/autoconf/general.m4:2788: AC_CHECK_FILE is expanded from...
-configure.ac:90: the top level])
-m4trace:configure.ac:91: -1- m4_pattern_allow([^BIOMCMCLIB$])
-m4trace:configure.ac:95: -1- m4_pattern_allow([^LIB@&t@OBJS$])
-m4trace:configure.ac:95: -1- m4_pattern_allow([^LTLIBOBJS$])
-m4trace:configure.ac:95: -1- AM_CONDITIONAL([am__EXEEXT], [test -n "$EXEEXT"])
-m4trace:configure.ac:95: -1- m4_pattern_allow([^am__EXEEXT_TRUE$])
-m4trace:configure.ac:95: -1- m4_pattern_allow([^am__EXEEXT_FALSE$])
-m4trace:configure.ac:95: -1- _AM_SUBST_NOTMAKE([am__EXEEXT_TRUE])
-m4trace:configure.ac:95: -1- _AM_SUBST_NOTMAKE([am__EXEEXT_FALSE])
-m4trace:configure.ac:95: -1- _AC_AM_CONFIG_HEADER_HOOK(["$ac_file"])
-m4trace:configure.ac:95: -1- _AM_OUTPUT_DEPENDENCY_COMMANDS
-m4trace:configure.ac:95: -1- _LT_PROG_LTMAIN
+m4trace:configure.ac:50: -2- m4_pattern_allow([^HAVE_BZIP2$])
+m4trace:configure.ac:57: -1- m4_pattern_allow([^STDC_HEADERS$])
+m4trace:configure.ac:60: -1- m4_pattern_allow([^SIZEOF_INT$])
+m4trace:configure.ac:61: -1- m4_pattern_allow([^SIZEOF_DOUBLE$])
+m4trace:configure.ac:62: -1- m4_pattern_allow([^SIZEOF_LONG_LONG_INT$])
+m4trace:configure.ac:70: -1- m4_pattern_allow([^BIOMCMC_DEBUG$])
+m4trace:configure.ac:90: -1- m4_pattern_allow([^AM_CFLAGS$])
+m4trace:configure.ac:91: -1- m4_pattern_allow([^AM_LDFLAGS$])
+m4trace:configure.ac:92: -1- m4_pattern_allow([^MPI_CXXLIBS$])
+m4trace:configure.ac:93: -1- m4_pattern_allow([^MPI_CXXFLAGS$])
+m4trace:configure.ac:96: -1- _m4_warn([cross], [cannot check for file existence when cross compiling], [../../lib/autoconf/general.m4:2788: AC_CHECK_FILE is expanded from...
+configure.ac:96: the top level])
+m4trace:configure.ac:97: -1- _m4_warn([cross], [cannot check for file existence when cross compiling], [../../lib/autoconf/general.m4:2788: AC_CHECK_FILE is expanded from...
+configure.ac:97: the top level])
+m4trace:configure.ac:98: -1- m4_pattern_allow([^BIOMCMCLIB$])
+m4trace:configure.ac:102: -1- m4_pattern_allow([^LIB@&t@OBJS$])
+m4trace:configure.ac:102: -1- m4_pattern_allow([^LTLIBOBJS$])
+m4trace:configure.ac:102: -1- AM_CONDITIONAL([am__EXEEXT], [test -n "$EXEEXT"])
+m4trace:configure.ac:102: -1- m4_pattern_allow([^am__EXEEXT_TRUE$])
+m4trace:configure.ac:102: -1- m4_pattern_allow([^am__EXEEXT_FALSE$])
+m4trace:configure.ac:102: -1- _AM_SUBST_NOTMAKE([am__EXEEXT_TRUE])
+m4trace:configure.ac:102: -1- _AM_SUBST_NOTMAKE([am__EXEEXT_FALSE])
+m4trace:configure.ac:102: -1- _AC_AM_CONFIG_HEADER_HOOK(["$ac_file"])
+m4trace:configure.ac:102: -1- _AM_OUTPUT_DEPENDENCY_COMMANDS
+m4trace:configure.ac:102: -1- _LT_PROG_LTMAIN
