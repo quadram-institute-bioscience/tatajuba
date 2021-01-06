@@ -26,6 +26,7 @@ It means "yellow fire" in [Tupi](https://en.wikipedia.org/wiki/Tupi_language).
 ### Conda
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/tatajuba/badges/platforms.svg)](https://anaconda.org/bioconda/tatajuba)
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/tatajuba/badges/latest_release_date.svg)](https://anaconda.org/bioconda/tatajuba)
+
 After you install [miniconda](https://conda.io/en/latest/miniconda.html), simply run
 ```[bash]
 conda install -c bioconda tatajuba
