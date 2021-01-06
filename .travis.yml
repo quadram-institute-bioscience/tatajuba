@@ -1,15 +1,26 @@
-language: c
+os:
+  - linux
+
+language: cpp
+
+dist: bionic 
+
 git:
   submodules: true
 #install: make get-deps  # 
+
 compiler:
   - gcc
+
 before_install:
   - export OMP_NUM_THREADS=4 
   - sudo apt-get update
+  - sudo apt-get install -y gcc-7
+  - export CC=/usr/bin/gcc-7
   - sudo apt-get install -y check 
   - sudo apt-get install -y pkg-config libtool automake  autotools-dev 
   - sudo apt-get install -y zlib1g-dev libomp-dev libbz2-dev liblzma-dev 
+
 script:
   - "sh ./autogen.sh; mkdir build; cd build; ../configure && make && make check"
 
