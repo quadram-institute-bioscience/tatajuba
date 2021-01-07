@@ -4,7 +4,7 @@
 
 #include "genome_set.h"
 
-const char *filename[] = {
+const char *fixed_fname[] = {
   "selected_traits_unknown.csv",
   "selected_traits_annotated.csv",
   "tract_list.csv"
@@ -310,7 +310,7 @@ print_selected_g_tract_vector (genome_set_t g)
   } // for i in summary
   printf ("From %d tracts, %d interesting ones are annotated and %d interesting ones are not annotated\n", g->tract->n_summary, n_yes, n_no);
 
-  fout = open_output_file (g->genome[0]->opt, filename[FNAME_SELECTED_TRAITS_UNKNOWN]);
+  fout = open_output_file (g->genome[0]->opt, fixed_fname[FNAME_SELECTED_TRAITS_UNKNOWN]);
   fprintf (fout, "tract_id\tlocation\tn_genomes\tlev_distance\t|\trd_frequency\trd_avge_tract_length\trd_coverage\trd_context_covge\trd_entropy\n"); 
   for (i = 0; i < n_no; i++) {
     t = g->tract->summary + cd_no[i];
@@ -322,7 +322,7 @@ print_selected_g_tract_vector (genome_set_t g)
   }
 
   fclose (fout); fout = NULL;
-  fout = open_output_file (g->genome[0]->opt, filename[FNAME_SELECTED_TRAITS_ANNOTATED]);
+  fout = open_output_file (g->genome[0]->opt, fixed_fname[FNAME_SELECTED_TRAITS_ANNOTATED]);
   fprintf (fout, "tract_id\tGFF3_info\tlocation\tn_genomes\tlev_distance\t|\trd_frequency\trd_avge_tract_length\trd_coverage\trd_context_covge\trd_entropy\n"); 
   for (i = 0; i < n_yes; i++) {
     t = g->tract->summary + cd_yes[i]; 
@@ -459,7 +459,7 @@ print_tract_list (genome_set_t g)
   FILE *fout = NULL;
   int tid;
   context_histogram_t hist;
-  fout = open_output_file (g->genome[0]->opt, filename[FNAME_TRACT_LIST]);
+  fout = open_output_file (g->genome[0]->opt, fixed_fname[FNAME_TRACT_LIST]);
 
   fprintf (fout, "tract_id\tcontig_name\tfeature_type\tfeature\tlocation_in_contig\tmax_tract_length\tref_tract_length\t\ttract\tref_tract\n");
   for (tid = 0; tid < g->n_tract_ref; tid++) {
