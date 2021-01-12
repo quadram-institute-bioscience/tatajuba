@@ -136,6 +136,10 @@ get_options_from_argtable (arg_parameters params)
 
   opt.paired_end = (params.paired->count? true: false);
   opt.n_samples = (params.paired->count? params.fastq->count/2: params.fastq->count);
+  if (opt.n_samples < 2) {
+    del_gff3_t (opt.gff);
+    biomcmc_error ("More than one sample is needed, since this program is based on differences between samples\n");
+  }
   opt.kmer_size = params.kmer->ival[0];
   opt.min_tract_size = params.minsize->ival[0];
   opt.min_coverage = params.minread->ival[0]; 
@@ -153,6 +157,10 @@ get_options_from_argtable (arg_parameters params)
 #else
   opt.n_threads = 0; // compiled without openMP support (e.g. --disable-openmp)
 #endif
+  if (opt.n_samples < opt.n_threads) {
+    opt.n_threads = opt.n_samples; 
+    biomcmc_warning ("Decreasing number of threads to match number of samples");
+  }
   if (opt.kmer_size < 2)  opt.kmer_size = 2; 
   if (opt.kmer_size > 32) opt.kmer_size = 32; 
   if (opt.min_tract_size < 1)  opt.min_tract_size = 1; 
