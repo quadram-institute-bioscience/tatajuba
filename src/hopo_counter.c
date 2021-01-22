@@ -419,7 +419,7 @@ find_reference_location_and_sort_hopo_counter (hopo_counter hc)
     if (skip_match && (hc->elem[qid].mismatches > mismatch)) { hc->elem[qid].multi = true; skip_match = false; } 
     if (skip_match && (hc->elem[qid].read_offset > read_offset)) { hc->elem[qid].multi = true; skip_match = false; } 
 
-    if (hc->elem[qid].multi) printf ("DEBUG::hopo::%d mism=%d %d offset=%d %d\n", match->m[i].ref_id,hc->elem[qid].mismatches, mismatch, hc->elem[qid].read_offset, read_offset);
+    //if (hc->elem[qid].multi) printf ("DEBUG::hopo::%d mism=%d %d offset=%d %d\n", match->m[i].ref_id,hc->elem[qid].mismatches, mismatch, hc->elem[qid].read_offset, read_offset);
 
     if (!skip_match) {
       hc->elem[qid].mismatches = mismatch;
