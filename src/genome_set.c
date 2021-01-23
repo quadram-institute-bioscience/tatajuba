@@ -21,6 +21,7 @@ void create_tract_in_reference_structure (genome_set_t g);
 FILE * open_output_file (tatajuba_options_t opt, const char *file);
 int lookup_bruteforce (char_vector haystack, const char *needle);
 void find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnacontig, size_t dnacontig_len, tatajuba_options_t  opt, context_histogram_t hist);
+void descriptive_stats_of_histogram (context_histogram_t concat, double *result);
 
 genome_set_t
 new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_options_t opt) 
@@ -494,3 +495,30 @@ lookup_bruteforce (char_vector haystack, const char *needle)
   return -1;
 }
 
+void
+descriptive_stats_of_histogram (context_histogram_t concat, double *result)
+{
+  double x;
+  int j;
+
+  for (j = 0; j < N_SUMMARY_TABLES; j++) result[j] = 0.;
+
+  result[0] = (double) (concat->h->i[0].freq)/(double)(concat->integral); // modal frequency
+
+  for (j = 0; j < concat->h->n; j++) if (concat->integral) // weighted average tract length
+    result[1] += (double) (concat->h->i[j].freq * concat->h->i[j].idx)/(double)(concat->integral);
+
+  // proportional coverage ("coverage" is the depth of most frequent kmer)
+  result[2] = (double)(concat->integral)/(double)(concat->coverage);
+
+  // average coverage per context 
+  result[3] = (double)(concat->integral)/(double)(concat->n_context);
+
+  for (j = 0; j < concat->h->n; j++) { // entropy
+    if (concat->integral) x = (double) (concat->h->i[j].freq)/(double)(concat->integral);
+    result[4] += (x * log (x)); 
+  }
+  result[4] *= -1.;
+
+  return;
+}
