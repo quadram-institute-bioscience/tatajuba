@@ -5,12 +5,14 @@
 #include "genome_set.h"
 
 const char *fixed_fname[] = {
-  "selected_traits_unknown.csv",
-  "selected_traits_annotated.csv",
+  "per_sample_average_length.csv",
+  "per_sample_modal_frequency.csv",
+  "selected_tracts_unknown.csv",
+  "selected_tracts_annotated.csv",
   "tract_list.csv"
 };
 
-enum {FNAME_SELECTED_TRAITS_UNKNOWN, FNAME_SELECTED_TRAITS_ANNOTATED, FNAME_TRACT_LIST}; 
+enum {FNAME_SAMPLE_AVGE_LENGTH, FNAME_SAMPLE_MODALFREQ, FNAME_SELECTED_TRACTS_UNKNOWN, FNAME_SELECTED_TRACTS_ANNOTATED, FNAME_TRACT_LIST}; 
   
 g_tract_vector_t new_g_tract_vector_from_genomic_context_list (genomic_context_list_t *genome, int n_genome);
 void del_g_tract_vector (g_tract_vector_t tract);
@@ -83,6 +85,7 @@ new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_opt
   biomcmc_get_time (time1); g->secs[2] = biomcmc_elapsed_time (time1, time0); time0[0] = time1[0]; time0[1] = time1[1];
 
   create_tract_in_reference_structure (g);
+  describe_statistics_for_genome_set (g);
   biomcmc_get_time (time1); g->secs[3] = biomcmc_elapsed_time (time1, time0); time0[0] = time1[0]; time0[1] = time1[1];
 
   return g;
@@ -311,7 +314,7 @@ print_selected_g_tract_vector (genome_set_t g)
   } // for i in summary
   printf ("From %d tracts, %d interesting ones are annotated and %d interesting ones are not annotated\n", g->tract->n_summary, n_yes, n_no);
 
-  fout = open_output_file (g->genome[0]->opt, fixed_fname[FNAME_SELECTED_TRAITS_UNKNOWN]);
+  fout = open_output_file (g->genome[0]->opt, fixed_fname[FNAME_SELECTED_TRACTS_UNKNOWN]);
   fprintf (fout, "tract_id\tlocation\tn_genomes\tlev_distance\t|\trd_frequency\trd_avge_tract_length\trd_coverage\trd_context_covge\trd_entropy\n"); 
   for (i = 0; i < n_no; i++) {
     t = g->tract->summary + cd_no[i];
@@ -323,7 +326,7 @@ print_selected_g_tract_vector (genome_set_t g)
   }
 
   fclose (fout); fout = NULL;
-  fout = open_output_file (g->genome[0]->opt, fixed_fname[FNAME_SELECTED_TRAITS_ANNOTATED]);
+  fout = open_output_file (g->genome[0]->opt, fixed_fname[FNAME_SELECTED_TRACTS_ANNOTATED]);
   fprintf (fout, "tract_id\tGFF3_info\tlocation\tn_genomes\tlev_distance\t|\trd_frequency\trd_avge_tract_length\trd_coverage\trd_context_covge\trd_entropy\n"); 
   for (i = 0; i < n_yes; i++) {
     t = g->tract->summary + cd_yes[i]; 
@@ -495,6 +498,72 @@ lookup_bruteforce (char_vector haystack, const char *needle)
   return -1;
 }
 
+
+/**   new functions   **/
+
+
+void
+describe_statistics_for_genome_set (genome_set_g g)
+{
+  int i, prev;
+  double *stats_per_hist, *samples_per_trait;
+  FILE *fout[2];
+  bool to_print;
+ 
+  stats_per_hist    = (double*) biomcmc_malloc (N_SUMMARY_TABLES * sizeof (double));
+  samples_per_trait = (double*) biomcmc_malloc (N_SUMMARY_TABLES * g->n_genome * sizeof (double));
+
+  fout[0] = open_output_file (g->genome[0]->opt, fixed_fname[FNAME_SAMPLE_AVGE_LENGTH]);
+  fout[1] = open_output_file (g->genome[0]->opt, fixed_fname[FNAME_SAMPLE_MODALFREQ]);
+
+  for (prev = 0, i = 1; i < g->tract->n_concat; i++) {
+    if (g->tract->concat[prev]->tract_id != g->tract->concat[i]->tract_id) {
+      to_print = update_descriptive_stats_for_this_trait (g, prev, i, stats_per_hist, samples_per_trait);
+      if (to_print) print_descriptive_stats_per_sample (g, fout, samples_per_trait, g->tract->concat[prev]->tract_id);
+      prev = i;
+    }
+  }
+  to_print = update_descriptive_stats_for_this_trait (g, prev, i, stats_per_hist, samples_per_trait); // last trait
+  if (to_print) print_descriptive_stats_per_sample (g, fout, samples_per_trait, g->tract->concat[prev]->tract_id);
+
+  fclose (fout);
+  if (stats_per_hist) free (stats_per_hist);
+  if (samples_per_trait) free (samples_per_trait);
+  return;
+}
+
+bool
+update_descriptive_stats_for_this_trait (genome_set_g g, int prev, int curr, double *stats_per_hist, double *samples_per_trait)
+{
+  int i,j;
+  for (i = 0; i < N_SUMMARY_TABLES * g->n_genome; i++) samples_per_trait[i] = 0.;
+  for (i = prev; i < curr; i++) {
+    descriptive_stats_of_histogram (g->concat[i], stats_per_hist);
+    for (j = 0; j < N_SUMMARY_STATS; j++) samples_per_trait[g->concat[i]->index] = stats_per_hist[j]; // STOPHERE FIXME
+} 
+
+void
+print_descriptive_stats_per_sample (genome_set_g g, FILE **fout, double *samples_per_trait, int tract_id)
+{
+  int i;
+  fprintf (fout[0], "tid_%06d\t%d\t", tract_id, g->tract_ref[tract_id].contig_location);
+  fprintf (fout[1], "tid_%06d\t%d\t", tract_id, g->tract_ref[tract_id].contig_location);
+  // values for reference genome
+  fprintf (fout[0], "%lf\t", (double)(g->tract_ref[tract_id].tract_length)); // weighted length
+  fprintf (fout[1], "%lf\t", 1.0); // modal freq = histogram bar length of modal length
+
+  for (i = 0; i < g->n_genome; i++) { // [ [genome1, ..., ngenomes]d_1 , [genome1, ..., ngenomes]d_2, ...,[]d_N_SUMMARY_TABLES ]
+    fprintf (fout[0], "%lf\t", samples_per_trait[N_SUMMARY_TABLES + i]); // N_S_TBLS x 1 
+    fprintf (fout[1], "%lf\t", samples_per_trait[i]);  // N_S_TBLS x 0
+  }
+  fprintf (fout[0], "\n");
+  fprintf (fout[1], "\n");
+  return;
+}
+
+//for (i = 0, j = prev; j < curr; j++, i++) this->genome_id[i] = tract->concat[j]->index;
+//
+
 void
 descriptive_stats_of_histogram (context_histogram_t concat, double *result)
 {
@@ -508,7 +577,7 @@ descriptive_stats_of_histogram (context_histogram_t concat, double *result)
   for (j = 0; j < concat->h->n; j++) if (concat->integral) // weighted average tract length
     result[1] += (double) (concat->h->i[j].freq * concat->h->i[j].idx)/(double)(concat->integral);
 
-  // proportional coverage ("coverage" is the depth of most frequent kmer)
+  // proportional coverage ("coverage" is the depth of most frequent kmer in fastq, an estimate of genomic coverage depth)
   result[2] = (double)(concat->integral)/(double)(concat->coverage);
 
   // average coverage per context 
@@ -521,4 +590,18 @@ descriptive_stats_of_histogram (context_histogram_t concat, double *result)
   result[4] *= -1.;
 
   return;
+}
+
+double
+relative_difference_of_vector (double *vec, int n_vec)
+{
+  double x_max = -FLT_MAX; x_min = FLT_MAX; // FLT and not DBL since we take negative 
+  int i;
+
+  for (i = 0; i < n_vec; i++) {
+    if (x_max < vec[i]) x_max = vec[i];
+    if (x_min > vec[i]) x_min = vec[i];
+  }
+  if (x_max > DBL_MIN) return (x1 - x2)/*/x1*/;
+  else return 0;
 }
