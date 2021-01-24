@@ -23,7 +23,13 @@ void create_tract_in_reference_structure (genome_set_t g);
 FILE * open_output_file (tatajuba_options_t opt, const char *file);
 int lookup_bruteforce (char_vector haystack, const char *needle);
 void find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnacontig, size_t dnacontig_len, tatajuba_options_t  opt, context_histogram_t hist);
+
+void describe_statistics_for_genome_set (genome_set_t g);
+void initialise_files_descriptive_stats (genome_set_t g, FILE **fout);
+bool update_descriptive_stats_for_this_trait (genome_set_t g, int prev, int curr, double *stats_per_hist, double *samples_per_trait);
+void print_descriptive_stats_per_sample (genome_set_t g, FILE **fout, double *samples_per_trait, int tract_id);
 void descriptive_stats_of_histogram (context_histogram_t concat, double *result);
+double relative_difference_of_vector (double *vec, int n_vec);
 
 genome_set_t
 new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_options_t opt) 
@@ -498,23 +504,20 @@ lookup_bruteforce (char_vector haystack, const char *needle)
   return -1;
 }
 
-
 /**   new functions   **/
 
-
 void
-describe_statistics_for_genome_set (genome_set_g g)
+describe_statistics_for_genome_set (genome_set_t g)
 {
   int i, prev;
   double *stats_per_hist, *samples_per_trait;
-  FILE *fout[2];
+  FILE *fout[2] = {NULL,NULL};
   bool to_print;
  
-  stats_per_hist    = (double*) biomcmc_malloc (N_SUMMARY_TABLES * sizeof (double));
-  samples_per_trait = (double*) biomcmc_malloc (N_SUMMARY_TABLES * g->n_genome * sizeof (double));
+  stats_per_hist    = (double*) biomcmc_malloc (N_DESC_STATS * sizeof (double));
+  samples_per_trait = (double*) biomcmc_malloc (N_DESC_STATS * g->n_genome * sizeof (double));
 
-  fout[0] = open_output_file (g->genome[0]->opt, fixed_fname[FNAME_SAMPLE_AVGE_LENGTH]);
-  fout[1] = open_output_file (g->genome[0]->opt, fixed_fname[FNAME_SAMPLE_MODALFREQ]);
+  initialise_files_descriptive_stats (g, fout);
 
   for (prev = 0, i = 1; i < g->tract->n_concat; i++) {
     if (g->tract->concat[prev]->tract_id != g->tract->concat[i]->tract_id) {
@@ -526,43 +529,77 @@ describe_statistics_for_genome_set (genome_set_g g)
   to_print = update_descriptive_stats_for_this_trait (g, prev, i, stats_per_hist, samples_per_trait); // last trait
   if (to_print) print_descriptive_stats_per_sample (g, fout, samples_per_trait, g->tract->concat[prev]->tract_id);
 
-  fclose (fout);
+  fclose (fout[0]);
+  fclose (fout[1]);
   if (stats_per_hist) free (stats_per_hist);
   if (samples_per_trait) free (samples_per_trait);
   return;
 }
 
-bool
-update_descriptive_stats_for_this_trait (genome_set_g g, int prev, int curr, double *stats_per_hist, double *samples_per_trait)
-{
-  int i,j;
-  for (i = 0; i < N_SUMMARY_TABLES * g->n_genome; i++) samples_per_trait[i] = 0.;
-  for (i = prev; i < curr; i++) {
-    descriptive_stats_of_histogram (g->concat[i], stats_per_hist);
-    for (j = 0; j < N_SUMMARY_STATS; j++) samples_per_trait[g->concat[i]->index] = stats_per_hist[j]; // STOPHERE FIXME
-} 
-
 void
-print_descriptive_stats_per_sample (genome_set_g g, FILE **fout, double *samples_per_trait, int tract_id)
+initialise_files_descriptive_stats (genome_set_t g, FILE **fout)
 {
   int i;
+  fout[0] = open_output_file (g->genome[0]->opt, fixed_fname[FNAME_SAMPLE_AVGE_LENGTH]);
+  fout[1] = open_output_file (g->genome[0]->opt, fixed_fname[FNAME_SAMPLE_MODALFREQ]);
+  fprintf (fout[0], "tract_id\tlocation\tfeature\t%s\t", "reference"); // cannot be ref genome name since there may be several contigs (user must check on tract_list.csv)
+  fprintf (fout[1], "tract_id\tlocation\tfeature\t%s\t", "reference");
+  for (i = 0; i < g->n_genome; i++) { 
+    fprintf (fout[0], "%s\t", g->genome[i]->name);
+    fprintf (fout[1], "%s\t", g->genome[i]->name);
+  }
+  fprintf (fout[0], "\n");
+  fprintf (fout[1], "\n");
+}
+
+bool
+update_descriptive_stats_for_this_trait (genome_set_t g, int prev, int curr, double *stats_per_hist, double *samples_per_trait)
+{
+  int i,j;
+  double difference = 0.;
+  for (i = 0; i < N_DESC_STATS * g->n_genome; i++) samples_per_trait[i] = 0.;
+  for (i = prev; i < curr; i++) {
+    descriptive_stats_of_histogram (g->tract->concat[i], stats_per_hist);
+    for (j = 0; j < N_DESC_STATS; j++) samples_per_trait[g->tract->concat[i]->index + g->n_genome * j] = stats_per_hist[j];
+  }
+  // crude estimate of relative error
+  if (curr - prev < g->n_genome) return true; 
+  difference  = relative_difference_of_vector (samples_per_trait + g->n_genome * 0, g->n_genome);
+  difference += relative_difference_of_vector (samples_per_trait + g->n_genome * 1, g->n_genome);
+  difference += relative_difference_of_vector (samples_per_trait + g->n_genome * 4, g->n_genome);
+  if (difference > 1.e-5) return true;
+  for (i = prev; i < curr; i++) if (g->tract_ref[ g->tract->concat[prev]->tract_id ].tract_length != g->tract->concat[i]->h->i[0].idx) return true;
+  return false;
+}
+
+void
+print_descriptive_stats_per_sample (genome_set_t g, FILE **fout, double *samples_per_trait, int tract_id)
+{
+  int i;
+  context_histogram_t hist = g->tract->concat[ g->tract_ref[tract_id].concat_idx ]; // GFF is only in concat[], not tract_ref
   fprintf (fout[0], "tid_%06d\t%d\t", tract_id, g->tract_ref[tract_id].contig_location);
   fprintf (fout[1], "tid_%06d\t%d\t", tract_id, g->tract_ref[tract_id].contig_location);
+  if (gff3_fields_is_valid (hist->gffeature)) {
+    fprintf (fout[0], "%s\t", hist->gffeature.attr_id.str);
+    fprintf (fout[1], "%s\t", hist->gffeature.attr_id.str);
+  }
+  else {
+    fprintf (fout[0], "%s\t", "unnanotated");
+    fprintf (fout[1], "%s\t", "unnanotated");
+  }
+
   // values for reference genome
   fprintf (fout[0], "%lf\t", (double)(g->tract_ref[tract_id].tract_length)); // weighted length
   fprintf (fout[1], "%lf\t", 1.0); // modal freq = histogram bar length of modal length
 
-  for (i = 0; i < g->n_genome; i++) { // [ [genome1, ..., ngenomes]d_1 , [genome1, ..., ngenomes]d_2, ...,[]d_N_SUMMARY_TABLES ]
-    fprintf (fout[0], "%lf\t", samples_per_trait[N_SUMMARY_TABLES + i]); // N_S_TBLS x 1 
-    fprintf (fout[1], "%lf\t", samples_per_trait[i]);  // N_S_TBLS x 0
+  for (i = 0; i < g->n_genome; i++) { // [ [genome1, ..., ngenomes]d_1 , [genome1, ..., ngenomes]d_2, ...,[]d_N_STATS ]
+    fprintf (fout[0], "%lf\t", samples_per_trait[g->n_genome + i]); // n_genome x 1 
+    fprintf (fout[1], "%lf\t", samples_per_trait[i]);  // n_genome x 0
   }
   fprintf (fout[0], "\n");
   fprintf (fout[1], "\n");
   return;
 }
-
-//for (i = 0, j = prev; j < curr; j++, i++) this->genome_id[i] = tract->concat[j]->index;
-//
 
 void
 descriptive_stats_of_histogram (context_histogram_t concat, double *result)
@@ -570,7 +607,7 @@ descriptive_stats_of_histogram (context_histogram_t concat, double *result)
   double x;
   int j;
 
-  for (j = 0; j < N_SUMMARY_TABLES; j++) result[j] = 0.;
+  for (j = 0; j < N_DESC_STATS; j++) result[j] = 0.;
 
   result[0] = (double) (concat->h->i[0].freq)/(double)(concat->integral); // modal frequency
 
@@ -588,6 +625,8 @@ descriptive_stats_of_histogram (context_histogram_t concat, double *result)
     result[4] += (x * log (x)); 
   }
   result[4] *= -1.;
+    
+  result[5] = (double) concat->h->i[0].idx;  // modal (=typical) tract length 
 
   return;
 }
@@ -595,13 +634,13 @@ descriptive_stats_of_histogram (context_histogram_t concat, double *result)
 double
 relative_difference_of_vector (double *vec, int n_vec)
 {
-  double x_max = -FLT_MAX; x_min = FLT_MAX; // FLT and not DBL since we take negative 
+  double x_max = -FLT_MAX, x_min = FLT_MAX; // FLT and not DBL since we take negative 
   int i;
 
   for (i = 0; i < n_vec; i++) {
     if (x_max < vec[i]) x_max = vec[i];
     if (x_min > vec[i]) x_min = vec[i];
   }
-  if (x_max > DBL_MIN) return (x1 - x2)/*/x1*/;
+  if (x_max > DBL_MIN) return (x_max - x_min)/*/x1*/;
   else return 0;
 }
