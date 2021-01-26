@@ -3,6 +3,8 @@
 		. if SNP is present maybe one of the contexts will be the same; this will indicate potential SNPs
 		. To postpone these exceptions, we can assume that interesting homopol-tracts must be present in all samples and
 		have variation in lengths (we can flag those with potential SNPs above i.e. nearby similar tracts)
+		. function that finds tract in reference may change tract location (e.g. -1) which makes it incompatible with
+		selected_tracts.csv which is done before: find_best_context_name_for_reference() changes contig_location
 2020.11.27
 	* multi-genome comparison:
 		. GFF3 reading implemented, and can save FASTA if included (needed by bwa). Safer is to provide both, however.
