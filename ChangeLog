@@ -1,3 +1,10 @@
+2021.03.18
+	* TODO: 
+		. individual files, which can be updated for new reference genomes; these files could have:
+			- dinucleotide frequencies (mentioned in several publications, to give a probability of having those lengths by chance)
+			- all paralogs per reference genome (someone could create a roary-like graph to generate homologs)
+			- ref genome location file could be the same (merged) across samples (WARNING: this could become a huge file,
+			maybe have one per sample and tatajuba merges them on the spot)
 2021.01.05
 	* TODO (extra/review):
 		. if SNP is present maybe one of the contexts will be the same; this will indicate potential SNPs
