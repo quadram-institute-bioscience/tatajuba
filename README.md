@@ -81,6 +81,10 @@ The libraries rely on `pkg-config` to find their location: if your `pkg-config` 
 better install the above libs via conda as well (or, you know, updating environmental variables etc).
 The `zlib` library is mandatory, while the others are called `xz` and `bzip2` on a strict conda environment.
 
+## Documentation 
+Currently there is a tutorial on the diretory `docs` in jupyter notebook format: [docs/2103.campy_bordetella.ipynb](docs/2103.campy_bordetella.ipynb).
+The program gives summary help with `tatajuba` (without arguments) and detailed help with `tatajuba -h`.
+
 ## Model
 At the lowest level (C `struct`), the homopolymeric tracts are stored as the two flanking k-mers (called "context" here) and the base
 comprising the homopolymer in th middle, as seen  in the figure below. 
