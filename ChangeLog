@@ -1,3 +1,8 @@
+2021.04.01
+	* future ideas:
+		. vcf file with HTs only (then user can https://github.com/rpetit3/vcf-annotator to check a.a. impact)
+		. github issue 1: flag HT without forw/rev strands; flag HTs with diff length in forw and rev
+		. github issue 2: a.a. effect of HT (first codon before HT to last codon after, or whole HT)
 2021.03.18
 	* TODO: 
 		. individual files, which can be updated for new reference genomes; these files could have:
