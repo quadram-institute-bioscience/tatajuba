@@ -145,22 +145,27 @@ get_options_from_argtable (arg_parameters params)
   opt.min_coverage = params.minread->ival[0]; 
   opt.max_distance_per_flank = params.maxdist->ival[0]; 
   opt.levenshtein_distance = params.leven->ival[0]; 
-  if (params.threads->count) {
-    opt.n_threads = params.threads->ival[0];
-    if (opt.n_threads < 1) opt.n_threads = 1;
-#ifdef _OPENMP
-    omp_set_num_threads (opt.n_threads); // try to fix n_threads to input number 
-#endif
-  }
+
 #ifdef _OPENMP
   opt.n_threads = omp_get_max_threads (); // upper bound may be distinct to whatever number user has chosen
 #else
   opt.n_threads = 0; // compiled without openMP support (e.g. --disable-openmp)
+  biomcmc_warning ("Program compiled without multithread support");
 #endif
-  if (opt.n_samples < opt.n_threads) {
+
+#ifdef _OPENMP
+  if (params.threads->count) {
+    opt.n_threads = params.threads->ival[0];
+    if (opt.n_threads < 1) opt.n_threads = 1;
+  }
+  if (opt.n_samples < opt.n_threads) { 
     opt.n_threads = opt.n_samples; 
     biomcmc_warning ("Decreasing number of threads to match number of samples");
   }
+  omp_set_num_threads (opt.n_threads); // try to fix n_threads to input number 
+  opt.n_threads = omp_get_max_threads (); // upper bound may be distinct to whatever number user has chosen
+#endif
+
   if (opt.kmer_size < 2)  opt.kmer_size = 2; 
   if (opt.kmer_size > 32) opt.kmer_size = 32; 
   if (opt.min_tract_size < 1)  opt.min_tract_size = 1; 
