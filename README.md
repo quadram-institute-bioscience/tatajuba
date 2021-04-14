@@ -43,6 +43,7 @@ If for any reason installing through conda is not an option, or if you want the 
 soul-crushing version of the software, you can download it and compile it yourself. 
 This repository must be cloned with `git clone --recursive` to ensure it also downloads
 [biomcmc-lib](https://github.com/quadram-institute-bioscience/biomcmc-lib) and [our modified version of BWA](https://github.com/leomrtns/bwa).
+You will need a recent version of GCC in your system. 
 
 This sofware uses `autotools`, so you can install it with `configure` + `make`. 
 You may need to define where you want it installed with `configure --prefix=DIR` which is where are your unix-like
