@@ -134,6 +134,10 @@ get_options_from_argtable (arg_parameters params)
                    "reference genome sequence(s) that match the GFF3 features, or you should find a GFF3 file with a '##FASTA' section at the end.\n"); 
   }
 
+  // create index here to make sure it is done only once (not inside threads)
+  char *s = save_bwa_index (opt.reference_fasta_filename, NULL, false); // returns file name with suffix (NULL in our case)
+  if (s) free (s);
+
   opt.paired_end = (params.paired->count? true: false);
   opt.n_samples = (params.paired->count? params.fastq->count/2: params.fastq->count);
   if (opt.n_samples < 2) {
