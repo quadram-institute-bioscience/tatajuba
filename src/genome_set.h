@@ -10,7 +10,6 @@
 #define _tata_genome_set_h_
 
 #define N_SUMMARY_TABLES 5 
-#define N_DESC_STATS 6
 
 #include "context_histogram.h" 
 

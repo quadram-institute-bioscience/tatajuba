@@ -5,15 +5,22 @@
 #include "genome_set.h"
 
 const char *fixed_fname[] = {
-  "per_sample_average_length.csv",
-  "per_sample_modal_frequency.csv",
-  "selected_tracts_unknown.csv",
-  "selected_tracts_annotated.csv",
-  "tract_list.csv"
+  "per_sample_average_length.tsv",
+  "per_sample_modal_frequency.tsv",
+  "per_sample_proportional_coverage.tsv",
+  "selected_tracts_unknown.tsv",
+  "selected_tracts_annotated.tsv",
+  "tract_list.tsv"
 };
 
-enum {FNAME_SAMPLE_AVGE_LENGTH, FNAME_SAMPLE_MODALFREQ, FNAME_SELECTED_TRACTS_UNKNOWN, FNAME_SELECTED_TRACTS_ANNOTATED, FNAME_TRACT_LIST}; 
+#define N_FNAME_SAMPLE 3
+enum {FNAME_SAMPLE_AVGELENGTH, FNAME_SAMPLE_MODALFREQ, FNAME_SAMPLE_PROPCOV, FNAME_SELECTED_TRACTS_UNKNOWN, FNAME_SELECTED_TRACTS_ANNOTATED, FNAME_TRACT_LIST}; 
+
+#define N_DESC_STATS 5
+enum {DESC_STAT_avgelength, DESC_STAT_modalfreq, DESC_STAT_propcov, DESC_STAT_covpercontext, DESC_STAT_entropy}; 
   
+void simplify_genome_names (genomic_context_list_t *genome, int n_genome);
+
 g_tract_vector_t new_g_tract_vector_from_genomic_context_list (genomic_context_list_t *genome, int n_genome);
 void del_g_tract_vector (g_tract_vector_t tract);
 void g_tract_vector_concatenate_tracts  (g_tract_vector_t tract, genomic_context_list_t *genome, int n_genome);
@@ -86,6 +93,8 @@ new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_opt
 
   /* label each histogram with index of genome they belong to */
   for (i = 0; i < g->n_genome; i++) for (j = 0; j < g->genome[i]->n_hist; j++) g->genome[i]->hist[j]->index = i;
+  /* simplify sample names, removing suffix and prefix */
+  simplify_genome_names (g->genome, g->n_genome);
   /* generate comparisons between genomes */
   g->tract = new_g_tract_vector_from_genomic_context_list (g->genome, g->n_genome);
   biomcmc_get_time (time1); g->secs[2] = biomcmc_elapsed_time (time1, time0); time0[0] = time1[0]; time0[1] = time1[1];
@@ -113,6 +122,44 @@ del_genome_set (genome_set_t g)
   del_char_vector (g->ref_names);
   del_g_tract_vector (g->tract);
   free (g); 
+}
+
+void 
+simplify_genome_names (genomic_context_list_t *genome, int n_genome)
+{
+  int i, j;
+  size_t n_i , n_j, n_small, pre, suf, min_pre = 0xffffff, min_suf = 0xffffff;
+  if (n_genome < 2) biomcmc_warning ("Will not try to simplify sample names since only one sample available");
+  for (i = 0; i < n_genome; i++) {
+    n_i = strlen (genome[i]->name);
+    for (j = 0; j < n_genome; j++) {
+      n_small = n_j = strlen (genome[j]->name);
+      if (n_small > n_i) n_small = n_i; // n_small = min (genome[i], genome[j])
+
+      for (pre = 0; (pre < n_small) && (genome[i]->name[pre] == genome[j]->name[pre]); pre++);
+      for (suf = 0; (suf < n_small) && (genome[i]->name[n_i - suf - 1] == genome[j]->name[n_j - suf - 1]); suf++);
+      if (pre < min_pre) min_pre = pre;
+      if (suf < min_suf) min_suf = suf;
+    }
+  }
+  if ((min_pre == 0) && (min_suf == 0)) { 
+    biomcmc_fprintf_colour (stderr, 0, 2, "Using original file names", " (could not find suffix or prefix in common)\n.");
+    return; 
+  }
+  else {
+    if (min_pre) biomcmc_fprintf_colour (stderr, 0, 2, "Modifying sample names: ", 
+                                         "Removing prefix '%.*s' from sample names.\n", min_pre, genome[0]->name);
+    if (min_suf) biomcmc_fprintf_colour (stderr, 0, 2, "Modifying sample names: ", 
+                                         "Removing suffix '%s' from sample names.\n", genome[0]->name + strlen(genome[0]->name) - min_suf -1);
+
+    for (i = 0; i < n_genome; i++) {
+      n_j = strlen (genome[i]->name) - min_pre - min_suf; 
+      for (pre = 0; pre < n_j; pre++) genome[i]->name[pre] = genome[i]->name[pre+min_pre];
+      genome[i]->name[pre] = '\0';
+      genome[i]->name = (char*) biomcmc_realloc ((char*) genome[i]->name, n_j + 1);
+    }
+  }
+  return;
 }
 
 // FIXME: aim is to deprecate tract_summary (i.e. recalculate after reference is added; not as we go, below) 
@@ -479,7 +526,7 @@ print_tract_list (genome_set_t g)
     if (gff3_fields_is_valid (hist->gffeature))
       fprintf (fout, "%s\t%s\t", hist->gffeature.type.str, hist->gffeature.attr_id.str);
     else
-      fprintf (fout, "nc\tunnanotated\t");
+      fprintf (fout, "nc\tunannotated\t");
     fprintf (fout, "%d\t%d\t", g->tract_ref[tid].contig_location, g->tract_ref[tid].max_length);
     fprintf (fout, "%d\t", g->tract_ref[tid].tract_length);
     fprintf (fout, "%s\t", hist->name);
@@ -511,9 +558,10 @@ describe_statistics_for_genome_set (genome_set_t g)
 {
   int i, prev;
   double *stats_per_hist, *samples_per_trait;
-  FILE *fout[2] = {NULL,NULL};
+  FILE *fout[N_FNAME_SAMPLE];
   bool to_print;
  
+  for (i = 0; i < N_FNAME_SAMPLE; i++) fout[i] = NULL;
   stats_per_hist    = (double*) biomcmc_malloc (N_DESC_STATS * sizeof (double));
   samples_per_trait = (double*) biomcmc_malloc (N_DESC_STATS * g->n_genome * sizeof (double));
 
@@ -529,8 +577,7 @@ describe_statistics_for_genome_set (genome_set_t g)
   to_print = update_descriptive_stats_for_this_trait (g, prev, i, stats_per_hist, samples_per_trait); // last trait
   if (to_print) print_descriptive_stats_per_sample (g, fout, samples_per_trait, g->tract->concat[prev]->tract_id);
 
-  fclose (fout[0]);
-  fclose (fout[1]);
+  for (i = 0; i < N_FNAME_SAMPLE; i++) fclose (fout[i]);
   if (stats_per_hist) free (stats_per_hist);
   if (samples_per_trait) free (samples_per_trait);
   return;
@@ -539,23 +586,19 @@ describe_statistics_for_genome_set (genome_set_t g)
 void
 initialise_files_descriptive_stats (genome_set_t g, FILE **fout)
 {
-  int i;
-  fout[0] = open_output_file (g->genome[0]->opt, fixed_fname[FNAME_SAMPLE_AVGE_LENGTH]);
-  fout[1] = open_output_file (g->genome[0]->opt, fixed_fname[FNAME_SAMPLE_MODALFREQ]);
-  fprintf (fout[0], "tract_id\tlocation\tfeature\t%s\t", "reference"); // cannot be ref genome name since there may be several contigs (user must check on tract_list.csv)
-  fprintf (fout[1], "tract_id\tlocation\tfeature\t%s\t", "reference");
-  for (i = 0; i < g->n_genome; i++) { 
-    fprintf (fout[0], "%s\t", g->genome[i]->name);
-    fprintf (fout[1], "%s\t", g->genome[i]->name);
+  int i, j;
+  for (j = 0; j < N_FNAME_SAMPLE; j++) {
+    fout[j] = open_output_file (g->genome[0]->opt, fixed_fname[j]);
+    fprintf (fout[j], "tract_id\tlocation\tfeature\t%s\t", "reference"); // cannot be ref genome name since there may be several contigs (user must check on tract_list.csv)
+    for (i = 0; i < g->n_genome; i++) fprintf (fout[j], "%s\t", g->genome[i]->name);
+    fprintf (fout[j], "\n");
   }
-  fprintf (fout[0], "\n");
-  fprintf (fout[1], "\n");
 }
 
 bool
 update_descriptive_stats_for_this_trait (genome_set_t g, int prev, int curr, double *stats_per_hist, double *samples_per_trait)
 {
-  int i,j;
+  int i, j;
   double difference = 0.;
   for (i = 0; i < N_DESC_STATS * g->n_genome; i++) samples_per_trait[i] = 0.;
   for (i = prev; i < curr; i++) {
@@ -575,29 +618,26 @@ update_descriptive_stats_for_this_trait (genome_set_t g, int prev, int curr, dou
 void
 print_descriptive_stats_per_sample (genome_set_t g, FILE **fout, double *samples_per_trait, int tract_id)
 {
-  int i;
+  int i, j;
   context_histogram_t hist = g->tract->concat[ g->tract_ref[tract_id].concat_idx ]; // GFF is only in concat[], not tract_ref
-  fprintf (fout[0], "tid_%06d\t%d\t", tract_id, g->tract_ref[tract_id].contig_location);
-  fprintf (fout[1], "tid_%06d\t%d\t", tract_id, g->tract_ref[tract_id].contig_location);
-  if (gff3_fields_is_valid (hist->gffeature)) {
-    fprintf (fout[0], "%s\t", hist->gffeature.attr_id.str);
-    fprintf (fout[1], "%s\t", hist->gffeature.attr_id.str);
-  }
-  else {
-    fprintf (fout[0], "%s\t", "unnanotated");
-    fprintf (fout[1], "%s\t", "unnanotated");
+  for (j = 0; j < N_FNAME_SAMPLE; j++) {
+    fprintf (fout[j], "tid_%06d\t%d\t", tract_id, g->tract_ref[tract_id].contig_location);
+    if (gff3_fields_is_valid (hist->gffeature)) fprintf (fout[j], "%s\t", hist->gffeature.attr_id.str);
+    else                                        fprintf (fout[j], "%s\t", "unannotated");
   }
 
   // values for reference genome
-  fprintf (fout[0], "%lf\t", (double)(g->tract_ref[tract_id].tract_length)); // weighted length
-  fprintf (fout[1], "%lf\t", 1.0); // modal freq = histogram bar length of modal length
+  fprintf (fout[FNAME_SAMPLE_AVGELENGTH], "%lf\t", (double)(g->tract_ref[tract_id].tract_length)); // weighted length
+  fprintf (fout[FNAME_SAMPLE_MODALFREQ], "%lf\t", 1.0); // modal freq = histogram bar length of modal length
+  fprintf (fout[FNAME_SAMPLE_PROPCOV], "\t"); // tract coverage depth /  deepest coverage depth across all tracts
 
-  for (i = 0; i < g->n_genome; i++) { // [ [genome1, ..., ngenomes]d_1 , [genome1, ..., ngenomes]d_2, ...,[]d_N_STATS ]
-    fprintf (fout[0], "%lf\t", samples_per_trait[g->n_genome + i]); // n_genome x 1 
-    fprintf (fout[1], "%lf\t", samples_per_trait[i]);  // n_genome x 0
+  for (j = 0; j < N_FNAME_SAMPLE; j++) {// [ [genome1, ..., ngenomes]d_1 , [genome1, ..., ngenomes]d_2, ...,[]d_N_STATS ]
+    for (i = 0; i < g->n_genome; i++) {
+      if ( samples_per_trait[j * g->n_genome + i] > 0.) fprintf (fout[j], "%lf\t", samples_per_trait[j * g->n_genome + i]); 
+      else                                              fprintf (fout[j], "\t");
+    }
+    fprintf (fout[j], "\n");
   }
-  fprintf (fout[0], "\n");
-  fprintf (fout[1], "\n");
   return;
 }
 
@@ -609,24 +649,24 @@ descriptive_stats_of_histogram (context_histogram_t concat, double *result)
 
   for (j = 0; j < N_DESC_STATS; j++) result[j] = 0.;
 
-  result[0] = (double) (concat->h->i[0].freq)/(double)(concat->integral); // modal frequency
-
   for (j = 0; j < concat->h->n; j++) if (concat->integral) // weighted average tract length
-    result[1] += (double) (concat->h->i[j].freq * concat->h->i[j].idx)/(double)(concat->integral);
+    result[DESC_STAT_avgelength] += (double) (concat->h->i[j].freq * concat->h->i[j].idx)/(double)(concat->integral);
+
+  result[DESC_STAT_modalfreq] = (double) (concat->h->i[0].freq)/(double)(concat->integral); // modal frequency
 
   // proportional coverage ("coverage" is the depth of most frequent kmer in fastq, an estimate of genomic coverage depth)
-  result[2] = (double)(concat->integral)/(double)(concat->coverage);
+  result[DESC_STAT_propcov] = (double)(concat->integral)/(double)(concat->coverage);
 
   // average coverage per context 
-  result[3] = (double)(concat->integral)/(double)(concat->n_context);
+  result[DESC_STAT_covpercontext] = (double)(concat->integral)/(double)(concat->n_context);
 
   for (j = 0; j < concat->h->n; j++) { // entropy
     if (concat->integral) x = (double) (concat->h->i[j].freq)/(double)(concat->integral);
-    result[4] += (x * log (x)); 
+    result[DESC_STAT_entropy] += (x * log (x)); 
   }
-  result[4] *= -1.;
+  result[DESC_STAT_entropy] *= -1.;
     
-  result[5] = (double) concat->h->i[0].idx;  // modal (=typical) tract length 
+  //result[5] = (double) concat->h->i[0].idx;  // modal (=typical) tract length 
 
   return;
 }
