@@ -8,6 +8,7 @@ typedef struct
   struct arg_lit  *help;
   struct arg_lit  *version;
   struct arg_lit  *paired;
+  struct arg_lit  *nobias;
   struct arg_int  *kmer;
   struct arg_int  *minsize;
   struct arg_int  *minread;
@@ -34,6 +35,7 @@ get_parameters_from_argv (int argc, char **argv)
     .help    = arg_litn("h","help",0, 1, "print a longer help and exit"),
     .version = arg_litn("v","version",0, 1, "print version and exit"),
     .paired  = arg_litn("p","paired", 0, 1, "paired end (pairs of) files"),
+    .nobias  = arg_litn("b","remove_bias", 0, 1, "remove biased tracts, i.e. present in reverse or forward strains only (default=keep all)"),
     .kmer    = arg_int0("k","kmer","{2,...,32}", "kmer size flanking each side of homopolymer (default=25)"),
     .minsize = arg_int0("m","minsize","{1,...,32}", "minimum homopolymer tract length to be compared (default=4)"),
     .minread = arg_int0("i","minreads",NULL, "minimum number of reads for tract+context to be considered (default=5)"),
@@ -46,7 +48,7 @@ get_parameters_from_argv (int argc, char **argv)
     .outdir  = arg_file0("o", "outdir", NULL, "output directory, or 'random' for generating random dir name (default=current dir '.')"),
     .end     = arg_end(10) // max number of errors it can store (o.w. shows "too many errors")
   };
-  void* argtable[] = {params.help, params.version, params.paired, params.kmer, params.minsize, params.minread, params.maxdist, params.leven, 
+  void* argtable[] = {params.help, params.version, params.paired, params.nobias, params.kmer, params.minsize, params.minread, params.maxdist, params.leven, 
     params.threads, params.gff, params.fna, params.fastq, params.outdir, params.end};
   params.argtable = argtable; 
   params.kmer->ival[0]    = 25; // default values must be before parsing
@@ -66,6 +68,7 @@ del_arg_parameters (arg_parameters params)
   if (params.help)    free (params.help);
   if (params.version) free (params.version);
   if (params.paired)  free (params.paired);
+  if (params.nobias)  free (params.nobias);
   if (params.kmer)    free (params.kmer);
   if (params.minsize) free (params.minsize);
   if (params.minread) free (params.minread);
@@ -139,6 +142,7 @@ get_options_from_argtable (arg_parameters params)
   if (s) free (s);
 
   opt.paired_end = (params.paired->count? true: false);
+  opt.remove_biased = (params.nobias->count? true: false);
   opt.n_samples = (params.paired->count? params.fastq->count/2: params.fastq->count);
   if (opt.n_samples < 2) {
     del_gff3_t (opt.gff);

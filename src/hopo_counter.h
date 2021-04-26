@@ -20,7 +20,7 @@ typedef struct hopo_counter_struct* hopo_counter;
 typedef struct 
 {
   char *reference_fasta_filename, *outdir; 
-  bool paired_end;
+  bool paired_end, remove_biased;
   gff3_t gff;
   int max_distance_per_flank, 
       kmer_size,
@@ -35,14 +35,15 @@ typedef struct
 { 
   uint64_t context[2]; /*! \brief flanking kmers (bitstring, not hashed) */
   /* bit fields below are signed to faciliate arithm comparisons, thus we lose one bit for signal */
-  int32_t base:2,    /*! \brief base: 0=AT 1=CG (forward or reverse, we use canonical which is A side or C side) */
+  int64_t base:2,    /*! \brief base: 0=AT 1=CG (forward or reverse, we use canonical which is A side or C side) */
           length:10, /*! \brief  (former base_size) length of homopolymeric tract (in bases) */
-          count:20;  /*! \brief frequency of homopolymer in this context (due to coverage) */
-  int32_t read_offset,  /*! \brief start of context+tract in read (when searching in reference fasta) or 1D flattened location from bwa */
+          count:20,  /*! \brief frequency of homopolymer in this context (due to coverage) */
+          mismatches:14,  /*! \brief mismatches plus indels from bwa */
+          multi:3,        /*! \brief more than one match */
+          revforw_flag:3; /*! \brief if tract was seen in both 1=forward and 2=reverse, then flag=3 */
+  int32_t read_offset, /*! \brief 1st, start of context+tract in read (when searching in reference fasta); 2nd, 1D flattened location from bwa */
           loc_ref_id,
-          loc_pos;        /*! \brief 2D BWA location [ref_id,position] which are ref sequence ID and site position within this refseq */
-  uint16_t mismatches:12, /*! \brief mismatches plus indels from bwa */
-           multi:3;       /*! \brief more than one match */
+          loc_pos;     /*! \brief 2D BWA location [ref_id,position] which are ref sequence ID and site position within this refseq */
 } hopo_element;
 
 struct hopo_counter_struct

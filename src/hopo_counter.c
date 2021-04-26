@@ -12,7 +12,7 @@ char bit_2_dna[] = {'A', 'C', 'G', 'T'};
 
 static void initialize_dna_to_bit_tables (void);
 
-void add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_int, int hopo_size, int start_mono);
+void add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_int, int hopo_size, int offset, uint8_t reverse_forward_flag);
 void copy_hopo_element_start_count_at (hopo_element *to, hopo_element *from, int count);
 void copy_hopo_element_locations (hopo_element *to, hopo_element *from);
 void estimate_coverage_hopo_counter (hopo_counter hc);
@@ -84,6 +84,7 @@ print_tatajuba_options (tatajuba_options_t opt)
   fprintf (stderr, "Flanking k-mer size (context):    %6d\n", opt.kmer_size);
   fprintf (stderr, "Min tract length to consider:     %6d\n", opt.min_tract_size);
   fprintf (stderr, "Min depth of tract lengths:       %6d\n", opt.min_coverage);
+  fprintf (stderr, "Remove biased tracts:             %s\n", (opt.remove_biased?"yes":"no"));
   if (opt.n_threads) fprintf (stderr, "Number of threads (requested or optimised): %3d\n", opt.n_threads);
   else fprintf (stderr, "Software compiled without multithreaded support\n");
   if (opt.paired_end) fprintf (stderr, "Assuming paired-end samples: their file names should be consecutive (no file name check is conducted)\n");
@@ -178,7 +179,7 @@ void
 update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int min_tract_size)
 {
   int i, j, k, count_same = 0, start_mono = -1, offset = -1; // offset is leftmost in seq, not in canonic (used only when seq is from fasta ref) 
-  uint8_t context[2 * hc->kmer_size], hopo_base_int; 
+  uint8_t context[2 * hc->kmer_size], hopo_base_int, reverse_forward_flag = 0; 
   char prev_char = '$';
   count_same = 0; // zero because previous is "$" 
   for (i = 0; i < (seq_length - hc->kmer_size); i++) {
@@ -192,16 +193,18 @@ update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int mi
           for (k =0, j = start_mono - hc->kmer_size; j < start_mono; k++, j++) context[k] = dna_in_2_bits[ (int)seq[j] ][0]; 
           for (j = i + 1; j <= i + hc->kmer_size; k++, j++) context[k] = dna_in_2_bits[ (int)seq[j] ][0]; 
           hopo_base_int = dna_in_2_bits[(int)prev_char][0];
+          reverse_forward_flag = 1;
         }
         else if (dna_in_2_bits[(int)prev_char][0] > dna_in_2_bits[(int)prev_char][1]) { // T/U or G : reverse strand
           k = 0; // it would be easier to copy above, but with k--; however I wanna implement rolling hash in future
           for (j = i + hc->kmer_size; j > i; j--) context[k++] = dna_in_2_bits[ (int)seq[j] ][1]; 
           for (j = start_mono - 1; j >= start_mono - hc->kmer_size; j--) context[k++] = dna_in_2_bits[ (int)seq[j] ][1]; 
           hopo_base_int = dna_in_2_bits[(int)prev_char][1];
+          reverse_forward_flag = 2;
         //offset = i + hc->kmer_size;
         } // elsif (dna[0] > dna[1]); notice that if dna[0] == dna[1] then do nothing (not an unambiguous base)
         offset = start_mono - hc->kmer_size; // always leftmost, irrespective of revcomplement
-        add_kmer_to_hopo_counter (hc, context, hopo_base_int, count_same, offset);
+        add_kmer_to_hopo_counter (hc, context, hopo_base_int, count_same, offset, reverse_forward_flag);
         //for (j=0; j < hc->kmer_size; j++) printf ("%c", bit_2_dna[context[j]]); printf ("-%c-", bit_2_dna[hopo_base_int]); //DEBUG
         //for (; j < 2 * hc->kmer_size; j++) printf ("%c", bit_2_dna[context[j]]); //DEBUG
       } // if (count_same>2) [i.e. we found valid homopolymer]
@@ -214,7 +217,7 @@ update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int mi
 }
 
 void
-add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_int, int hopo_size, int offset)
+add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_int, int hopo_size, int offset, uint8_t reverse_forward_flag)
 {
   int i;
   if (hc->n_elem == hc->n_alloc) {
@@ -228,7 +231,8 @@ add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_i
   hc->elem[hc->n_elem].mismatches = 0xffe; // 12 bits 
   hc->elem[hc->n_elem].multi = false; 
   
-  hc->elem[hc->n_elem].read_offset = offset;
+  hc->elem[hc->n_elem].read_offset  = offset;
+  hc->elem[hc->n_elem].revforw_flag = reverse_forward_flag;
   hc->elem[hc->n_elem].context[0] = hc->elem[hc->n_elem].context[1] = 0ULL; // left context 
   for (i = 0; i < hc->kmer_size; i++) hc->elem[hc->n_elem].context[0] |= ((context[i] & 3ULL) << (2 * i));
   for (i = 0; i < hc->kmer_size; i++) hc->elem[hc->n_elem].context[1] |= ((context[hc->kmer_size + i] & 3ULL) << (2 * i));
@@ -248,6 +252,7 @@ copy_hopo_element_start_count_at (hopo_element *to, hopo_element *from, int coun
   to->context[0] = from->context[0];
   to->context[1] = from->context[1];
   to->count = count;
+  to->revforw_flag = from->revforw_flag;
 }
 
 void
@@ -275,13 +280,19 @@ finalise_hopo_counter (hopo_counter hc)
   for (i=1; i < hc->n_elem; i++) {
     if (compare_hopo_element_decreasing ((const void*) &(hc->elem[i-1]), (const void*) &(hc->elem[i]))) 
       copy_hopo_element_start_count_at (&(efreq[++n1]), &(hc->elem[i]), 1);
-    else efreq[n1].count++; // same context _and_tract length
+    else { // same context _and_tract length
+      efreq[n1].count++;
+      efreq[n1].revforw_flag |= hc->elem[i].revforw_flag; 
+    }
   }
   n1++; // n1 is (zero-based) index of existing hopo_element (and below we use it as _number_of_elements)
 
-  /* 2.  remove context_tract_lengths seen only once (but keep original depth whenever count > 1) */
+  /* 2. remove tracts seen only on one strand or seen only once */
   hc->n_elem = n1;
-  for (i = 0, n1 = 0; i < hc->n_elem; i++) if (efreq[i].count > 1) copy_hopo_element_start_count_at (&(efreq[n1++]), &(efreq[i]), efreq[i].count);
+  if (hc->opt.remove_biased) // exclude tract lengths appearing only in one strand (rev or forward)
+    for (i = 0, n1 = 0; i < hc->n_elem; i++) if (efreq[i].revforw_flag == 3) copy_hopo_element_start_count_at (&(efreq[n1++]), &(efreq[i]), efreq[i].count);
+  else // even if we don't care about biased tracts, remove context_tract_lengths seen only once (but keep original depth whenever count > 1) 
+    for (i = 0, n1 = 0; i < hc->n_elem; i++) if (efreq[i].count > 1) copy_hopo_element_start_count_at (&(efreq[n1++]), &(efreq[i]), efreq[i].count);
 
   /* 3.  hc->elem[] will now point to efreq above, that is, non-identical reads with depth > 1 */
   pivot = hc->elem;

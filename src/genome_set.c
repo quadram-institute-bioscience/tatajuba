@@ -486,17 +486,19 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
 
   min_tract_size = opt.min_tract_size - 2; 
   if (min_tract_size < 2) min_tract_size = 2;
-  extra_borders = opt.min_tract_size + 2; // TOCHANGE
+  extra_borders = opt.min_tract_size + 2; 
   start_location = ref_tid->contig_location - extra_borders; // left shift (allow for mismatches) can even be longer than min tract length
   if (start_location < 0) start_location = 0;                 // since we handle spurious matches by chosing one with best distance
   len = ref_tid->max_length + 2 * opt.kmer_size + 2 * extra_borders; 
   if (len > (int) dnacontig_len) len = (int) dnacontig_len;
 
+  // Modifies contig_location to point to beginning of homopolymer (instead of flanking region)
   update_hopo_counter_from_seq (hc, dnacontig + start_location, len, min_tract_size); 
-  if (!hc->n_elem) {
+  if (!hc->n_elem) { // homopolymer not found; store the equivalent region from the reference
     ref_tid->tract_length = 0;
-    ref_tid->tract_name = (char*) biomcmc_malloc (sizeof (char) * 4);
-    strcpy (ref_tid->tract_name, "---");
+    ref_tid->contig_location += opt.kmer_size; // points to homopolymer (skips flanking region) 
+    ref_tid->tract_name = (char*) biomcmc_malloc (sizeof (char) * (ref_tid->max_length + 2 * opt.kmer_size + 1));
+    strncpy (ref_tid->tract_name, dnacontig + ref_tid->contig_location, ref_tid->max_length + 2 * opt.kmer_size);
     del_hopo_counter (hc);
     return;
   }
@@ -505,7 +507,7 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
     if (dist < best_dist) { best_dist = dist; best_id = i; }
   }
   ref_tid->tract_length = hc->elem[best_id].length;
-  ref_tid->contig_location = start_location + hc->elem[best_id].read_offset; // corrects read-based location by ref-based location
+  ref_tid->contig_location = start_location + hc->elem[best_id].read_offset + opt.kmer_size; // corrects read-based location by ref-based location; 
   ref_tid->tract_name = generate_name_from_flanking_contexts (hc->elem[best_id].context, hc->elem[best_id].base, opt.kmer_size);
   del_hopo_counter (hc);
 }
