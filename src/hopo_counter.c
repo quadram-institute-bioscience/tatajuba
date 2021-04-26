@@ -8,7 +8,7 @@
 BMC2_KSEQ_INIT(gzFile, gzread);
 
 uint8_t dna_in_2_bits[256][2] = {{0xff}};
-char bit_2_dna[] = {'A', 'C', 'G', 'T'};
+char bit_2_dna[] = {'A', 'C', 'G', 'T'}; // {00, 01, 10, 11}
 
 static void initialize_dna_to_bit_tables (void);
 
@@ -156,7 +156,7 @@ leftmost_hopo_name_and_length_from_string (char *seq, size_t len, int kmer_size,
     return NULL;
   }
   *tract_length = hc->elem[0].length;
-  char *s = generate_name_from_flanking_contexts (hc->elem[0].context, hc->elem[0].base, kmer_size);
+  char *s = generate_name_from_flanking_contexts (hc->elem[0].context, hc->elem[0].base, kmer_size, false); // false since ref genome is positive strand by design
   del_hopo_counter (hc);
   return s;
 }
@@ -227,6 +227,7 @@ add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_i
   hc->elem[hc->n_elem].base   = hopo_base_int; // zero (AT) or one (CG) but always store direction with A or C
   hc->elem[hc->n_elem].length = hopo_size;     // homopolymer track length, in bases
   hc->elem[hc->n_elem].count  = 1;
+  hc->elem[hc->n_elem].neg_strand = 0; // unless we know better, we use the canonical notation
   hc->elem[hc->n_elem].loc_ref_id = hc->elem[hc->n_elem].loc_pos = -1;
   hc->elem[hc->n_elem].mismatches = 0xffe; // 12 bits 
   hc->elem[hc->n_elem].multi = false; 
@@ -249,6 +250,7 @@ copy_hopo_element_start_count_at (hopo_element *to, hopo_element *from, int coun
   to->loc_pos     = from->loc_pos; 
   to->mismatches  = from->mismatches;
   to->multi       = from->multi;
+  to->neg_strand  = from->neg_strand;
   to->context[0] = from->context[0];
   to->context[1] = from->context[1];
   to->count = count;
@@ -263,6 +265,7 @@ copy_hopo_element_locations (hopo_element *to, hopo_element *from)
   to->loc_pos     = from->loc_pos; 
   to->mismatches  = from->mismatches;
   to->multi       = from->multi;
+  to->neg_strand  = from->neg_strand;
 }
 
 void
@@ -369,17 +372,26 @@ generate_tract_as_string (uint64_t *context, int8_t base, int kmer_size, int tra
 }
 
 char*
-generate_name_from_flanking_contexts (uint64_t *context, int8_t base, int kmer_size)
+generate_name_from_flanking_contexts (uint64_t *context, int8_t base, int kmer_size, bool neg_strand)
 {
   int i, j=0, length = 2 * kmer_size + 4;
   char *s = (char*) biomcmc_malloc (sizeof (char) * length);
   uint64_t ctx = context[0];
 
-  for (i = 0; i < kmer_size; i++) s[i] = bit_2_dna[ (ctx >> (2 * i)) & 3 ]; // left context
-  s[i++] = '-'; s[i++] = bit_2_dna[base]; s[i++] = '-';// homopolymer tract represented as "-A-" or "-T-"
-  ctx = context[1];
-  for (j = 0; j < kmer_size; j++, i++) s[i] =  bit_2_dna[ (ctx >> (2 * j)) & 3 ]; 
-  s[i] = '\0';
+  if (neg_strand) {
+    s[length - 1] = '\0'; // A=00, C=01, G=10, T=11 therefore ~A=T etc. 
+    for (j = length-2, i = 0; i < kmer_size; i++, j--) s[j] = bit_2_dna[ (~(ctx >> (2 * i))) & 3 ]; // left context at the end;
+    s[j--] = '.'; s[j--] = bit_2_dna[(~base) & 3]; s[j--] = '.';// homopolymer tract represented as "-A-" or "-T-"
+    ctx = context[1];
+    for (i = 0; i < kmer_size; j--, i++) s[j] =  bit_2_dna[ (~(ctx >> (2 * i))) & 3 ]; 
+  }
+  else {
+    for (i = 0; i < kmer_size; i++) s[i] = bit_2_dna[ (ctx >> (2 * i)) & 3 ]; // left context
+    s[i++] = '.'; s[i++] = bit_2_dna[base]; s[i++] = '.';// homopolymer tract represented as "-A-" or "-T-"
+    ctx = context[1];
+    for (j = 0; j < kmer_size; j++, i++) s[i] =  bit_2_dna[ (ctx >> (2 * j)) & 3 ]; 
+    s[i] = '\0';
+  }
   return s;
 }
 
@@ -437,6 +449,7 @@ find_reference_location_and_sort_hopo_counter (hopo_counter hc)
       hc->elem[qid].loc_ref_id = match->m[i].ref_id;   // genome/contig ID 
       hc->elem[qid].loc_pos    = match->m[i].position; // location within genome/contig
       hc->elem[qid].read_offset = read_offset;         // one-dimensional (flat) index 
+      hc->elem[qid].neg_strand = match->m[i].neg_strand; // if negative strand on reference genome (unrelated to for/rev read strand, BTW) 
     }
   }
   del_bwase_match_t (match);

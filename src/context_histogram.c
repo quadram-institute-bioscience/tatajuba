@@ -136,6 +136,7 @@ new_context_histogram_from_hopo_elem (hopo_element he, char *name)
   ch->location = he.read_offset; 
   ch->loc2d[0] = he.loc_ref_id;
   ch->loc2d[1] = he.loc_pos;
+  ch->neg_strand = he.neg_strand;
   ch->integral = he.count;
   ch->name = name;  
   ch->h = NULL; // empfreq created at the end (finalise_genomic_context)
@@ -193,6 +194,7 @@ context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, char *
 */
   if ((ch->multi ^ he.multi) == 1) ch->multi = 2; 
   ch->integral += he.count;
+  // we assume ch->neg_strand is unchanged (since it's within distance boundary or just different length)
 
   ch->tmp_count  = (int*) biomcmc_realloc ((int*) ch->tmp_count,  (ch->index +1) * sizeof (int));
   ch->tmp_length = (int*) biomcmc_realloc ((int*) ch->tmp_length, (ch->index +1) * sizeof (int));
@@ -217,13 +219,13 @@ new_genomic_context_list (hopo_counter hc)
   hc->name = NULL;
 
   i = hc->ref_start;
-  histname = generate_name_from_flanking_contexts (hc->elem[i].context, hc->elem[i].base, genome->opt.kmer_size);
+  histname = generate_name_from_flanking_contexts (hc->elem[i].context, hc->elem[i].base, genome->opt.kmer_size, hc->elem[i].neg_strand);
   add_new_context_histogram_from_hopo_elem (genome, hc->elem[i], histname);
 
   /* 2. accumulate histograms of 'equivalent' contexts */
   for (++i; i < hc->n_elem; i++) {
     j = genome->n_hist - 1; 
-    histname = generate_name_from_flanking_contexts (hc->elem[i].context, hc->elem[i].base, genome->opt.kmer_size);
+    histname = generate_name_from_flanking_contexts (hc->elem[i].context, hc->elem[i].base, genome->opt.kmer_size, hc->elem[i].neg_strand);
     distance = distance_between_context_histogram_and_hopo_context (genome->hist[j], hc->elem[i], genome->opt.max_distance_per_flank, 
                                                                     genome->opt.min_tract_size, &idx_match);
     if (distance < genome->opt.max_distance_per_flank)  
@@ -298,7 +300,7 @@ context_histogram_tract_as_string (context_histogram_t ch, int kmer_size)
 char*
 context_histogram_generate_name (context_histogram_t ch, int kmer_size)
 {
-  return generate_name_from_flanking_contexts (ch->context + (2 * ch->mode_context_id), ch->base, kmer_size); // assuming consecutive context[]
+  return generate_name_from_flanking_contexts (ch->context + (2 * ch->mode_context_id), ch->base, kmer_size, ch->neg_strand); // assuming consecutive context[]
 }
 
 void

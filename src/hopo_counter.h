@@ -40,6 +40,7 @@ typedef struct
           count:20,  /*! \brief frequency of homopolymer in this context (due to coverage) */
           mismatches:14,  /*! \brief mismatches plus indels from bwa */
           multi:3,        /*! \brief more than one match */
+          neg_strand:2,   /*! \brief if maps to neg strand of the reference genome (_not_ read strand) */
           revforw_flag:3; /*! \brief if tract was seen in both 1=forward and 2=reverse, then flag=3 */
   int32_t read_offset, /*! \brief 1st, start of context+tract in read (when searching in reference fasta); 2nd, 1D flattened location from bwa */
           loc_ref_id,
@@ -71,6 +72,6 @@ char* leftmost_hopo_name_and_length_from_string (char *seq, size_t len, int kmer
 int hopo_counter_histogram_integral (hopo_counter hc, int start);
 void finalise_hopo_counter (hopo_counter hc);
 char* generate_tract_as_string (uint64_t *context, int8_t base, int kmer_size, int tract_length);
-char* generate_name_from_flanking_contexts (uint64_t *context, int8_t base, int kmer_size);
+char* generate_name_from_flanking_contexts (uint64_t *context, int8_t base, int kmer_size, bool neg_strand);
 
 #endif

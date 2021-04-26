@@ -482,6 +482,7 @@ void
 find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnacontig, size_t dnacontig_len, tatajuba_options_t  opt, context_histogram_t hist)
 {
   int extra_borders, min_tract_size, start_location, len, i, best_id, dist, best_dist = 0xffff; 
+  bool neg_strand;
   hopo_counter hc = new_hopo_counter (opt.kmer_size);
 
   min_tract_size = opt.min_tract_size - 2; 
@@ -492,8 +493,8 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
   len = ref_tid->max_length + 2 * opt.kmer_size + 2 * extra_borders; 
   if (len > (int) dnacontig_len) len = (int) dnacontig_len;
 
-  // Modifies contig_location to point to beginning of homopolymer (instead of flanking region)
   update_hopo_counter_from_seq (hc, dnacontig + start_location, len, min_tract_size); 
+  // Modifies contig_location to point to beginning of homopolymer (instead of flanking region)
   if (!hc->n_elem) { // homopolymer not found; store the equivalent region from the reference
     ref_tid->tract_length = 0;
     ref_tid->contig_location += opt.kmer_size; // points to homopolymer (skips flanking region) 
@@ -508,7 +509,9 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
   }
   ref_tid->tract_length = hc->elem[best_id].length;
   ref_tid->contig_location = start_location + hc->elem[best_id].read_offset + opt.kmer_size; // corrects read-based location by ref-based location; 
-  ref_tid->tract_name = generate_name_from_flanking_contexts (hc->elem[best_id].context, hc->elem[best_id].base, opt.kmer_size);
+  if (hc->elem[best_id].revforw_flag == 2) neg_strand = true; // contexts were flipped, we have them right to left
+  else neg_strand = false;  // stored order is same as reference genome
+  ref_tid->tract_name = generate_name_from_flanking_contexts (hc->elem[best_id].context, hc->elem[best_id].base, opt.kmer_size, neg_strand);
   del_hopo_counter (hc);
 }
 
