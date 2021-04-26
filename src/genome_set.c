@@ -486,7 +486,7 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
 
   min_tract_size = opt.min_tract_size - 2; 
   if (min_tract_size < 2) min_tract_size = 2;
-  extra_borders = opt.min_tract_size + 2;
+  extra_borders = opt.min_tract_size + 2; // TOCHANGE
   start_location = ref_tid->contig_location - extra_borders; // left shift (allow for mismatches) can even be longer than min tract length
   if (start_location < 0) start_location = 0;                 // since we handle spurious matches by chosing one with best distance
   len = ref_tid->max_length + 2 * opt.kmer_size + 2 * extra_borders; 
