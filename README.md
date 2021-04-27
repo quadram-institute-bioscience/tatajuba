@@ -17,17 +17,16 @@ __Alison Mather<sup>1</sup>__
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-brightgreen.svg)](https://github.com/quadram-institute-bioscience/tatajuba/blob/master/LICENSE)
 
-### (THIS PROJECT IS STILL EXPERIMENTAL)
 # Distribution of homopolymeric tracts 
 
-Instead of assuming a fixed length for a given homopolymer tract, tatajubá allows for its whole distribution of sizes to
+Instead of assuming a fixed length for a given homopolymer tract, tatajubá allows for the whole distribution of tract sizes to
 be analysed. 
 The rationale is that 1. our sequence might represent a population of non-identical individuals, with diversity of tract
 lengths, and 2. sequencing errors might be more frequent near or within homopolymers (so we should not remove
 uncertainty prematurely).
 
 Tatajubá also assumes that what we call a "tract" is a homopolymeric base flanked by a specific sequence (allowing for
-variability).
+variability), and it can discard homopolymers absent in reverse or forward reads to minimise "strand bias". 
 
 #### Name
 Tatajuba (_Bagassa guianensis_) is a South American tree, also known as Tatajubá, Tatajuva, Garrote, Totajuba.
