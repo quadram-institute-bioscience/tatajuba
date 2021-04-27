@@ -1,18 +1,13 @@
 <img src="recipe/tatajuba-text.png" height="100" alt="Tatajuba">
 
-__Leonardo de Oliveira Martins<sup>1</sup>__
-<br>
-__Samuel Bloomfield<sup>1</sup>__
-<br>
-__Emily Stoakes<sup>2</sup>__
-<br>
-__Andrew Grant<sup>2</sup>__
-<br>
-__Andrew Page<sup>1</sup>__
-<br>
+__Leonardo de Oliveira Martins<sup>1</sup>__, 
+__Samuel Bloomfield<sup>1</sup>__,
+__Emily Stoakes<sup>2</sup>__,
+__Andrew Grant<sup>2</sup>__,
+__Andrew Page<sup>1</sup>__,
 __Alison Mather<sup>1</sup>__
 <br>
-<sub>1. Quadram Institute Bioscience, Norwich Research Park, NR4 7UQ, UK</sub>
+<sub>1. Quadram Institute Bioscience, Norwich Research Park, NR4 7UQ, UK</sub> ; 
 <sub>2. Department of Veterinary Medicine, University of Cambridge, Madingley Road, Cambridge, CB3 0ES</sub>
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-brightgreen.svg)](https://github.com/quadram-institute-bioscience/tatajuba/blob/master/LICENSE)
