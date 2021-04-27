@@ -594,8 +594,8 @@ initialise_files_descriptive_stats (genome_set_t g, FILE **fout)
   int i, j;
   for (j = 0; j < N_FNAME_SAMPLE; j++) {
     fout[j] = open_output_file (g->genome[0]->opt, fixed_fname[j]);
-    fprintf (fout[j], "tract_id\tlocation\tfeature\t%s\t", "reference"); // cannot be ref genome name since there may be several contigs (user must check on tract_list.csv)
-    for (i = 0; i < g->n_genome; i++) fprintf (fout[j], "%s\t", g->genome[i]->name);
+    fprintf (fout[j], "tract_id\tlocation\tfeature\t%s", "reference"); // cannot be ref genome name since there may be several contigs (user must check on tract_list.csv)
+    for (i = 0; i < g->n_genome; i++) fprintf (fout[j], "\t%s", g->genome[i]->name);
     fprintf (fout[j], "\n");
   }
 }
@@ -627,18 +627,18 @@ print_descriptive_stats_per_sample (genome_set_t g, FILE **fout, double *samples
   context_histogram_t hist = g->tract->concat[ g->tract_ref[tract_id].concat_idx ]; // GFF is only in concat[], not tract_ref
   for (j = 0; j < N_FNAME_SAMPLE; j++) {
     fprintf (fout[j], "tid_%06d\t%d\t", tract_id, g->tract_ref[tract_id].contig_location);
-    if (gff3_fields_is_valid (hist->gffeature)) fprintf (fout[j], "%s\t", hist->gffeature.attr_id.str);
-    else                                        fprintf (fout[j], "%s\t", "unannotated");
+    if (gff3_fields_is_valid (hist->gffeature)) fprintf (fout[j], "%s", hist->gffeature.attr_id.str);
+    else                                        fprintf (fout[j], "%s", "unannotated");
   }
 
   // values for reference genome
-  fprintf (fout[FNAME_SAMPLE_AVGELENGTH], "%lf\t", (double)(g->tract_ref[tract_id].tract_length)); // weighted length
-  fprintf (fout[FNAME_SAMPLE_MODALFREQ], "%lf\t", 1.0); // modal freq = histogram bar length of modal length
+  fprintf (fout[FNAME_SAMPLE_AVGELENGTH], "\t%lf", (double)(g->tract_ref[tract_id].tract_length)); // weighted length
+  fprintf (fout[FNAME_SAMPLE_MODALFREQ], "\t%lf", 1.0); // modal freq = histogram bar length of modal length
   fprintf (fout[FNAME_SAMPLE_PROPCOV], "\t"); // tract coverage depth /  deepest coverage depth across all tracts
 
   for (j = 0; j < N_FNAME_SAMPLE; j++) {// [ [genome1, ..., ngenomes]d_1 , [genome1, ..., ngenomes]d_2, ...,[]d_N_STATS ]
     for (i = 0; i < g->n_genome; i++) {
-      if ( samples_per_trait[j * g->n_genome + i] > 0.) fprintf (fout[j], "%lf\t", samples_per_trait[j * g->n_genome + i]); 
+      if ( samples_per_trait[j * g->n_genome + i] > 0.) fprintf (fout[j], "\t%lf", samples_per_trait[j * g->n_genome + i]); 
       else                                              fprintf (fout[j], "\t");
     }
     fprintf (fout[j], "\n");
