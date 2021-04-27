@@ -491,15 +491,20 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
   start_location = ref_tid->contig_location - extra_borders; // left shift (allow for mismatches) can even be longer than min tract length
   if (start_location < 0) start_location = 0;                 // since we handle spurious matches by chosing one with best distance
   len = ref_tid->max_length + 2 * opt.kmer_size + 2 * extra_borders; 
-  if (len > (int) dnacontig_len) len = (int) dnacontig_len;
+  if (len + start_location > (int) dnacontig_len) len = (int) dnacontig_len - start_location;
 
   update_hopo_counter_from_seq (hc, dnacontig + start_location, len, min_tract_size); 
   // Modifies contig_location to point to beginning of homopolymer (instead of flanking region)
   if (!hc->n_elem) { // homopolymer not found; store the equivalent region from the reference
-    ref_tid->tract_length = 0;
+    start_location = ref_tid->contig_location; 
+    len = ref_tid->max_length + 2 * opt.kmer_size; 
+    if (len + start_location > (int) dnacontig_len) len = (int) dnacontig_len - start_location;
+    ref_tid->tract_name = (char*) biomcmc_malloc (sizeof (char) * (len + 1));
+    strncpy (ref_tid->tract_name, dnacontig + start_location, len);
+    ref_tid->tract_name[len] = '\0';
+
     ref_tid->contig_location += opt.kmer_size; // points to homopolymer (skips flanking region) 
-    ref_tid->tract_name = (char*) biomcmc_malloc (sizeof (char) * (ref_tid->max_length + 2 * opt.kmer_size + 1));
-    strncpy (ref_tid->tract_name, dnacontig + ref_tid->contig_location, ref_tid->max_length + 2 * opt.kmer_size);
+    ref_tid->tract_length = 0;
     del_hopo_counter (hc);
     return;
   }
