@@ -578,8 +578,8 @@ describe_statistics_for_genome_set (genome_set_t g)
   initialise_files_descriptive_stats (g, fout);
 
   for (prev = 0, i = 1; i < g->tract->n_concat; i++) {
-    if (g->tract->concat[prev]->tract_id != g->tract->concat[i]->tract_id) {
-      to_print = update_descriptive_stats_for_this_trait (g, prev, i, stats_per_hist, samples_per_trait);
+    if (g->tract->concat[prev]->tract_id != g->tract->concat[i]->tract_id) { // range  = prev, prev+1, ..., i-1  (doesnt include `i`)
+      to_print = update_descriptive_stats_for_this_trait (g, prev, i, stats_per_hist, samples_per_trait); 
       if (to_print) print_descriptive_stats_per_sample (g, fout, samples_per_trait, g->tract->concat[prev]->tract_id);
       prev = i;
     }
@@ -616,7 +616,7 @@ update_descriptive_stats_for_this_trait (genome_set_t g, int prev, int curr, dou
     for (j = 0; j < N_DESC_STATS; j++) samples_per_trait[g->tract->concat[i]->index + g->n_genome * j] = stats_per_hist[j];
   }
   // crude estimate of relative error
-  if (curr - prev < g->n_genome) return true; 
+  if (curr - prev  - 1 < g->n_genome) return true; 
   difference  = relative_difference_of_vector (samples_per_trait + g->n_genome * 0, g->n_genome);
   difference += relative_difference_of_vector (samples_per_trait + g->n_genome * 1, g->n_genome);
   difference += relative_difference_of_vector (samples_per_trait + g->n_genome * 4, g->n_genome);
