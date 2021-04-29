@@ -150,7 +150,7 @@ simplify_genome_names (genomic_context_list_t *genome, int n_genome)
     if (min_pre) biomcmc_fprintf_colour (stderr, 0, 2, "Modifying sample names: ", 
                                          "Removing prefix '%.*s' from sample names.\n", min_pre, genome[0]->name);
     if (min_suf) biomcmc_fprintf_colour (stderr, 0, 2, "Modifying sample names: ", 
-                                         "Removing suffix '%s' from sample names.\n", genome[0]->name + strlen(genome[0]->name) - min_suf -1);
+                                         "Removing suffix '%s' from sample names.\n", genome[0]->name + strlen(genome[0]->name) - min_suf);
 
     for (i = 0; i < n_genome; i++) {
       n_j = strlen (genome[i]->name) - min_pre - min_suf; 
@@ -615,8 +615,8 @@ update_descriptive_stats_for_this_trait (genome_set_t g, int prev, int curr, dou
     descriptive_stats_of_histogram (g->tract->concat[i], stats_per_hist);
     for (j = 0; j < N_DESC_STATS; j++) samples_per_trait[g->tract->concat[i]->index + g->n_genome * j] = stats_per_hist[j];
   }
+  if (curr - prev  < g->n_genome) return true; 
   // crude estimate of relative error
-  if (curr - prev  - 1 < g->n_genome) return true; 
   difference  = relative_difference_of_vector (samples_per_trait + g->n_genome * 0, g->n_genome);
   difference += relative_difference_of_vector (samples_per_trait + g->n_genome * 1, g->n_genome);
   difference += relative_difference_of_vector (samples_per_trait + g->n_genome * 4, g->n_genome);
