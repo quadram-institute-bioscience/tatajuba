@@ -9,6 +9,13 @@ BMC2_KSEQ_INIT(gzFile, gzread);
 
 uint8_t dna_in_2_bits[256][2] = {{0xff}};
 char bit_2_dna[] = {'A', 'C', 'G', 'T'}; // {00, 01, 10, 11}
+// vector from iqtree
+//char symbols_protein[] = "ARNDCQEGHILKMFPSTWYVX*"; 
+// Base1:               AAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTT
+// Base2:               AAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTT
+// Base3:               ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
+char genetic_code[]  = "KNKNTTTTRSRSIIMIQHQHPPPPRRRRLLLLEDEDAAAAGGGGVVVV*Y*YSSSS*CWCLFLFX"; // X added 
+
 
 static void initialize_dna_to_bit_tables (void);
 
@@ -469,4 +476,32 @@ find_reference_location_and_sort_hopo_counter (hopo_counter hc)
   if (hc->idx_initial) free (hc->idx_initial);
   if (hc->idx_final)   free (hc->idx_final);
   hc->idx_initial = hc->idx_final = NULL;
+}
+
+char*
+protein_from_dna_string (char *dna, size_t n_dna, bool reverse)
+{
+  int i, j, k, codon, n_codon = n_dna/3;
+  char *prot = NULL;
+  prot = (char*) biomcmc_malloc ((n_codon + 1) * sizeof (char));
+
+  if (reverse) for (i = codon = 0; i < n_codon; i++) {
+    for (j = 0; j < 3; j++) {
+      k = dna_in_2_bits[ (int) seq[n_dna - 1 - (3*i + j)] ][1];
+      if (k < 4) codon |= k << 2 * j; 
+      else       codon = 64;
+    }
+    if (codon > 64) codon = 64;
+    prot[i] = genetic_code[codon];
+  }
+  else for (i = codon = 0; i < n_codon; i++) {
+    for (j = 0; j < 3; j++) {
+      k = dna_in_2_bits[ (int) seq[3*i + j] ][0];
+      if (k < 4) codon |= k << 2 * j; 
+      else       codon = 64;
+    }
+    if (codon > 64) codon = 64;
+    prot[i] = genetic_code[codon];
+  }
+  return prot;
 }

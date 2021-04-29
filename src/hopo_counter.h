@@ -73,5 +73,6 @@ int hopo_counter_histogram_integral (hopo_counter hc, int start);
 void finalise_hopo_counter (hopo_counter hc);
 char* generate_tract_as_string (uint64_t *context, int8_t base, int kmer_size, int tract_length);
 char* generate_name_from_flanking_contexts (uint64_t *context, int8_t base, int kmer_size, bool neg_strand);
+char* protein_from_dna_string (char *dna, size_t n_dna, bool reverse);
 
 #endif
