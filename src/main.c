@@ -129,6 +129,9 @@ get_options_from_argtable (arg_parameters params)
    size_t len = strlen (params.fna->filename[0]);
    opt.reference_fasta_filename = (char*) biomcmc_malloc ((len+1) * sizeof (char));
    strcpy (opt.reference_fasta_filename, params.fna->filename[0]);
+   alignment aln = read_fasta_alignment_from_file (opt.reference_fasta_filename, false); 
+   add_fasta_to_gff3 (opt.gff, aln->taxlabel, aln->character);
+   del_alignment (aln);
   } 
   else opt.reference_fasta_filename = save_fasta_from_gff3 (opt.gff, NULL, false); // NULL is custom name; false=dont overwrite if file exists 
   if (!opt.reference_fasta_filename) {

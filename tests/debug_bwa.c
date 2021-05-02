@@ -11,7 +11,7 @@ int main (int argc, char **argv)
   clock_t time0, time1;
   int i, *match_list = NULL;
   bwase_match_t match;
-  bwase_options_t bopt = new_bwase_options_t (0);
+  bwase_options_t bopt = new_bwase_options_t (2);
   alignment aln;
 
   time0 = clock ();

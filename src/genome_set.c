@@ -28,7 +28,6 @@ void update_g_tract_summary_from_context_histogram (g_tract_vector_t tract, int 
 void fill_g_tract_summary_tables (g_tract_s *this, context_histogram_t *concat, int prev, int curr);
 void create_tract_in_reference_structure (genome_set_t g);
 FILE * open_output_file (tatajuba_options_t opt, const char *file);
-int lookup_bruteforce (char_vector haystack, const char *needle);
 void find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnacontig, size_t dnacontig_len, tatajuba_options_t  opt, context_histogram_t hist);
 
 void describe_statistics_for_genome_set (genome_set_t g);
@@ -461,19 +460,15 @@ create_tract_in_reference_structure (genome_set_t g)
     }
   }
 
-  /* 4. read fasta file with references and copy tract info from it */
-  alignment aln = read_fasta_alignment_from_file (g->genome[0]->opt.reference_fasta_filename, false); 
- // printf ("DEBUG::%s\n", aln->character->string[0]);
-
+  /* 4. copy tract info from fasta sequences */
+  char_vector fasta = g->genome[0]->opt.gff->sequence;
   for (tid = 0; tid < g->n_tract_ref; tid++) {
-    i = lookup_hashtable (aln->taxlabel_hash, g->tract_ref[tid].contig_name);
-    if (i < 0) i = lookup_bruteforce (aln->taxlabel, g->tract_ref[tid].contig_name);
+    i = lookup_hashtable (g->genome[0]->opt.gff->seqname_hash, g->tract_ref[tid].contig_name); // gff struct can have missing seqs
     if (i < 0) biomcmc_error ("Contig/genome sequence %s not found in fasta file", g->tract_ref[tid].contig_name);
     /* 4.1 create context+hopo name for reference as in samples */
-    find_best_context_name_for_reference (&(g->tract_ref[tid]), aln->character->string[i], aln->character->nchars[i], g->genome[0]->opt, 
+    find_best_context_name_for_reference (&(g->tract_ref[tid]), fasta->string[i], fasta->nchars[i], g->genome[0]->opt, 
                                           g->tract->concat[g->tract_ref[tid].concat_idx]);
   }
-  del_alignment (aln);
 
   /* 5.  accumulate context_histogram from same ref.contig_location (i.e. merge tract_id) TODO */
 }
@@ -544,21 +539,6 @@ print_tract_list (genome_set_t g)
     fprintf (fout, "\n");
   }
   fclose (fout); fout = NULL;
-}
-
-/*! \brief hash lookup is based on strict identity of strings; if fails, we assume one of them is shorter (always the
- * case for BWA (before space) and our fasta (whole line) */
-int
-lookup_bruteforce (char_vector haystack, const char *needle)
-{
-  int i, j, minlen;
-  size_t n_len = strlen (needle);
-  for (i = 0; i < haystack->nstrings; i++) {
-    minlen = BIOMCMC_MIN(n_len, haystack->nchars[i]);
-    for (j = 0; (j < minlen) && (needle[j] == haystack->string[i][j]); j++);
-    if (j == minlen) return i;
-  }
-  return -1;
 }
 
 /**   new functions   **/
