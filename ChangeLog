@@ -1,3 +1,10 @@
+20201.04.30
+	* idea:
+		. Each concat[] has idx of gene (if anotated, or -1 o.w.). This idx points to genome_set structure containing the
+		sequence itself and its offset on 1D location (i.e. such that concat[i]->location - offset gives location inside
+		gene sequence)
+		. alternatively a new struct with gene DNA seq, 1D offset, strand (of coding region) and phase (0,1, or 2) can be
+		included in genome_set
 2021.04.01
 	* future ideas:
 		. vcf file with HTs only (then user can https://github.com/rpetit3/vcf-annotator to check a.a. impact)
