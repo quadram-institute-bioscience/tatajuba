@@ -36,6 +36,7 @@ After you install [miniconda](https://conda.io/en/latest/miniconda.html), simply
 ```[bash]
 conda install -c bioconda tatajuba
 ```
+WARNING: The software is under heavy development and the conda version may be outdated.
 
 ### Compiling from source
 If for any reason installing through conda is not an option, or if you want the latest, dangerous and potentially
