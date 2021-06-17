@@ -41,24 +41,29 @@ After you install [miniconda](https://conda.io/en/latest/miniconda.html), simply
 ```[bash]
 conda install -c bioconda tatajuba
 ```
-Warning: The software is under heavy development and the conda version may be outdated.
+The software tatajuba is still under development, thus the conda version may be outdated.
 
 ### Singularity
 
 After installing [Singularity](https://sylabs.io/guides/3.0/user-guide/quick_start.html), you can download an executable
 container with:
 ```
-singularity pull --arch amd64 library://leomrtns/default/tatajuba:1.0.3
+singularity pull --arch amd64 library://leomrtns/default/tatajuba:1.0.3 
 ```
-As with conda above, the container might not have the latest improvements. In case you want the bleeding edge, you can
-find a singularity definition file on [recipe/tatajuba.def](recipe/tatajuba.def), which can be used to generate
-a container as in 
+As with conda above, the container might not have the latest improvements. In case you want the most recent version, you can
+use the singularity definition file [recipe/tatajuba.def](recipe/tatajuba.def) to generate a container as in 
 
 ```
 sudo singularity build tatajuba.sif recipe/tatajuba.def
 ```
 If you build the container as above, the software will be up-to-date since it will download from github and compile.
 
+### Docker
+```bash
+# check https://quay.io/repository/biocontainers/tatajuba?tab=tags for most recent tag 
+docker pull quay.io/biocontainers/tatajuba:1.0.3--h82fb495_0
+```
+This is generated from bioconda, so same caveats apply.
 
 ### Compiling from source
 If for any reason installing through conda is not an option, or if you want the latest, dangerous and potentially
