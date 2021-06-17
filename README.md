@@ -23,6 +23,11 @@ uncertainty prematurely).
 Tatajubá also assumes that what we call a "tract" is a homopolymeric base flanked by a specific sequence (allowing for
 variability), and it can discard homopolymers absent in reverse or forward reads to minimise "strand bias". 
 
+#### Paper and citation
+"Tatajuba ― Exploring the distribution of homopolymer tracts", 
+Leonardo de Oliveira Martins, Samuel Bloomfield, Emily Stoakes, Andrew J Grant, Andrew J Page, Alison Mather, (2021),
+bioRxiv 2021.06.02.446710; doi: https://doi.org/10.1101/2021.06.02.446710
+
 #### Name
 Tatajuba (_Bagassa guianensis_) is a South American tree, also known as Tatajubá, Tatajuva, Garrote, Totajuba.
 It means "yellow fire" in [Tupi](https://en.wikipedia.org/wiki/Tupi_language).
@@ -83,7 +88,7 @@ better install the above libs via conda as well (or, you know, updating environm
 The `zlib` library is mandatory, while the others are called `xz` and `bzip2` on a strict conda environment.
 
 ## Documentation 
-Currently there is a tutorial on the diretory `docs` in jupyter notebook format: [docs/2103.campy_bordetella.ipynb](docs/2103.campy_bordetella.ipynb).
+Currently there is a tutorial on the diretory `docs` in jupyter notebook format: [docs/210427.campy_bordetella.ipynb](docs/210427.campy_bordetella.ipynb).
 The program gives summary help with `tatajuba` (without arguments) and detailed help with `tatajuba -h`.
 
 ## Model
