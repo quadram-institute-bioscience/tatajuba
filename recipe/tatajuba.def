@@ -1,0 +1,24 @@
+Bootstrap: docker
+From: ubuntu:18.04
+
+%post
+    apt-get -y update
+    ln -sf /usr/share/zoneinfo/Europe/London /etc/localtime 
+    DEBIAN_FRONTEND=noninteractive apt-get -y install sudo packaging-dev pkg-config libglib2.0-dev build-essential automake \
+        autotools-dev autoconf libtool zlib1g-dev libomp-dev libbz2-dev check liblzma-dev
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+    git clone --recursive https://github.com/quadram-institute-bioscience/tatajuba.git
+    (cd tatajuba && ./autogen.sh)
+    mkdir build && cd build && ../tatajuba/configure --prefix=/usr/local && make && make install
+
+%environment
+    export LC_ALL=C
+    export PATH=${PATH}:/usr/local/bin
+    export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
+
+%runscript
+    tatajuba
+
+%labels
+    Author Leonardo de Oliveira Martins
+
