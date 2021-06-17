@@ -47,13 +47,14 @@ The software tatajuba is still under development, thus the conda version may be 
 
 After installing [Singularity](https://sylabs.io/guides/3.0/user-guide/quick_start.html), you can download an executable
 container with:
-```
+```bash
+# check https://cloud.sylabs.io/library/leomrtns/default/tatajuba for most recent tag)
 singularity pull --arch amd64 library://leomrtns/default/tatajuba:1.0.3 
 ```
 As with conda above, the container might not have the latest improvements. In case you want the most recent version, you can
 use the singularity definition file [recipe/tatajuba.def](recipe/tatajuba.def) to generate a container as in 
 
-```
+```bash
 sudo singularity build tatajuba.sif recipe/tatajuba.def
 ```
 If you build the container as above, the software will be up-to-date since it will download from github and compile.
