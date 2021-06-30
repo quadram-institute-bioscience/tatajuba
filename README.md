@@ -67,8 +67,9 @@ docker pull quay.io/biocontainers/tatajuba:1.0.3--h82fb495_0
 This is generated from bioconda, so same caveats apply.
 
 ### Compiling from source
-If for any reason installing through conda is not an option, or if you want the latest, dangerous and potentially
-soul-crushing version of the software, you can download it and compile it yourself. 
+If installing through conda/singularity is not an option, or if you want the latest version of the 
+software, you can download it and compile it yourself. 
+Tatajuba relies on GCC6 or newer due to assuming *OpenMP 4.5*.
 This repository must be cloned with `git clone --recursive` to ensure it also downloads
 [biomcmc-lib](https://github.com/quadram-institute-bioscience/biomcmc-lib) and [our modified version of BWA](https://github.com/leomrtns/bwa).
 You will need a recent version of GCC in your system. 
@@ -156,6 +157,23 @@ currenlty _3_ (any tract observed in less than _3_ reads is discarded).
 
 Currently our measure of dispersion (used to find tracts most variable across genomes) is the *relative difference of
 ranges* (similar to the coefficient of range), defined here as (MAX-MIN)/MAX.
+
+## Troubleshooting
+
+As mentioned, this software is still under development; in particular the conda/singularity/docker versions might be
+outdated. Here is a list of common pitfalls.
+
+* tatajuba relies on OpenMP 4.5, which is supported [on GCC6 or newer](https://www.openmp.org/resources/openmp-compilers-tools/). 
+  This means that [even the conda version might fail if your system library is older than that
+](https://stackoverflow.com/questions/62098781/is-it-possible-to-use-a-different-gcc-version-inside-a-conda-environment#comment109969669_62098781).
+* the program will refuse to run on only one sample (since it compares differences between samples). However, it will
+  run if more samples are given but only one has mapped HTs &mdash; in practice, equivalent to running on one sample since
+  it discards samples without any HTs mapped to the reference. In this case the program will fail at the very end (you
+  may have some output). I am treating this as a bug.
+* The program should produce error messages; however I've seen it failing without notice. One particular case is when it
+  runs out of memory (it is killed by the system).
+* As of 2020.06.30, the conda/singularity versions (1.0.3) may use a lot of memory (this is fixed if you use the source
+  code).
 
 ## License
 SPDX-License-Identifier: GPL-3.0-or-later
