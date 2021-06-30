@@ -19,6 +19,7 @@ enum {FNAME_SAMPLE_AVGELENGTH, FNAME_SAMPLE_MODALFREQ, FNAME_SAMPLE_PROPCOV, FNA
 #define N_DESC_STATS 5
 enum {DESC_STAT_avgelength, DESC_STAT_modalfreq, DESC_STAT_propcov, DESC_STAT_covpercontext, DESC_STAT_entropy}; 
   
+void remove_empty_genomes (genome_set_t g);
 void simplify_genome_names (genomic_context_list_t *genome, int n_genome);
 
 g_tract_vector_t new_g_tract_vector_from_genomic_context_list (genomic_context_list_t *genome, int n_genome);
@@ -66,8 +67,7 @@ new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_opt
       hc = new_or_append_hopo_counter_from_file (NULL, filenames[2*i],   opt);
       hc = new_or_append_hopo_counter_from_file (hc,   filenames[2*i+1], opt);
       biomcmc_get_time (time1); secs[0] += biomcmc_elapsed_time (time1, time0); time0[0] = time1[0]; time0[1] = time1[1];
-
-      g->genome[i] = new_genomic_context_list (hc);
+      g->genome[i] = new_genomic_context_list (hc); // returns null if no HT is mapped to reference
       del_hopo_counter (hc); hc = NULL;
       biomcmc_get_time (time1); secs[1] += biomcmc_elapsed_time (time1, time0); time0[0] = time1[0]; time0[1] = time1[1];
     }
@@ -82,13 +82,14 @@ new_genome_set_from_files (const char **filenames, int n_filenames, tatajuba_opt
       hc = new_or_append_hopo_counter_from_file (NULL, filenames[i], opt);
       biomcmc_get_time (time1); secs[0] += biomcmc_elapsed_time (time1, time0); time0[0] = time1[0]; time0[1] = time1[1];
 
-      g->genome[i] = new_genomic_context_list (hc);
+      g->genome[i] = new_genomic_context_list (hc); // returns null if no HT is mapped to reference
       del_hopo_counter (hc); hc = NULL;
       biomcmc_get_time (time1); secs[1] += biomcmc_elapsed_time (time1, time0); time0[0] = time1[0]; time0[1] = time1[1];
     }
   }
   g->secs[0] = secs[0]; g->secs[1] = secs[1]; 
   biomcmc_get_time (time0);
+  remove_empty_genomes (g); // exclude genomes without mapped HTs, realloc'ing and modifying n_genome 
 
   /* label each histogram with index of genome they belong to */
   for (i = 0; i < g->n_genome; i++) for (j = 0; j < g->genome[i]->n_hist; j++) g->genome[i]->hist[j]->index = i;
@@ -121,6 +122,18 @@ del_genome_set (genome_set_t g)
   del_char_vector (g->ref_names);
   del_g_tract_vector (g->tract);
   free (g); 
+}
+
+void
+remove_empty_genomes (genome_set_t g)
+{
+  int i, j;
+  for (j = 0, i = 0; i < g->n_genome; i++) if (g->genome[i] != NULL) g->genome[j++] = g->genome[i];
+  if (!j) { del_genome_set (g); biomcmc_error ("No sample has tracts mapped to reference genomel I can't proceed"); }
+  if (j < i) biomcmc_warning ("Only %d out of %d genomes have mapped HTs and will thus be analysed", j, i);
+
+  g->n_genome = j;
+  g->genome = (genomic_context_list_t*) biomcmc_realloc ((genomic_context_list_t*) g->genome, g->n_genome * sizeof (genomic_context_list_t));
 }
 
 void 

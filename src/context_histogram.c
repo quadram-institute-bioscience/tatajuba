@@ -192,7 +192,7 @@ context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, char *
     ch->loc2d[1] = he.loc_pos;
   }
 */
-  if ((ch->multi ^ he.multi) == 1) ch->multi = 2; 
+  if ((ch->multi ^ he.multi) == 1) ch->multi = 2; // if>0, then some are multi 
   ch->integral += he.count;
   // we assume ch->neg_strand is unchanged (since it's within distance boundary or just different length)
 
@@ -207,12 +207,17 @@ new_genomic_context_list (hopo_counter hc)
 {
   int i, idx_match, j, distance;
   char *histname;
-  genomic_context_list_t genome = (genomic_context_list_t) biomcmc_malloc (sizeof (struct genomic_context_list_struct));
-  genome->hist = NULL;
-  genome->n_hist = 0;
   
   /* 1. sort hopo_counter, calculate coverage etc. Remember that hopo_counter handles only identical contexts */
   finalise_hopo_counter (hc);
+  if (hc->ref_start == hc->n_elem) {
+    biomcmc_warning ("Sample %s doesn't contain any HT mapped to reference: it will be excluded from analysis", hc->name);
+    return NULL;
+  }
+
+  genomic_context_list_t genome = (genomic_context_list_t) biomcmc_malloc (sizeof (struct genomic_context_list_struct));
+  genome->hist = NULL;
+  genome->n_hist = 0;
   genome->opt = hc->opt;
   genome->coverage = hc->coverage;
   genome->name = hc->name;
@@ -228,8 +233,9 @@ new_genomic_context_list (hopo_counter hc)
     histname = generate_name_from_flanking_contexts (hc->elem[i].context, hc->elem[i].base, genome->opt.kmer_size, hc->elem[i].neg_strand);
     distance = distance_between_context_histogram_and_hopo_context (genome->hist[j], hc->elem[i], genome->opt.max_distance_per_flank, 
                                                                     genome->opt.min_tract_size, &idx_match);
-    if (distance < genome->opt.max_distance_per_flank)  
+    if (distance < genome->opt.max_distance_per_flank) { 
       context_histogram_add_hopo_elem (genome->hist[j], hc->elem[i], histname, idx_match);
+    }
     else {
       if (distance < CH_MAX_DIST) // try again, now using indels 
         distance = indel_distance_between_context_histogram_and_hopo_context (genome->hist[j], histname);
@@ -326,7 +332,7 @@ genomic_context_find_features (genomic_context_list_t genome)
 }
 
 void
-genomic_context_find_reference_location (genomic_context_list_t genome) // OBSOLETE
+genomic_context_find_reference_location (genomic_context_list_t genome) // OBSOLETE (now it's done with hopo_counter)
 {
   char_vector readseqs;
   char *read;
@@ -380,7 +386,7 @@ print_debug_genomic_context_hist (genomic_context_list_t genome)
 }
 
 void  // FIXME: CTCT.3xA.CCCC at position 1 and GCTC.4xA.CCCC at position zero are the same (w/ T->A subst)
-genomic_context_merge_histograms_at_same_location (genomic_context_list_t genome) // OBSOLETE
+genomic_context_merge_histograms_at_same_location (genomic_context_list_t genome) // a bit redundant with new_genomic_context_list() 
 {
   context_histogram_t *new_h;
   int i, j = 0;
@@ -431,7 +437,8 @@ accumulate_from_context_histogram (context_histogram_t to, context_histogram_t f
       to->context = (uint64_t*) biomcmc_realloc ((uint64_t*) to->context, 2 * (to->n_context + 1) * sizeof (uint64_t));
       to->context[2 * to->n_context] = from->context[2 * i];
       to->context[2 * to->n_context + 1] = from->context[2 * i + 1];
-      to->n_context++;
+      to->n_context++; 
+      j = n1; // skip to next iteration (no need to compare with other to->context[] )
     } // if contexts are identical, do nothing
 
   del_context_histogram (from);

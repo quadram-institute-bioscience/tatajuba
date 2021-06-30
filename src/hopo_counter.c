@@ -299,10 +299,12 @@ finalise_hopo_counter (hopo_counter hc)
 
   /* 2. remove tracts seen only on one strand or seen only once */
   hc->n_elem = n1;
-  if (hc->opt.remove_biased) // exclude tract lengths appearing only in one strand (rev or forward)
+  if (hc->opt.remove_biased) {// exclude tract lengths appearing only in one strand (rev or forward)
     for (i = 0, n1 = 0; i < hc->n_elem; i++) if (efreq[i].revforw_flag == 3) copy_hopo_element_start_count_at (&(efreq[n1++]), &(efreq[i]), efreq[i].count);
-  else // even if we don't care about biased tracts, remove context_tract_lengths seen only once (but keep original depth whenever count > 1) 
+  }
+  else { // even if we don't care about biased tracts, remove context_tract_lengths seen only once (but keep original depth whenever count > 1) 
     for (i = 0, n1 = 0; i < hc->n_elem; i++) if (efreq[i].count > 1) copy_hopo_element_start_count_at (&(efreq[n1++]), &(efreq[i]), efreq[i].count);
+  }
 
   /* 3.  hc->elem[] will now point to efreq above, that is, non-identical reads with depth > 1 */
   pivot = hc->elem;
@@ -444,10 +446,10 @@ find_reference_location_and_sort_hopo_counter (hopo_counter hc)
     mismatch = match->m[i].mm + match->m[i].gape + match->m[i].gapo;
     read_offset = refseq_offset[match->m[i].ref_id] + match->m[i].position; // one-dimensional (flat) index 
 
-    // FIXME: maybe choses worse mistmatch if offset is smaller
+    
     if (hc->elem[qid].loc_pos < 0) skip_match = false; // first time this element is seen 
-    if (skip_match && (hc->elem[qid].mismatches > mismatch)) { hc->elem[qid].multi = true; skip_match = false; } 
-    if (skip_match && (hc->elem[qid].read_offset > read_offset)) { hc->elem[qid].multi = true; skip_match = false; } 
+    if (skip_match && (hc->elem[qid].mismatches > mismatch)) { hc->elem[qid].multi = true; skip_match = false; } // better match than existing 
+    if (skip_match && (hc->elem[qid].read_offset > read_offset)) { hc->elem[qid].multi = true; skip_match = false; } // same match but leftmost to existing
 
     //if (hc->elem[qid].multi) printf ("DEBUG::hopo::%d mism=%d %d offset=%d %d\n", match->m[i].ref_id,hc->elem[qid].mismatches, mismatch, hc->elem[qid].read_offset, read_offset);
 
@@ -470,7 +472,7 @@ find_reference_location_and_sort_hopo_counter (hopo_counter hc)
   for (i = 0; (i < hc->n_elem) && (hc->elem[i].read_offset < 0); i++); // just scan i
   hc->ref_start = i; // downstream analysis will use only these
   biomcmc_fprintf_colour (stderr, 0,2, hc->name, ": %6d found and %6d context+tracts were not found in reference\n", hc->n_elem - i, i);
-  if (i > hc->n_elem/2) biomcmc_warning ("%6d out of %6d (more than half) context+tracts were not found in reference for sample %s\n", i, hc->n_elem, hc->name);
+  if (i > hc->n_elem/2) biomcmc_warning ("%6d out of %6d (more than half) context+tracts were not found in reference for sample %s", i, hc->n_elem, hc->name);
 
   if (refseq_offset)   free (refseq_offset);
   if (hc->idx_initial) free (hc->idx_initial);
