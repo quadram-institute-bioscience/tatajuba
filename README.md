@@ -176,8 +176,8 @@ outdated. Here is a list of common pitfalls.
   more useful `per_sample`-like file. In particular the locations do not correspond to the `tract_id` locations &mdash; if you
   currently want to use these files, please use the `tract_id` for mapping to the correct locations (available in files
   `per_sample*` or `tract_llist.tsv`). 
-* As of 2020.06.30, the conda/singularity versions (1.0.3) may use a lot of memory (this is fixed if you use the source
-  code).
+* As of 2020.08.01, the conda/singularity versions (1.0.3) use a lot of memory. This has been fixed if you use the source
+  code.
 
 ## License
 SPDX-License-Identifier: GPL-3.0-or-later
