@@ -25,7 +25,7 @@ variability), and it can discard homopolymers absent in reverse or forward reads
 
 #### Paper and citation
 "Tatajuba ― Exploring the distribution of homopolymer tracts", 
-Leonardo de Oliveira Martins, Samuel Bloomfield, Emily Stoakes, Andrew J Grant, Andrew J Page, Alison Mather, (2021),
+Leonardo de Oliveira Martins, Samuel Bloomfield, Emily Stoakes, Andrew Grant, Andrew J Page, Alison E Mather, (2021),
 bioRxiv 2021.06.02.446710; doi: https://doi.org/10.1101/2021.06.02.446710
 
 #### Name
