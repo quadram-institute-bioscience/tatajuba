@@ -88,7 +88,7 @@ Here is an example of its installation, please modify to better suit your needs:
 /home/simpson/$ git clone --recursive https://github.com/quadram-institute-bioscience/tatajuba.git
 /home/simpson/$ cd tatajuba && ./autogen.sh 
 /home/simpson/$ mkdir build && cd build
-/home/simpson/$ ../tatajuba/configure --prefix=${HOME}/local
+/home/simpson/$ ../configure --prefix=${HOME}/local ## prefix is the location of your local libraries etc.
 /home/simpson/$ make; make install
 /home/simpson/$ make check  # battery of unit and integration tests for both tatajuba and biomcmc-lib
 ```
