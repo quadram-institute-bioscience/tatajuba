@@ -91,8 +91,11 @@ Here is an example of its installation, please modify to better suit your needs:
 /home/simpson/$ ../configure --prefix=${HOME}/local ## prefix is the location of your local libraries etc.
 /home/simpson/$ make; make install
 ```
-If it works, you should have `tatajuba` installed in the `${PREFIX}/bin` directory. 
-You may want to complete the installation by running a battery of unit and integration tests for both tatajuba and biomcmc-lib (the low-level C library `tatajuba` relies on):
+If it works, you should have `tatajuba` installed in the `${HOME}/local/bin` directory, in the example above (or
+whatever you set as the `-prefix`).
+You may want to [add this path to your `$PATH` variable](https://unix.stackexchange.com/questions/26047/how-to-correctly-add-a-path-to-path).
+
+If you want, you can optionally check the installation by running a battery of unit and integration tests for both tatajuba and biomcmc-lib (the low-level C library `tatajuba` relies on):
 
 ```[bash]
 /home/simpson/$ sudo apt-get install check  # preferred method, assuming you have admin priviledges on the ubuntu/debian machine
