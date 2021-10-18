@@ -90,11 +90,19 @@ Here is an example of its installation, please modify to better suit your needs:
 /home/simpson/$ mkdir build && cd build
 /home/simpson/$ ../configure --prefix=${HOME}/local ## prefix is the location of your local libraries etc.
 /home/simpson/$ make; make install
-/home/simpson/$ make check  # battery of unit and integration tests for both tatajuba and biomcmc-lib
+```
+If it works, you should have `tatajuba` installed in the `${PREFIX}/bin` directory. 
+You may want to complete the installation by running a battery of unit and integration tests for both tatajuba and biomcmc-lib (the low-level C library `tatajuba` relies on):
+
+```[bash]
+/home/simpson/$ sudo apt-get install check  # preferred method, assuming you have admin priviledges on the ubuntu/debian machine
+/home/simpson/$ # conda install -c conda-forge check  # alternative to apt-get get above, using conda
+/home/simpson/$ make check
 ```
 
 If `configure` complains about a missing library (usually `libcheck` or `zlib`), you'll need to install them before 
 running `configure` again.
+As mentioned, `make check` is not obligatory and thus you may ignore complaints about a missing `check` library.
 If there is no `configure` file at all in the distribution, or it
 You will most likely need to install the `autotools` before running the configuration (`autogen.sh` depends on it). 
 Both cases are shown below, if you can install them system-wide:
