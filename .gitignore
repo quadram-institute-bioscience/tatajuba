@@ -1,7 +1,6 @@
 /biomcmc-lib
 /build
 .ipynb_checkpoints
-m4/*
 aclocal.m4
 autom4te.cache/
 compile
