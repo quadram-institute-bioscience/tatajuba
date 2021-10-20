@@ -105,22 +105,19 @@ If you want, you can optionally check the installation by running a battery of u
 
 If `configure` complains about a missing library (usually `libcheck` or `zlib`), you'll need to install them before 
 running `configure` again.
-As mentioned, `make check` is not obligatory and thus you may ignore complaints about a missing `check` library.
-If there is no `configure` file at all in the distribution, or it
-You will most likely need to install the `autotools` before running the configuration (`autogen.sh` depends on it). 
-Both cases are shown below, if you can install them system-wide:
+You will also need the `autotools` environment before running the configuration (`autogen.sh` depends on it):
 
 ```[bash]
 ## 'bootstrap' the configuration files (needed when cloning from github):
 /home/simpson/$ apt-get install pkg-config autotools-dev autoconf automake libtool
 /home/simpson/$ (cd tatajuba && autoreconf)  ## the parentheses avoid entering the directory afterwards
 
-## install libraries possibly missing (only check is mandatory, but zlib and omp are strongly suggested)
+## install libraries possibly missing (zlib and omp are strongly suggested)
 /home/simpson/$ apt-get install zlib1g-dev libomp-dev libbz2-dev check liblzma-dev
 ```
 The libraries rely on `pkg-config` to find their location: if your `pkg-config` was installed through conda then you'd
 better install the above libs via conda as well (or, you know, updating environmental variables etc).
-The `zlib` library is mandatory, while the others are called `xz` and `bzip2` on a strict conda environment.
+The `zlib` library is mandatory, while `liblzma-dev` and `libbz2-dev` are called, respectively, `xz` and `bzip2` on a strict conda environment.
 
 ## Documentation 
 Currently there is a tutorial on the diretory `docs` in jupyter notebook format: [docs/210427.campy_bordetella.ipynb](docs/210427.campy_bordetella.ipynb).
