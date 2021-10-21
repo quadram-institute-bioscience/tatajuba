@@ -66,9 +66,10 @@ AC_MSG_RESULT([ ===  configuration options specific to $PACKAGE_NAME]) # library
 AC_MSG_CHECKING([whether to build (slower) debug code])
 AC_ARG_ENABLE([debug], [AS_HELP_STRING([--enable-debug], [enable debugging with gdb and friends (default=no)])],[debugit="$enableval"], [debugit=no])
 AC_MSG_RESULT([$debugit])
+dnl no-pie is for conda's ng compiler https://stackoverflow.com/questions/55514324/can-not-be-used-when-making-a-shared-object-while-building-glibc
 if test x"$debugit" = x"yes"; then
     AC_DEFINE([BIOMCMC_DEBUG],[],[Debug Mode, with assert()-like error checking])
-    AM_CFLAGS="${AM_CFLAGS} -g -W -pg -Wall -Werror -Wno-uninitialized -O0 -std=gnu11"
+    AM_CFLAGS="${AM_CFLAGS} -no-pie -g -W -pg -Wall -Werror -Wno-uninitialized -O0 -std=gnu11"
 else
     AM_CFLAGS="${AM_CFLAGS} -funroll-loops -fomit-frame-pointer -finline-functions -O4 -std=gnu11"
 fi
