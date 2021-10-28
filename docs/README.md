@@ -83,4 +83,10 @@ I particularly like [snippy](https://github.com/tseemann/snippy), which generate
 `snpEff` into the `snps.vcf` files. Although the directories from the indivudal samples have relevant information,
 please keep in mind that the "core SNPs" and [further analyses from snippy-multi](https://github.com/tseemann/snippy#core-snp-phylogeny) by design will exclude most information from the HTs.
 
-Tatajuba will soon output a BED file with the genomic regions of interest. 
+Tatajuba will soon output a BED file with the genomic regions of interest. Tatajuba cannot be used as a variant caller
+or aligner since (1) it does not use the full information available on the `fastq` files, focusing only on HTs and
+neglecting many SNPs; (2) it processes and splits the reads before mapping to the reference genome &mdash; in particular 
+one read segment can belong to several HTs (as part of their flanking region, for instance), and one HT can contain
+variable segments (flanking regions _and_ HT length).
+
+
