@@ -458,7 +458,7 @@ create_tract_in_reference_structure (genome_set_t g)
   for (i = 0; i < g->tract->n_concat; i++) {
     tid = g->tract->concat[i]->tract_id;
     if (!g->tract_ref[tid].contig_name) { // first time tid is met
-      g->tract_ref[tid].contig_name = g->ref_names->string[ g->tract->concat[i]->loc2d[0] ];
+      g->tract_ref[tid].contig_name = g->ref_names->string[ g->tract->concat[i]->loc2d[0] ]; // loc2d[0] is given by BWA index
       g->tract_ref[tid].contig_location = g->tract->concat[i]->loc2d[1];
       g->tract_ref[tid].max_length = g->tract->concat[i]->mode_context_length;
       g->tract_ref[tid].concat_idx = i; 
@@ -477,8 +477,9 @@ create_tract_in_reference_structure (genome_set_t g)
   char_vector fasta = g->genome[0]->opt.gff->sequence;
   for (tid = 0; tid < g->n_tract_ref; tid++) {
     i = lookup_hashtable (g->genome[0]->opt.gff->seqname_hash, g->tract_ref[tid].contig_name); // gff struct can have missing seqs
-    if (i < 0) biomcmc_error ("Contig/genome sequence %s not found in fasta file", g->tract_ref[tid].contig_name);
+    if (i < 0) biomcmc_error ("Contig/genome sequence %s not found in fasta file (check names in GFF and FASTA)", g->tract_ref[tid].contig_name);
     /* 4.1 create context+hopo name for reference as in samples */
+    g->tract->concat[i]->loc2d[0] = i; // now loc2d[0] has index IN FASTA (embedded from gff), not from BWA ordering
     find_best_context_name_for_reference (&(g->tract_ref[tid]), fasta->string[i], fasta->nchars[i], g->genome[0]->opt, 
                                           g->tract->concat[g->tract_ref[tid].concat_idx]);
   }

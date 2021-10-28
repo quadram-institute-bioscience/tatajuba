@@ -42,9 +42,10 @@ typedef struct
           multi:3,        /*! \brief more than one match */
           neg_strand:2,   /*! \brief if maps to neg strand of the reference genome (_not_ read strand) */
           revforw_flag:3; /*! \brief if tract was seen in both 1=forward and 2=reverse, then flag=3 */
-  int32_t read_offset, /*! \brief 1st, start of context+tract in read (when searching in reference fasta); 2nd, 1D flattened location from bwa */
+  int32_t read_offset, /*! \brief at beginning, used as start of context+tract in read (when searching in reference fasta); later, becomes 1D flattened location from bwa */
           loc_ref_id,
-          loc_pos;     /*! \brief 2D BWA location [ref_id,position] which are ref sequence ID and site position within this refseq */
+          loc_pos,     /*! \brief 2D BWA location [ref_id,position] which are ref sequence ID and site position within this refseq */
+          loc_last;    /*! \brief position of last base in reference matching HT (so that we can have the whole mathing segment in reference) */
 } hopo_element;
 
 struct hopo_counter_struct
@@ -71,7 +72,7 @@ char* leftmost_hopo_name_and_length_from_string (char *seq, size_t len, int kmer
 
 int hopo_counter_histogram_integral (hopo_counter hc, int start);
 void finalise_hopo_counter (hopo_counter hc);
-char* generate_tract_as_string (uint64_t *context, int8_t base, int kmer_size, int tract_length);
+char* generate_tract_as_string (uint64_t *context, int8_t base, int kmer_size, int tract_length, bool neg_strand);
 char* generate_name_from_flanking_contexts (uint64_t *context, int8_t base, int kmer_size, bool neg_strand);
 char* protein_from_dna_string (char *dna, size_t n_dna, bool reverse);
 

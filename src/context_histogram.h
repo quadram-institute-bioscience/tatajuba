@@ -26,7 +26,7 @@ struct context_histogram_struct
   int n_context,     /*! \brief vector size (of neighbourhood) */
       integral,      /*! \brief sum of frequencies */
       location,      /*! \brief genomic location(s) of context in 1D flattened contigs/genomes */
-      loc2d[2],      /*! \brief 2D genomic location [ref genome, location within genome] */
+      loc2d[3],      /*! \brief 2D genomic location [ref genome, location within genome, last location within genome] */
       coverage, n_tracts,   /*! values related to genome (not histogram) */
       mode_context_count,   /*! \brief frequency of reads, defining "best homopolymer+context" */
       mode_context_length,  /*! \brief tract length of best homopolymer+context */

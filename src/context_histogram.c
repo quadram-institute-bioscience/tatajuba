@@ -136,6 +136,7 @@ new_context_histogram_from_hopo_elem (hopo_element he, char *name)
   ch->location = he.read_offset; 
   ch->loc2d[0] = he.loc_ref_id;
   ch->loc2d[1] = he.loc_pos;
+  ch->loc2d[2] = he.loc_last;
   ch->neg_strand = he.neg_strand;
   ch->integral = he.count;
   ch->name = name;  
@@ -181,6 +182,8 @@ context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, char *
     ch->location = he.read_offset;
     ch->loc2d[0] = he.loc_ref_id;
     ch->loc2d[1] = he.loc_pos;
+    ch->loc2d[2] = he.loc_last;
+    ch->neg_strand = he.neg_strand; // must always refer to best context pair
     if (ch->name) free (ch->name);
     ch->name = name;
   }
@@ -300,7 +303,7 @@ del_genomic_context_list (genomic_context_list_t genome)
 char*
 context_histogram_tract_as_string (context_histogram_t ch, int kmer_size)
 {// alternative to ch->h->i[0].idx is is ch->mode_context_length
-  return generate_tract_as_string (ch->context + (2 * ch->mode_context_id), ch->base, kmer_size, ch->h->i[0].idx); 
+  return generate_tract_as_string (ch->context + (2 * ch->mode_context_id), ch->base, kmer_size, ch->h->i[0].idx, ch->neg_strand); 
 }
 
 char*
@@ -329,49 +332,6 @@ genomic_context_find_features (genomic_context_list_t genome)
     if (features) free (features); 
   }
   del_bwase_match_t (match);
-}
-
-void
-genomic_context_find_reference_location (genomic_context_list_t genome) // OBSOLETE (now it's done with hopo_counter)
-{
-  char_vector readseqs;
-  char *read;
-  int i, j, n_features;
-  uint32_t *refseq_offset;
-  gff3_fields *features;
-  bwase_match_t match;
-  bwase_options_t bopt = new_bwase_options_t (0);
-
-  readseqs = new_char_vector (genome->n_hist);
-
-  for (i = 0; i < genome->n_hist; i++) {
-    read = context_histogram_tract_as_string (genome->hist[i], genome->opt.kmer_size);
-    char_vector_link_string_at_position (readseqs, read, readseqs->next_avail); // just link 
-    genome->hist[i]->name =  context_histogram_generate_name (genome->hist[i], genome->opt.kmer_size);
-  }
-  match = new_bwase_match_from_bwa_and_char_vector (genome->opt.reference_fasta_filename, readseqs, readseqs, 1, bopt);
-  del_char_vector(readseqs);
-
-  /* use info from BWA's index for each reference sequence (contig/genome) */
-  refseq_offset = (uint32_t*) biomcmc_malloc (sizeof (uint32_t) * match->bns->n_seqs);
-  refseq_offset[0] = 0; // equiv to concatenating ref contigs (one-dim "location")
-  for (i = 1; i < match->bns->n_seqs; i++) refseq_offset[i] = refseq_offset[i-1] + match->bns->anns[i-1].len;
-
-  for (i = 0; i < match->n_m; i++) { // FIXME: we assume only one bwa hit per histogram but paralogs exist; break ties by leftmost location?
-    genome->hist[match->m[i].query_id]->loc2d[0] = match->m[i].ref_id;   // genome/contig ID 
-    genome->hist[match->m[i].query_id]->loc2d[1] = match->m[i].position; // location within genome/contig
-    genome->hist[match->m[i].query_id]->location = refseq_offset[match->m[i].ref_id] + match->m[i].position; // one-dimensional (flat) index 
-    // find_gff3_fields_within_position (gff struct, name of reference genome exactly as in gff, position within ref genome, number of features found)
-    features = find_gff3_fields_within_position (genome->opt.gff, match->bns->anns[match->m[i].ref_id].name, match->m[i].position, &n_features);
-    for (j = 0; j < n_features; j++) if (features[j].type.id != GFF3_TYPE_region) {
-      genome->hist[match->m[i].query_id]->gffeature = features[j]; // store any feature (may be a gene, cds, ...); however ... 
-      //printf ("DBG::%6d %6d | (%6d-%6d:%6d)  %s [%d]\n", i, j, features[j].start, features[j].end, match->m[i].position, features[j].attr_id.str, features[j].type.id);
-      if (features[j].type.id == GFF3_TYPE_cds) {j = n_features; break; } // .. CDS have priority (overwrite previous and leave for loop)
-    }
-    if (features) free (features); 
-  }
-  del_bwase_match_t (match);
-  if (refseq_offset) free (refseq_offset);
 }
 
 void
@@ -422,8 +382,7 @@ accumulate_from_context_histogram (context_histogram_t to, context_histogram_t f
     to->mode_context_count  = from->mode_context_count;
     to->mode_context_length = from->mode_context_length;
     to->mode_context_id     = from->mode_context_id;
-    to->loc2d[0] = from->loc2d[0];
-    to->loc2d[1] = from->loc2d[1];
+    for (i=0; i < 3; i++) to->loc2d[i] = from->loc2d[i];
 
     n1 = to->n_context; to->n_context = from->n_context; from->n_context = n1; // swap
     c1 = to->context;   to->context =   from->context;   from->context = c1;

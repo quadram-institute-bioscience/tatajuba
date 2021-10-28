@@ -235,7 +235,7 @@ add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_i
   hc->elem[hc->n_elem].length = hopo_size;     // homopolymer track length, in bases
   hc->elem[hc->n_elem].count  = 1;
   hc->elem[hc->n_elem].neg_strand = 0; // unless we know better, we use the canonical notation
-  hc->elem[hc->n_elem].loc_ref_id = hc->elem[hc->n_elem].loc_pos = -1;
+  hc->elem[hc->n_elem].loc_ref_id =  hc->elem[hc->n_elem].loc_pos = hc->elem[hc->n_elem].loc_last = -1;
   hc->elem[hc->n_elem].mismatches = 0xffe; // 12 bits 
   hc->elem[hc->n_elem].multi = false; 
   
@@ -255,6 +255,7 @@ copy_hopo_element_start_count_at (hopo_element *to, hopo_element *from, int coun
   to->read_offset = from->read_offset;
   to->loc_ref_id  = from->loc_ref_id;
   to->loc_pos     = from->loc_pos; 
+  to->loc_last    = from->loc_last; 
   to->mismatches  = from->mismatches;
   to->multi       = from->multi;
   to->neg_strand  = from->neg_strand;
@@ -270,6 +271,7 @@ copy_hopo_element_locations (hopo_element *to, hopo_element *from)
   to->read_offset = from->read_offset;
   to->loc_ref_id  = from->loc_ref_id;
   to->loc_pos     = from->loc_pos; 
+  to->loc_last    = from->loc_last; 
   to->mismatches  = from->mismatches;
   to->multi       = from->multi;
   to->neg_strand  = from->neg_strand;
@@ -366,17 +368,26 @@ int hopo_counter_histogram_integral (hopo_counter hc, int start) // OBSOLETE
 }
 
 char*
-generate_tract_as_string (uint64_t *context, int8_t base, int kmer_size, int tract_length)
+generate_tract_as_string (uint64_t *context, int8_t base, int kmer_size, int tract_length, bool neg_strand)
 {
-  int i = 0, j = 0;
-  char *s = (char*) biomcmc_malloc (sizeof (char) * (2 * kmer_size + tract_length + 1));
+  int i = 0, j = 0, length = 2 * kmer_size + tract_length + 1;
+  char *s = (char*) biomcmc_malloc (sizeof (char) * length);
   uint64_t ctx = context[0]; 
 
-  for (i = 0; i < kmer_size; i++) s[i] = bit_2_dna[ (ctx >> (2 * i)) & 3 ]; // left context
-  for (; i < kmer_size + tract_length; i++) s[i] = bit_2_dna[base]; // homopolymer tract
-  ctx = context[1]; // right context
-  for (j = 0; j < kmer_size; j++, i++) s[i] =  bit_2_dna[ (ctx >> (2 * j)) & 3 ]; 
-  s[i] = '\0';
+  if (neg_strand) {
+    s[length - 1] = '\0'; // A=00, C=01, G=10, T=11 therefore ~A=T etc. 
+    for (j = length-2, i = 0; i < kmer_size; i++, j--) s[j] = bit_2_dna[ (~(ctx >> (2 * i))) & 3 ]; // left context at the end;
+    for (; i < tract_length; j--, i++) s[j] = bit_2_dna[(~base) & 3]; // homopolymer tract
+    ctx = context[1];
+    for (i = 0; i < kmer_size; j--, i++) s[j] =  bit_2_dna[ (~(ctx >> (2 * i))) & 3 ]; 
+  }
+  else {
+    for (i = 0; i < kmer_size; i++) s[i] = bit_2_dna[ (ctx >> (2 * i)) & 3 ]; // left context
+    for (; i < kmer_size + tract_length; i++) s[i] = bit_2_dna[base]; // homopolymer tract
+    ctx = context[1]; // right context
+    for (j = 0; j < kmer_size; j++, i++) s[i] =  bit_2_dna[ (ctx >> (2 * j)) & 3 ]; 
+    s[i] = '\0';
+  }
   return s;
 }
 
@@ -426,7 +437,8 @@ find_reference_location_and_sort_hopo_counter (hopo_counter hc)
     read = generate_tract_as_string (hc->elem[hc->idx_initial[i]].context, 
                                      hc->elem[hc->idx_initial[i]].base,
                                      hc->opt.kmer_size, 
-                                     hc->elem[hc->idx_initial[i]].length); // longest
+                                     hc->elem[hc->idx_initial[i]].length, // longest
+                                     false); // do not flip to negative strand (BWA will tell if flipping is necessary)
     char_vector_link_string_at_position (readseqs, read, readseqs->next_avail); // just link 
   }
 
@@ -443,7 +455,8 @@ find_reference_location_and_sort_hopo_counter (hopo_counter hc)
   for (i = 0; i < match->n_m; i++) { 
     skip_match = true; // we assume that this match is worse than one already seen
     qid = hc->idx_initial[match->m[i].query_id]; 
-    mismatch = match->m[i].mm + match->m[i].gape + match->m[i].gapo;
+    // mismatch = match->m[i].mm + match->m[i].gape + match->m[i].gapo; // mismatches plus extra indels 
+    mismatch = match->m[i].nm; //  nm (edit distance)
     read_offset = refseq_offset[match->m[i].ref_id] + match->m[i].position; // one-dimensional (flat) index 
 
     
@@ -456,7 +469,8 @@ find_reference_location_and_sort_hopo_counter (hopo_counter hc)
     if (!skip_match) {
       hc->elem[qid].mismatches = mismatch;
       hc->elem[qid].loc_ref_id = match->m[i].ref_id;   // genome/contig ID 
-      hc->elem[qid].loc_pos    = match->m[i].position; // location within genome/contig
+      hc->elem[qid].loc_pos    = match->m[i].position; // location within genome/contig where HT starts
+      hc->elem[qid].loc_last   = match->m[i].position + match->m[i].ref_length; // location within genome/contig of last position of HT
       hc->elem[qid].read_offset = read_offset;         // one-dimensional (flat) index 
       hc->elem[qid].neg_strand = match->m[i].neg_strand; // if negative strand on reference genome (unrelated to for/rev read strand, BTW) 
     }
