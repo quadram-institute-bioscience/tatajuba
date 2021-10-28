@@ -487,7 +487,7 @@ create_tract_in_reference_structure (genome_set_t g)
     i = lookup_hashtable (g->genome[0]->opt.gff->seqname_hash, g->tract_ref[tid].contig_name); // gff struct can have missing seqs
     if (i < 0) biomcmc_error ("Contig/genome sequence %s not found in fasta file (check names in GFF and FASTA)", g->tract_ref[tid].contig_name);
     /* 4.1 create context+hopo name for reference as in samples */
-    g->tract_ref[tid].fasta_idx = i; // now loc2d[0] has index IN FASTA (embedded from gff), not from BWA ordering
+    g->tract_ref[tid].fasta_idx = i; // index IN FASTA (embedded from gff), not from BWA ordering
     find_best_context_name_for_reference (&(g->tract_ref[tid]), fasta->string[i], fasta->nchars[i], g->genome[0]->opt, 
                                           g->tract->concat[g->tract_ref[tid].concat_idx]);
   }
@@ -584,6 +584,13 @@ describe_statistics_for_genome_set (genome_set_t g)
       to_print = update_descriptive_stats_for_this_trait (g, prev, i, stats_per_hist, samples_per_trait); 
       if (to_print) print_descriptive_stats_per_sample (g, fout, samples_per_trait, g->tract->concat[prev]->tract_id);
       prev = i;
+      int j, tid = g->tract->concat[prev]->tract_id;
+      int first = g->tract_ref[tid].contig_location, // + g->genome[0]->opt.kmer_size, 
+          last  = g->tract_ref[tid].contig_last    ; // - g->genome[0]->opt.kmer_size;
+      char *contig = g->genome[0]->opt.gff->sequence->string[g->tract_ref[tid].fasta_idx];
+      printf("%5d : %5d %5d : ", tid, first, last); // contig_location points to start of homopolymer, not context
+      for (j=first; j < last; j++) printf("%c", contig[j]);
+      printf(" %c\n", contig[j]);
     }
   }
   to_print = update_descriptive_stats_for_this_trait (g, prev, i, stats_per_hist, samples_per_trait); // last trait
