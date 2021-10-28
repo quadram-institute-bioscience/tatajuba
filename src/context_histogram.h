@@ -17,11 +17,12 @@ typedef struct genomic_context_list_struct* genomic_context_list_t;
 
 struct context_histogram_struct
 {
-  uint64_t *context; /*! \brief now a vector since we store all within distance */
-  int8_t base:2,     /*! \brief homopolymer base (AT or CG) */
-         multi:3,    /*! \brief  0,1,2 (from hopo_counter) if all (1) or some (2) contexts have paralogs */
-         indel:2,    /*! \brief if indel is closer than existing distances for at least one context pair */
-         neg_strand:1; /*! \brief strand in the _reference_ genome */
+  uint64_t *context;    /*! \brief now a vector since we store all within distance */
+  int32_t base:2,       /*! \brief homopolymer base (AT or CG) */
+         multi:3,       /*! \brief  0,1,2 (from hopo_counter) if all (1) or some (2) contexts have paralogs */
+         indel:2,       /*! \brief if indel is closer than existing distances for at least one context pair */
+         neg_strand:1,  /*! \brief strand in the _reference_ genome */
+         mismatches:12; /*! \brief edit (Levenstein) distance between modal HT for this sample and reference */
   char *name;        /*! \brief context name is flanking kmers with tract base in the middle */
   int n_context,     /*! \brief vector size (of neighbourhood) */
       integral,      /*! \brief sum of frequencies */

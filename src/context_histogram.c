@@ -137,6 +137,7 @@ new_context_histogram_from_hopo_elem (hopo_element he, char *name)
   ch->loc2d[0] = he.loc_ref_id;
   ch->loc2d[1] = he.loc_pos;
   ch->loc2d[2] = he.loc_last;
+  ch->mismatches = he.mismatches;
   ch->neg_strand = he.neg_strand;
   ch->integral = he.count;
   ch->name = name;  
@@ -183,6 +184,7 @@ context_histogram_add_hopo_elem (context_histogram_t ch, hopo_element he, char *
     ch->loc2d[0] = he.loc_ref_id;
     ch->loc2d[1] = he.loc_pos;
     ch->loc2d[2] = he.loc_last;
+    ch->mismatches = he.mismatches;
     ch->neg_strand = he.neg_strand; // must always refer to best context pair
     if (ch->name) free (ch->name);
     ch->name = name;
@@ -382,6 +384,7 @@ accumulate_from_context_histogram (context_histogram_t to, context_histogram_t f
     to->mode_context_count  = from->mode_context_count;
     to->mode_context_length = from->mode_context_length;
     to->mode_context_id     = from->mode_context_id;
+    to->mismatches          = from->mismatches;
     for (i=0; i < 3; i++) to->loc2d[i] = from->loc2d[i];
 
     n1 = to->n_context; to->n_context = from->n_context; from->n_context = n1; // swap

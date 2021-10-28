@@ -38,7 +38,7 @@ typedef struct
   int64_t base:2,    /*! \brief base: 0=AT 1=CG (forward or reverse, we use canonical which is A side or C side) */
           length:10, /*! \brief  (former base_size) length of homopolymeric tract (in bases) */
           count:20,  /*! \brief frequency of homopolymer in this context (due to coverage) */
-          mismatches:14,  /*! \brief mismatches plus indels from bwa */
+          mismatches:12,  /*! \brief edit distance NM (could also be mismatches n_mm plus indels) from bwa */
           multi:3,        /*! \brief more than one match */
           neg_strand:2,   /*! \brief if maps to neg strand of the reference genome (_not_ read strand) */
           revforw_flag:3; /*! \brief if tract was seen in both 1=forward and 2=reverse, then flag=3 */

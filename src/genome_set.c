@@ -115,7 +115,7 @@ del_genome_set (genome_set_t g)
   for (i = g->n_genome - 1; i >= 0; i--) del_genomic_context_list (g->genome[i]);
   if (g->genome) free (g->genome);
   if (g->tract_ref) { // do not free contig_name (which is just a pointer to char_vector ref_names)
-    for (i = g->n_tract_ref-1; i >= 0; i--) if (g->tract_ref[i].seq)        free (g->tract_ref[i].seq); 
+//    for (i = g->n_tract_ref-1; i >= 0; i--) if (g->tract_ref[i].seq)        free (g->tract_ref[i].seq); 
     for (i = g->n_tract_ref-1; i >= 0; i--) if (g->tract_ref[i].tract_name) free (g->tract_ref[i].tract_name); 
     free (g->tract_ref);
   }
@@ -450,8 +450,9 @@ create_tract_in_reference_structure (genome_set_t g)
   g->tract_ref = (tract_in_reference_s*) biomcmc_malloc (g->n_tract_ref * sizeof (tract_in_reference_s));
   for (i = 0; i < g->n_tract_ref; i++) { 
     g->tract_ref[i].tract_length = -1;
-    g->tract_ref[i].contig_location = -1;
-    g->tract_ref[i].contig_name = g->tract_ref[i].seq = g->tract_ref[i].tract_name = NULL;
+    g->tract_ref[i].mismatches = 0xffe; // 12bits
+    g->tract_ref[i].fasta_idx = g->tract_ref[i].contig_location =  g->tract_ref[i].contig_last = -1;
+    g->tract_ref[i].contig_name = g->tract_ref[i].tract_name = NULL;
   }
 
   /* 3. store information from context_histogram concat[] which will be used in copying reference sequence segments */
@@ -460,16 +461,23 @@ create_tract_in_reference_structure (genome_set_t g)
     if (!g->tract_ref[tid].contig_name) { // first time tid is met
       g->tract_ref[tid].contig_name = g->ref_names->string[ g->tract->concat[i]->loc2d[0] ]; // loc2d[0] is given by BWA index
       g->tract_ref[tid].contig_location = g->tract->concat[i]->loc2d[1];
+      g->tract_ref[tid].contig_last     = g->tract->concat[i]->loc2d[2];
+      g->tract_ref[tid].mismatches      = g->tract->concat[i]->mismatches;
       g->tract_ref[tid].max_length = g->tract->concat[i]->mode_context_length;
       g->tract_ref[tid].concat_idx = i; 
     }
-    else { // tid is present more than once: sequence in reference will be longest 
-      if (g->tract_ref[tid].contig_location > g->tract->concat[i]->loc2d[1]) {
-        g->tract_ref[tid].contig_location = g->tract->concat[i]->loc2d[1]; // leftmost location 
-        g->tract_ref[tid].concat_idx = i; 
-      }
-      if (g->tract_ref[tid].max_length < g->tract->concat[i]->mode_context_length) 
+    else { // tid is present more than once: sequence in reference will be closest (fewer "mismatches", i.e. edit distance)   
+      if (g->tract_ref[tid].contig_location > g->tract->concat[i]->loc2d[1])
+        g->tract_ref[tid].contig_location = g->tract->concat[i]->loc2d[1]; // leftmost location
+
+      if (g->tract_ref[tid].contig_last < g->tract->concat[i]->loc2d[2])
+        g->tract_ref[tid].contig_last = g->tract->concat[i]->loc2d[2]; // rightmost location 
+
+      if (g->tract_ref[tid].max_length < g->tract->concat[i]->mode_context_length) // longest HT
         g->tract_ref[tid].max_length = g->tract->concat[i]->mode_context_length;
+
+      if (g->tract_ref[tid].mismatches > g->tract->concat[i]->mismatches) // best HT across samples
+        g->tract_ref[tid].concat_idx = i; 
     }
   }
 
@@ -479,7 +487,7 @@ create_tract_in_reference_structure (genome_set_t g)
     i = lookup_hashtable (g->genome[0]->opt.gff->seqname_hash, g->tract_ref[tid].contig_name); // gff struct can have missing seqs
     if (i < 0) biomcmc_error ("Contig/genome sequence %s not found in fasta file (check names in GFF and FASTA)", g->tract_ref[tid].contig_name);
     /* 4.1 create context+hopo name for reference as in samples */
-    g->tract->concat[i]->loc2d[0] = i; // now loc2d[0] has index IN FASTA (embedded from gff), not from BWA ordering
+    g->tract_ref[tid].fasta_idx = i; // now loc2d[0] has index IN FASTA (embedded from gff), not from BWA ordering
     find_best_context_name_for_reference (&(g->tract_ref[tid]), fasta->string[i], fasta->nchars[i], g->genome[0]->opt, 
                                           g->tract->concat[g->tract_ref[tid].concat_idx]);
   }
