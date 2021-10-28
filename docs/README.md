@@ -56,3 +56,29 @@ Usually a wildcard (`*`) works since the reverse/forward flags are to the right 
 $ ls sample*
 ```
 and see the order in which the files are shown.
+
+## Mutation effect
+
+Tatajuba can partition the homopolymer tracts (HTs) into those within or outside a coding region, and 
+furthermore for those inside a coding region the change in tract length can gives us an idea about the effect on the
+protein (multiples of three will lead to a missing amino acid, while other multiples will likely disrupt the downstream
+coding region).
+
+If you are interested in exploring the functional effect of mutations, there are a few tools available: 
+[bcftools consequence calling](https://samtools.github.io/bcftools/howtos/csq-calling.html), 
+[Ensembl Variant Effect Predictor (VEP)](https://www.ensembl.org/info/docs/tools/vep/index.html), and 
+[snpEff](http://pcingola.github.io/SnpEff/).
+They all rely on the VCF file for the samples, together with the GFF3 and FASTA files for the reference genome.
+
+With exception of `bcftools csq`, which supports only ENSEMBL GFF3 files, we recommend `snpEff` or `VEP`. 
+For `snpEff`, see instructions on https://www.biostars.org/p/50963/ and https://pcingola.github.io/SnpEff/se_buildingreg/#option-1-using-a-gff-file, where you'll have to build a database 
+(directory with reference files). 
+And for VEP, instructions can be found on https://www.ensembl.org/info/docs/tools/vep/script/vep_cache.html, although for
+some reason it seems to work better with GFF3 provided through [bp_genbank2gff3](https://metacpan.org/dist/BioPerl/view/bin/bp_genbank2gff3) (that is, converted from the full 
+genbank file and removing the embedded FASTA entries at the end) than with GFF3 files downloaded directly from RefSeq...
+
+The VCF files can be generated from the BAM/SAM files, i.e. using reference-based assembly programs like [minimap2](https://github.com/lh3/minimap2) or [bwa](https://github.com/lh3/bwa).
+I particularly like [snippy](https://github.com/tseemann/snippy), which generates not only the BAM alignment and its corresponding `snps.filt.vcf` files, as it annotates the predicted effects with
+`snpEff` into the `snps.vcf` files.
+
+Tatajuba will soon output a BED file with the genomic regions of interest. 
