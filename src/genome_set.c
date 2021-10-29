@@ -14,7 +14,7 @@ const char *fixed_fname[] = {
   "variable_tracts.bed"
 };
 
-const int sample_print_precision[] = {2,3,5}; // how many decimals to print for each of the N_FNAME_SAMPLE files below
+int sample_print_precision[] = {2,3,5}; // how many decimals to print for each of the N_FNAME_SAMPLE files below
 
 #define N_FNAME_SAMPLE 3
 enum {FNAME_SAMPLE_AVGELENGTH, FNAME_SAMPLE_MODALFREQ, FNAME_SAMPLE_PROPCOV, FNAME_SELECTED_TRACTS_UNKNOWN, FNAME_SELECTED_TRACTS_ANNOTATED, FNAME_TRACT_LIST,
@@ -676,7 +676,7 @@ print_descriptive_stats_per_sample (genome_set_t g, FILE **fout, double *samples
 
   for (j = 0; j < N_FNAME_SAMPLE; j++) {// [ [genome1, ..., ngenomes]d_1 , [genome1, ..., ngenomes]d_2, ...,[]d_N_STATS ]
     for (i = 0; i < g->n_genome; i++) {
-      if ( samples_per_trait[j * g->n_genome + i] > 0.) fprintf (fout[j], "\t%.*lf", sample_print_precision, samples_per_trait[j * g->n_genome + i]); 
+      if ( samples_per_trait[j * g->n_genome + i] > 0.) fprintf (fout[j], "\t%.*lf", sample_print_precision[j], samples_per_trait[j * g->n_genome + i]); 
       else                                              fprintf (fout[j], "\t");
     }
     fprintf (fout[j], "\n");
