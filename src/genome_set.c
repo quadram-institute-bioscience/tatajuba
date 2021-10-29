@@ -509,7 +509,7 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
 
   min_tract_size = opt.min_tract_size - 3; 
   if (min_tract_size < 2) min_tract_size = 2;
-  extra_borders = opt.min_tract_size + 4; 
+  extra_borders = opt.min_tract_size + 3; 
   start_location = ref_tid->contig_border[0] - extra_borders; // left shift (allow for mismatches) can even be longer than min tract length
   if (start_location < 0) start_location = 0;                 // since we handle spurious matches by chosing one with best distance
   len = ref_tid->contig_border[1] - ref_tid->contig_border[0] + 2 * extra_borders;
@@ -668,13 +668,13 @@ print_descriptive_stats_per_sample (genome_set_t g, FILE **fout, double *samples
   }
 
   // values for reference genome
-  fprintf (fout[FNAME_SAMPLE_AVGELENGTH], "\t%lf", (double)(g->tract_ref[tract_id].tract_length)); // weighted length
-  fprintf (fout[FNAME_SAMPLE_MODALFREQ], "\t%lf", 1.0); // modal freq = histogram bar length of modal length
+  fprintf (fout[FNAME_SAMPLE_AVGELENGTH], "\t.3%lf", (double)(g->tract_ref[tract_id].tract_length)); // weighted length
+  fprintf (fout[FNAME_SAMPLE_MODALFREQ], "\t.0%lf", 1.0); // modal freq = histogram bar length of modal length
   fprintf (fout[FNAME_SAMPLE_PROPCOV], "\t"); // tract coverage depth /  deepest coverage depth across all tracts
 
   for (j = 0; j < N_FNAME_SAMPLE; j++) {// [ [genome1, ..., ngenomes]d_1 , [genome1, ..., ngenomes]d_2, ...,[]d_N_STATS ]
     for (i = 0; i < g->n_genome; i++) {
-      if ( samples_per_trait[j * g->n_genome + i] > 0.) fprintf (fout[j], "\t%lf", samples_per_trait[j * g->n_genome + i]); 
+      if ( samples_per_trait[j * g->n_genome + i] > 0.) fprintf (fout[j], "\t%.3lf", samples_per_trait[j * g->n_genome + i]); 
       else                                              fprintf (fout[j], "\t");
     }
     fprintf (fout[j], "\n");
