@@ -27,13 +27,13 @@ typedef struct
 
 typedef struct
 {
-  uint32_t tract_length:12, /*! \brief length of tract in reference */
-           max_length:12,   /*! \brief max length of tract amongst samples (used only to alloc memory search) */
-           mismatches:12,   /*! \brief edit distance of closest HT across samples (to serve as exemplar) */
-           contig_location:27, /*! \brief location in contig (from fasta) of beginning of (left) context (2^27=1e9), leftmost amongst all samples */ 
-           contig_last:27,     /*! \brief location in contig of end of (right) context, rightmost amongst all samples */
-           concat_idx:27,      /*! \brief index in concat[] of closest (fewer mismatches) length tract (used as example) across samples */ 
-           fasta_idx:27;       /*! \brief index of contig in opt.gff->sequence char_vector */
+  uint32_t tract_length:12,  /*! \brief length of tract in reference */
+           max_length:12,    /*! \brief max length of tract amongst samples (used only to alloc memory search) */
+           bwa_dist:12,      /*! \brief edit distance of closest HT across samples (to serve as exemplar) */
+           ht_location:27,   /*! \brief most likely location in contig (from fasta) of beginning of homopolymer (2^27=1e9), based on closest match amongst samples */ 
+           concat_idx:27,    /*! \brief index in concat[] of closest (fewer mismatches) length tract (used as example) across samples */ 
+           fasta_idx:27;     /*! \brief index of contig in opt.gff->sequence char_vector */
+  int32_t contig_border[2]; /*! \brief leftmost and rightmost borders amongst all samples of beginning and end of match on reference genome */ 
   char *contig_name; // contig_name is just a pointer to char_vector
   char *tract_name; /*! \brief string representation of homopolymer plus context (equiv to context_histogram[]->name) */
 } tract_in_reference_s;

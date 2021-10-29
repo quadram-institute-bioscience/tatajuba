@@ -10,11 +10,13 @@ const char *fixed_fname[] = {
   "per_sample_proportional_coverage.tsv",
   "selected_tracts_unknown.tsv",
   "selected_tracts_annotated.tsv",
-  "tract_list.tsv"
+  "tract_list.tsv",
+  "variable_tracts.bed"
 };
 
 #define N_FNAME_SAMPLE 3
-enum {FNAME_SAMPLE_AVGELENGTH, FNAME_SAMPLE_MODALFREQ, FNAME_SAMPLE_PROPCOV, FNAME_SELECTED_TRACTS_UNKNOWN, FNAME_SELECTED_TRACTS_ANNOTATED, FNAME_TRACT_LIST}; 
+enum {FNAME_SAMPLE_AVGELENGTH, FNAME_SAMPLE_MODALFREQ, FNAME_SAMPLE_PROPCOV, FNAME_SELECTED_TRACTS_UNKNOWN, FNAME_SELECTED_TRACTS_ANNOTATED, FNAME_TRACT_LIST,
+  FNAME_BEDFILE}; 
 
 #define N_DESC_STATS 5
 enum {DESC_STAT_avgelength, DESC_STAT_modalfreq, DESC_STAT_propcov, DESC_STAT_covpercontext, DESC_STAT_entropy}; 
@@ -450,8 +452,9 @@ create_tract_in_reference_structure (genome_set_t g)
   g->tract_ref = (tract_in_reference_s*) biomcmc_malloc (g->n_tract_ref * sizeof (tract_in_reference_s));
   for (i = 0; i < g->n_tract_ref; i++) { 
     g->tract_ref[i].tract_length = -1;
-    g->tract_ref[i].mismatches = 0xffe; // 12bits
-    g->tract_ref[i].fasta_idx = g->tract_ref[i].contig_location =  g->tract_ref[i].contig_last = -1;
+    g->tract_ref[i].bwa_dist = 0xffe; // 12bits
+    g->tract_ref[i].fasta_idx = g->tract_ref[i].ht_location = -1;
+    g->tract_ref[i].contig_border[0] = 0xffff; g->tract_ref[i].contig_border[1] = -1; // limits given by BWA for HT+context, do not change afterwards 
     g->tract_ref[i].contig_name = g->tract_ref[i].tract_name = NULL;
   }
 
@@ -460,24 +463,26 @@ create_tract_in_reference_structure (genome_set_t g)
     tid = g->tract->concat[i]->tract_id;
     if (!g->tract_ref[tid].contig_name) { // first time tid is met
       g->tract_ref[tid].contig_name = g->ref_names->string[ g->tract->concat[i]->loc2d[0] ]; // loc2d[0] is given by BWA index
-      g->tract_ref[tid].contig_location = g->tract->concat[i]->loc2d[1];
-      g->tract_ref[tid].contig_last     = g->tract->concat[i]->loc2d[2];
-      g->tract_ref[tid].mismatches      = g->tract->concat[i]->mismatches;
+      g->tract_ref[tid].contig_border[0] = g->tract->concat[i]->loc2d[1];
+      g->tract_ref[tid].contig_border[1] = g->tract->concat[i]->loc2d[2];
+      g->tract_ref[tid].bwa_dist   = g->tract->concat[i]->mismatches;
       g->tract_ref[tid].max_length = g->tract->concat[i]->mode_context_length;
       g->tract_ref[tid].concat_idx = i; 
     }
     else { // tid is present more than once: sequence in reference will be closest (fewer "mismatches", i.e. edit distance)   
-      if (g->tract_ref[tid].contig_location > g->tract->concat[i]->loc2d[1])
-        g->tract_ref[tid].contig_location = g->tract->concat[i]->loc2d[1]; // leftmost location
+      if (g->tract_ref[tid].contig_border[0] > g->tract->concat[i]->loc2d[1])
+        g->tract_ref[tid].contig_border[0] = g->tract->concat[i]->loc2d[1]; // leftmost location
 
-      if (g->tract_ref[tid].contig_last < g->tract->concat[i]->loc2d[2])
-        g->tract_ref[tid].contig_last = g->tract->concat[i]->loc2d[2]; // rightmost location 
+      if (g->tract_ref[tid].contig_border[1] < g->tract->concat[i]->loc2d[2])
+        g->tract_ref[tid].contig_border[1] = g->tract->concat[i]->loc2d[2]; // rightmost  location
 
       if (g->tract_ref[tid].max_length < g->tract->concat[i]->mode_context_length) // longest HT
         g->tract_ref[tid].max_length = g->tract->concat[i]->mode_context_length;
 
-      if (g->tract_ref[tid].mismatches > g->tract->concat[i]->mismatches) // best HT across samples
+      if (g->tract_ref[tid].bwa_dist > g->tract->concat[i]->mismatches) { // best HT across samples
+        g->tract_ref[tid].bwa_dist   = g->tract->concat[i]->mismatches;
         g->tract_ref[tid].concat_idx = i; 
+      }
     }
   }
 
@@ -492,47 +497,56 @@ create_tract_in_reference_structure (genome_set_t g)
                                           g->tract->concat[g->tract_ref[tid].concat_idx]);
   }
 
-  /* 5.  accumulate context_histogram from same ref.contig_location (i.e. merge tract_id) TODO */
+  /* 5.  accumulate context_histogram from same ref.ht_location (i.e. merge tract_id) TODO */
 }
 
 void
 find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnacontig, size_t dnacontig_len, tatajuba_options_t  opt, context_histogram_t hist)
 {
-  int extra_borders, min_tract_size, start_location, len, i, best_id, dist, best_dist = 0xffff; 
+  int extra_borders, min_tract_size, start_location, len, i, best_id, dist = 0xffff, best_dist = 0xffff; 
   bool neg_strand;
   hopo_counter hc = new_hopo_counter (opt.kmer_size);
 
-  min_tract_size = opt.min_tract_size - 2; 
+  min_tract_size = opt.min_tract_size - 3; 
   if (min_tract_size < 2) min_tract_size = 2;
-  extra_borders = opt.min_tract_size + 2; 
-  start_location = ref_tid->contig_location - extra_borders; // left shift (allow for mismatches) can even be longer than min tract length
+  extra_borders = opt.min_tract_size + 4; 
+  start_location = ref_tid->contig_border[0] - extra_borders; // left shift (allow for mismatches) can even be longer than min tract length
   if (start_location < 0) start_location = 0;                 // since we handle spurious matches by chosing one with best distance
-  len = ref_tid->max_length + 2 * opt.kmer_size + 2 * extra_borders; 
+  len = ref_tid->contig_border[1] - ref_tid->contig_border[0] + 2 * extra_borders;
   if (len + start_location > (int) dnacontig_len) len = (int) dnacontig_len - start_location;
 
   update_hopo_counter_from_seq (hc, dnacontig + start_location, len, min_tract_size); 
-  // Modifies contig_location to point to beginning of homopolymer (instead of flanking region)
+  // ht_location will point to beginning of homopolymer (instead of flanking region); for flanking region use contig_border[]
   if (!hc->n_elem) { // homopolymer not found; store the equivalent region from the reference
-    start_location = ref_tid->contig_location; 
-    len = ref_tid->max_length + 2 * opt.kmer_size; 
-    if (len + start_location > (int) dnacontig_len) len = (int) dnacontig_len - start_location;
+    start_location = ref_tid->contig_border[0]; 
+    len = ref_tid->contig_border[1] - ref_tid->contig_border[0];
+    if (len + start_location > (int) dnacontig_len) len = (int) dnacontig_len - start_location; // never true but just as an assert
     ref_tid->tract_name = (char*) biomcmc_malloc (sizeof (char) * (len + 1));
     strncpy (ref_tid->tract_name, dnacontig + start_location, len);
     ref_tid->tract_name[len] = '\0';
-
-    ref_tid->contig_location += opt.kmer_size; // points to homopolymer (skips flanking region) 
+    // points to beginning of where homopolymer should be (skips flanking region); since missing from reference, we assume it's midpoint
+    ref_tid->ht_location = ref_tid->contig_border[0] + (int)(len/2);
     ref_tid->tract_length = 0;
     del_hopo_counter (hc);
     return;
   }
-  for (i = 0; (i < hc->n_elem) && (best_dist > 0); i++) {
-    dist = distance_between_context_kmer_pair (hc->elem[i].context, hist->context + hist->mode_context_id);
+  // DEBUG // char *s1 = generate_name_from_flanking_contexts (hist->context + 2 * hist->mode_context_id, hist->base, opt.kmer_size, false);
+  // DEBUG // printf("%s : %6d DEBUG \n", s1, start_location + opt.kmer_size); free (s1);
+  best_id = 0; // in case the same HT (A/T or G/C) is not found
+  for (i = 0; (i < hc->n_elem) && (best_dist > 0); i++) { // we could use bwa's edit distance (used to find hist), but it's safer to use same algo below as for sample HTs...
+    dist = 0xfff;
+    if (hist->base == hc->elem[i].base) dist = distance_between_context_kmer_pair (hc->elem[i].context, hist->context + 2 * hist->mode_context_id);
     if (dist < best_dist) { best_dist = dist; best_id = i; }
+   /* 
+    // BEGIN DEBUG
+    s1 = generate_name_from_flanking_contexts (hc->elem[i].context, hc->elem[i].base, opt.kmer_size, false); 
+    printf("%s :: score %6d\n", s1, dist); free(s1);
+    */
   }
   ref_tid->tract_length = hc->elem[best_id].length;
-  ref_tid->contig_location = start_location + hc->elem[best_id].read_offset + opt.kmer_size; // corrects read-based location by ref-based location; 
-  if (hc->elem[best_id].revforw_flag == 2) neg_strand = true; // contexts were flipped, we have them right to left
-  else neg_strand = false;  // stored order is same as reference genome
+  ref_tid->ht_location = start_location + hc->elem[best_id].read_offset + opt.kmer_size; // corrects read-based location by ref-based location; 
+  if (hc->elem[best_id].canon_flag == 2) neg_strand = true; // contexts were flipped by tatajuba's canonical definition, we have them right to left
+  else neg_strand = false; // stored order is same as reference genome (contexts are always stored in canonical)
   ref_tid->tract_name = generate_name_from_flanking_contexts (hc->elem[best_id].context, hc->elem[best_id].base, opt.kmer_size, neg_strand);
   del_hopo_counter (hc);
 }
@@ -554,7 +568,7 @@ print_tract_list (genome_set_t g)
       fprintf (fout, "%s\t%s\t", hist->gffeature.type.str, hist->gffeature.attr_id.str);
     else
       fprintf (fout, "nc\tunannotated\t");
-    fprintf (fout, "%d\t%d\t", g->tract_ref[tid].contig_location, g->tract_ref[tid].max_length);
+    fprintf (fout, "%d\t%d\t", g->tract_ref[tid].ht_location, g->tract_ref[tid].max_length);
     fprintf (fout, "%d\t", g->tract_ref[tid].tract_length);
     fprintf (fout, "%s\t", hist->name);
     fprintf (fout, "%s", g->tract_ref[tid].tract_name);
@@ -568,9 +582,9 @@ print_tract_list (genome_set_t g)
 void
 describe_statistics_for_genome_set (genome_set_t g)
 {
-  int i, prev;
+  int i, prev, tid;
   double *stats_per_hist, *samples_per_trait;
-  FILE *fout[N_FNAME_SAMPLE];
+  FILE *fout[N_FNAME_SAMPLE], *fbed;
   bool to_print;
  
   for (i = 0; i < N_FNAME_SAMPLE; i++) fout[i] = NULL;
@@ -578,24 +592,32 @@ describe_statistics_for_genome_set (genome_set_t g)
   samples_per_trait = (double*) biomcmc_malloc (N_DESC_STATS * g->n_genome * sizeof (double));
 
   initialise_files_descriptive_stats (g, fout);
+  fbed = open_output_file (g->genome[0]->opt, fixed_fname[FNAME_BEDFILE]);
+  //  fprintf (fbed, "chrom\tchromStart\tchromEnd\tname\n"); // BED files don't need the header?
 
   for (prev = 0, i = 1; i < g->tract->n_concat; i++) {
     if (g->tract->concat[prev]->tract_id != g->tract->concat[i]->tract_id) { // range  = prev, prev+1, ..., i-1  (doesnt include `i`)
       to_print = update_descriptive_stats_for_this_trait (g, prev, i, stats_per_hist, samples_per_trait); 
-      if (to_print) print_descriptive_stats_per_sample (g, fout, samples_per_trait, g->tract->concat[prev]->tract_id);
+      if (to_print) {
+        tid = g->tract->concat[prev]->tract_id;
+        print_descriptive_stats_per_sample (g, fout, samples_per_trait, tid);
+        // BED file
+        fprintf(fbed, "%s\t%d\t%d\ttid_%06d\n",
+                g->tract_ref[tid].contig_name,
+                g->tract_ref[tid].contig_border[0] + g->genome[0]->opt.kmer_size, 
+                g->tract_ref[tid].contig_border[1] - g->genome[0]->opt.kmer_size + 1,
+                tid);
+        //char *contig = g->genome[0]->opt.gff->sequence->string[g->tract_ref[tid].fasta_idx]; //DEBUG
+        //printf("%5d : %5d %5d : ", tid, first, last); for (j=first; j < last; j++) {printf("%c", contig[j]);} printf(" %c\n", contig[j]);//DEBUG
+        // END DEBUG
+      }
       prev = i;
-      int j, tid = g->tract->concat[prev]->tract_id;
-      int first = g->tract_ref[tid].contig_location, // + g->genome[0]->opt.kmer_size, 
-          last  = g->tract_ref[tid].contig_last    ; // - g->genome[0]->opt.kmer_size;
-      char *contig = g->genome[0]->opt.gff->sequence->string[g->tract_ref[tid].fasta_idx];
-      printf("%5d : %5d %5d : ", tid, first, last); // contig_location points to start of homopolymer, not context
-      for (j=first; j < last; j++) printf("%c", contig[j]);
-      printf(" %c\n", contig[j]);
     }
   }
   to_print = update_descriptive_stats_for_this_trait (g, prev, i, stats_per_hist, samples_per_trait); // last trait
   if (to_print) print_descriptive_stats_per_sample (g, fout, samples_per_trait, g->tract->concat[prev]->tract_id);
 
+  fclose(fbed);
   for (i = 0; i < N_FNAME_SAMPLE; i++) fclose (fout[i]);
   if (stats_per_hist) free (stats_per_hist);
   if (samples_per_trait) free (samples_per_trait);
@@ -640,7 +662,7 @@ print_descriptive_stats_per_sample (genome_set_t g, FILE **fout, double *samples
   int i, j;
   context_histogram_t hist = g->tract->concat[ g->tract_ref[tract_id].concat_idx ]; // GFF is only in concat[], not tract_ref
   for (j = 0; j < N_FNAME_SAMPLE; j++) {
-    fprintf (fout[j], "tid_%06d\t%d\t", tract_id, g->tract_ref[tract_id].contig_location);
+    fprintf (fout[j], "tid_%06d\t%d\t", tract_id, g->tract_ref[tract_id].ht_location);
     if (gff3_fields_is_valid (hist->gffeature)) fprintf (fout[j], "%s", hist->gffeature.attr_id.str);
     else                                        fprintf (fout[j], "%s", "unannotated");
   }

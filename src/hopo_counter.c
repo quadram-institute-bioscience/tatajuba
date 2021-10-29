@@ -240,7 +240,7 @@ add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_i
   hc->elem[hc->n_elem].multi = false; 
   
   hc->elem[hc->n_elem].read_offset  = offset;
-  hc->elem[hc->n_elem].revforw_flag = reverse_forward_flag;
+  hc->elem[hc->n_elem].canon_flag = reverse_forward_flag;
   hc->elem[hc->n_elem].context[0] = hc->elem[hc->n_elem].context[1] = 0ULL; // left context 
   for (i = 0; i < hc->kmer_size; i++) hc->elem[hc->n_elem].context[0] |= ((context[i] & 3ULL) << (2 * i));
   for (i = 0; i < hc->kmer_size; i++) hc->elem[hc->n_elem].context[1] |= ((context[hc->kmer_size + i] & 3ULL) << (2 * i));
@@ -262,7 +262,7 @@ copy_hopo_element_start_count_at (hopo_element *to, hopo_element *from, int coun
   to->context[0] = from->context[0];
   to->context[1] = from->context[1];
   to->count = count;
-  to->revforw_flag = from->revforw_flag;
+  to->canon_flag = from->canon_flag;
 }
 
 void
@@ -294,7 +294,7 @@ finalise_hopo_counter (hopo_counter hc)
       copy_hopo_element_start_count_at (&(efreq[++n1]), &(hc->elem[i]), 1);
     else { // same context _and_tract length
       efreq[n1].count++;
-      efreq[n1].revforw_flag |= hc->elem[i].revforw_flag; 
+      efreq[n1].canon_flag |= hc->elem[i].canon_flag; 
     }
   }
   n1++; // n1 is (zero-based) index of existing hopo_element (and below we use it as _number_of_elements)
@@ -302,7 +302,7 @@ finalise_hopo_counter (hopo_counter hc)
   /* 2. remove tracts seen only on one strand or seen only once */
   hc->n_elem = n1;
   if (hc->opt.remove_biased) {// exclude tract lengths appearing only in one strand (rev or forward)
-    for (i = 0, n1 = 0; i < hc->n_elem; i++) if (efreq[i].revforw_flag == 3) copy_hopo_element_start_count_at (&(efreq[n1++]), &(efreq[i]), efreq[i].count);
+    for (i = 0, n1 = 0; i < hc->n_elem; i++) if (efreq[i].canon_flag == 3) copy_hopo_element_start_count_at (&(efreq[n1++]), &(efreq[i]), efreq[i].count);
   }
   else { // even if we don't care about biased tracts, remove context_tract_lengths seen only once (but keep original depth whenever count > 1) 
     for (i = 0, n1 = 0; i < hc->n_elem; i++) if (efreq[i].count > 1) copy_hopo_element_start_count_at (&(efreq[n1++]), &(efreq[i]), efreq[i].count);
@@ -470,7 +470,7 @@ find_reference_location_and_sort_hopo_counter (hopo_counter hc)
       hc->elem[qid].mismatches = mismatch;
       hc->elem[qid].loc_ref_id = match->m[i].ref_id;   // genome/contig ID 
       hc->elem[qid].loc_pos    = match->m[i].position; // location within genome/contig where HT starts
-      hc->elem[qid].loc_last   = match->m[i].position + match->m[i].ref_length; // location within genome/contig of last position of HT
+      hc->elem[qid].loc_last   = match->m[i].position + match->m[i].ref_length - 1; // location within genome/contig of last position of HT
       hc->elem[qid].read_offset = read_offset;         // one-dimensional (flat) index 
       hc->elem[qid].neg_strand = match->m[i].neg_strand; // if negative strand on reference genome (unrelated to for/rev read strand, BTW) 
     }

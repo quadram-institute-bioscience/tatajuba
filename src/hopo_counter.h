@@ -41,7 +41,7 @@ typedef struct
           mismatches:12,  /*! \brief edit distance NM (could also be mismatches n_mm plus indels) from bwa */
           multi:3,        /*! \brief more than one match */
           neg_strand:2,   /*! \brief if maps to neg strand of the reference genome (_not_ read strand) */
-          revforw_flag:3; /*! \brief if tract was seen in both 1=forward and 2=reverse, then flag=3 */
+          canon_flag:3; /*! \brief original read in canonical form (1) or not (2); if tract was seen in both, then both forw and rev are present: flag=3 */
   int32_t read_offset, /*! \brief at beginning, used as start of context+tract in read (when searching in reference fasta); later, becomes 1D flattened location from bwa */
           loc_ref_id,
           loc_pos,     /*! \brief 2D BWA location [ref_id,position] which are ref sequence ID and site position within this refseq */
