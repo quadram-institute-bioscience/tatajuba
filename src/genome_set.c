@@ -14,7 +14,7 @@ const char *fixed_fname[] = {
   "variable_tracts.bed"
 };
 
-const int sample_print_precision = {2,3,5}; // how many decimals to print for each of the N_FNAME_SAMPLE files below
+const int sample_print_precision[] = {2,3,5}; // how many decimals to print for each of the N_FNAME_SAMPLE files below
 
 #define N_FNAME_SAMPLE 3
 enum {FNAME_SAMPLE_AVGELENGTH, FNAME_SAMPLE_MODALFREQ, FNAME_SAMPLE_PROPCOV, FNAME_SELECTED_TRACTS_UNKNOWN, FNAME_SELECTED_TRACTS_ANNOTATED, FNAME_TRACT_LIST,
