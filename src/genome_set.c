@@ -604,11 +604,9 @@ describe_statistics_for_genome_set (genome_set_t g)
         tid = g->tract->concat[prev]->tract_id;
         print_descriptive_stats_per_sample (g, fout, samples_per_trait, tid);
         // BED file
-        fprintf(fbed, "%s\t%d\t%d\ttid_%06d\n",
-                g->tract_ref[tid].contig_name,
+        fprintf(fbed, "%s\t%d\t%d\ttid_%06d\n", g->tract_ref[tid].contig_name,
                 g->tract_ref[tid].contig_border[0] + g->genome[0]->opt.kmer_size, 
-                g->tract_ref[tid].contig_border[1] - g->genome[0]->opt.kmer_size + 1,
-                tid);
+                g->tract_ref[tid].contig_border[1] - g->genome[0]->opt.kmer_size + 1, tid);
         //char *contig = g->genome[0]->opt.gff->sequence->string[g->tract_ref[tid].fasta_idx]; //DEBUG
         //printf("%5d : %5d %5d : ", tid, first, last); for (j=first; j < last; j++) {printf("%c", contig[j]);} printf(" %c\n", contig[j]);//DEBUG
         // END DEBUG
@@ -617,7 +615,14 @@ describe_statistics_for_genome_set (genome_set_t g)
     }
   }
   to_print = update_descriptive_stats_for_this_trait (g, prev, i, stats_per_hist, samples_per_trait); // last trait
-  if (to_print) print_descriptive_stats_per_sample (g, fout, samples_per_trait, g->tract->concat[prev]->tract_id);
+  if (to_print) {
+    tid = g->tract->concat[prev]->tract_id;
+    print_descriptive_stats_per_sample (g, fout, samples_per_trait, tid);
+    // BED file
+    fprintf(fbed, "%s\t%d\t%d\ttid_%06d\n", g->tract_ref[tid].contig_name,
+            g->tract_ref[tid].contig_border[0] + g->genome[0]->opt.kmer_size, 
+            g->tract_ref[tid].contig_border[1] - g->genome[0]->opt.kmer_size + 1, tid);
+  }
 
   fclose(fbed);
   for (i = 0; i < N_FNAME_SAMPLE; i++) fclose (fout[i]);
