@@ -502,7 +502,7 @@ protein_from_dna_string (char *dna, size_t n_dna, bool reverse)
   prot = (char*) biomcmc_malloc ((n_codon + 1) * sizeof (char));
 
   if (reverse) for (i = codon = 0; i < n_codon; i++) {
-    for (j = 0; j < 3; j++) {
+    for (j = 0; (j < 3) && ((3*i+j) < n_dna); j++) {
       k = dna_in_2_bits[ (int) dna[n_dna - 1 - (3*i + j)] ][1];
       if (k < 4) codon |= k << 2 * j; 
       else       codon = 64;
@@ -511,7 +511,7 @@ protein_from_dna_string (char *dna, size_t n_dna, bool reverse)
     prot[i] = genetic_code[codon];
   }
   else for (i = codon = 0; i < n_codon; i++) {
-    for (j = 0; j < 3; j++) {
+    for (j = 0; (j < 3) && ((3*i+j) < n_dna); j++) {
       k = dna_in_2_bits[ (int) dna[3*i + j] ][0];
       if (k < 4) codon |= k << 2 * j; 
       else       codon = 64;
