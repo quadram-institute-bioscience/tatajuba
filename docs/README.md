@@ -74,6 +74,9 @@ HTs.
 The sample descriptors are a simplified version of the file names, where tatajuba removes the common suffix and prefix.
 That is, if all files are in the same directory structure, then this path will be recognised as the prefix, and if all
 files end with `fastq.gz` then this will be the suffix. Only the variable part of the fastq file names is kept.
+Furthermore, for paired samples (where we have e.g. `file_1.fq.gz` and `file_2.fq.gz` sequencially) tatajuba only keeps
+tract of the first file name. This means that (1) if output only refers to one of them in the pair, the same applies to the
+other; and (2) the `_1` will likely also be part of the suffix and thus removed.
 Some files can be quite large and we suggest compressing them afterwards. 
 
 All files have columns separated by tabs, and please pay attention to missing values (represented by consecutive tabs). 
