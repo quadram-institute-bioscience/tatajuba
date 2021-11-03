@@ -384,7 +384,7 @@ print_selected_g_tract_vector (genome_set_t g)
   printf ("From %d tracts, %d interesting ones are annotated and %d interesting ones are not annotated\n", g->tract->n_summary, n_yes, n_no);
 
   fout = open_output_file (g->genome[0]->opt, fixed_fname[FNAME_SELECTED_TRACTS_UNKNOWN]);
-  fprintf (fout, "tract_id\tlocation\tn_genomes\tlev_distance\t|\trd_frequency\trd_avge_tract_length\trd_coverage\trd_context_covge\trd_entropy\n"); 
+  fprintf (fout, "tract_id\tbegin_context\tn_genomes\tlev_distance\t|\trd_frequency\trd_avge_tract_length\trd_coverage\trd_context_covge\trd_entropy\n"); 
   for (i = 0; i < n_no; i++) {
     t = g->tract->summary + cd_no[i];
     //fprintf (fout, "%s\t%-8d %-5d %-5d | ", t->example->name, t->location, t->n_genome_id, t->lev_distance);
@@ -396,7 +396,7 @@ print_selected_g_tract_vector (genome_set_t g)
 
   fclose (fout); fout = NULL;
   fout = open_output_file (g->genome[0]->opt, fixed_fname[FNAME_SELECTED_TRACTS_ANNOTATED]);
-  fprintf (fout, "tract_id\tGFF3_info\tlocation\tn_genomes\tlev_distance\t|\trd_frequency\trd_avge_tract_length\trd_coverage\trd_context_covge\trd_entropy\n"); 
+  fprintf (fout, "tract_id\tGFF3_info\tbegin_context\tn_genomes\tlev_distance\t|\trd_frequency\trd_avge_tract_length\trd_coverage\trd_context_covge\trd_entropy\n"); 
   for (i = 0; i < n_yes; i++) {
     t = g->tract->summary + cd_yes[i]; 
     gfi = t->example->gffeature;
