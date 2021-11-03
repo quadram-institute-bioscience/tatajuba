@@ -1,8 +1,3 @@
-# Tutorial
-
-The file [210427.campy_bordetella.ipynb](210427.campy_bordetella.ipynb) contains the `jupyter` notebook for the
-*Campylobacter* and *Bordetella* homopolymer tract analyses for the manuscript
-https://doi.org/10.1101/2021.06.02.446710. 
 
 # Usage
 
@@ -57,7 +52,7 @@ $ ls sample*
 ```
 and see the order in which the files are shown.
 
-## Output files
+# Output files
 
 The files output by tatajuba are
 
@@ -75,28 +70,43 @@ The HTs are indexed internally with the identified `tid_` followed by a zero-pad
 identifier is consistent across files within the same run, but it changes between data sets. Therefore if you run
 tatajuba several times on the same data but using for instance different parameters, the `tid`s may relate to distinct
 HTs.
+
 The sample descriptors are a simplified version of the file names, where tatajuba removes the common suffix and prefix.
 That is, if all files are in the same directory structure, then this path will be recognised as the prefix, and if all
 files end with `fastq.gz` then this will be the suffix. Only the variable part of the fastq file names is kept.
 Some files can be quite large and we suggest compressing them afterwards. 
 
+All files have columns separated by tabs, and please pay attention to missing values (represented by consecutive tabs). 
+The "location" of the HT within the contig/chromosome is the zero-based location of the beginning of the homopolymer,
+and is estimated if the HT cannot be found.
+
+It is possible for more than one HT (as defined by its `tid_`) to share the same location, if tatajuba finds more than
+one set of HTs (i.e. tract+contexts) mapping to the same reference genome but which are deemed too dissimilar (by the
+edit distance between them). One example is the HT `CCGG<b>AAAAA</b>TTCC` (track represented in bold, only fraction of
+context is shown) found in both the reference and some samples. However some samples may furthermore have  a HT `CCGG<b>AAA</b>TAAATTCC`, 
+which maps (aligns optimally) to same HT as before, but which cannot be merged since the flanking region is quite different (and we have an insertion 
+within the tract). Tatajuba conservatively treats them as distinct HTs sharing the same location in the reference.
+
+### `per_sample_` feature matrix files
 The _feature matrix_ files (`per_sample_`) have all the same structure: the first row is the header with the column names,
 followed by the list of variable tracts, one per row, with values per sample (each column is a sample). The values try
 to represent the variability within each tract per sample, keeping in mind that for each HT and sample we store a histogram of lengths.
+
 The "average HT length" is the mean tract length over all valid HTs, to account for intrapopulation variability. It is
 typically close to the consensus length, as estimated by alignment/assembly software.
 The "proportional coverage depth" is a rough estimate of the coverage over this HT, and is the sum of all read segments
 belonging to this HT (i.e. tract plus flanking context) divided by the frequency of the most frequent context (i.e. a
 k-mer) over all HTs in the sample.
+
 The "modal frequency" is the count of the most frequent tract lenght divided by the frequency count of all lengths, for
 this HT. This gives an estimate of how concentrated the length distribution is around its modal value, and should be
 typically close to one.
+
 It is important to stress that (1) these values are calculated independently for each sample (i.e. they do not have any
 normalisation over samples), and that (2) some variables are rescaled per sample, as the "proportional coverage depth",
 and some are rescaled per HT (per sample, naturally), as the "average length" and the "modal frequency". 
 
-
-
+### BED file
 The BED file `variable_tracts.bed` has the range information about the HTs which vary between samples (or in relation to
 the reference genomes). It describes the leftmost and rightmost regions in the reference mapped by the HT across samples
 and read segments, according to `BWA-aln`, discounting the context region. It represents the longest region in the
@@ -104,6 +114,7 @@ reference where at least one sample had a tract mapped.
 This range relates only to the tract and not the context (flanking regions), since a flanking region can harbour another
 HT and we want to minimise the overlap.
 Overlaps between BED regions can still happen, though.
+
 Notice that in some cases the HT cannot be found in the reference genome, even though we know it exists in the samples
 and it maps to a particular region in the reference genome. That is because we start by finding HTs *in the samples*, and not *in the reference*.
 One example is the HT `CGC<b>AAAA</b>TGT` mapping optimally to the region `CGC<b>ATA</b>TGT`. In this case the "average HT length" for the reference
@@ -111,6 +122,32 @@ will be zero, but its row in the BED file will still map to the correct region (
 The columns in the BED file are the usual `chrom`, `chromStart`, `chromEnd`, and `name`, where the last one is the tract
 ID `tid_`.
 
+### list of HTs
+The file `tract_list.tsv` contains information regarding all tracts, even those that are constant across samples (i.e.
+tract in all samples have same length and very little variability within it). It contains, per row:
+
+column | description
+-------|-------------
+`tract_id`  | tract ID, which can be compared across files for the same run
+`contig_name` | contig (or chromosome, genome) name, as given by fASTA file (and same as in GFF file)
+`feature_type` | feature type, as given by GFF file (if several are present, as in `gene`, then `CD` has priority)
+`feature`  | freature name (e.g. gene name), identifier given in GFF file (or `unannotated`)
+`location_in_contig` | zero-based location of the beginning (leftmost) of the homopolymer; if homopolymer is not found in reference, then the midpoint location between samples is used
+`max_tract_length`   | largest HT length across samples 
+`ref_tract_length`   | HT length in reference (zero if HT not found in reference)
+`tract`              | string representation of HT, in same strand as in reference, of most similar amongst samples.
+`ref_tract`          | string representation of HT in reference, or equivalent region if HT missing from reference.
+
+The string representation of HT includes the left flanking region, the tract compressed to length one (i.e. just the
+base), followed by the right flanking region, as in:
+```
+TCCAATTCCGTATTCTCAACAGCTCCAA.G.CCAGCGGTACGTGCCACGCGTGCCCAAG
+```
+The HT in `tract` is the most similar amongst samples and reads, for that particular HT. (See above for explanation of
+possibility of several HTs mapping to same region in reference).
+If the HT is not found in reference genome, then the string representation is the genomic region as detected by the BWA-aln algorithm. 
+
+### Which files to use, then
 The most commonly used information from these files is probably from files `per_sample_average_length.tsv` (wich can be load and analysed through R) and
 `variable_tracts.bed` (to integrate tatajuba in bioinformatic pipelines). The `selected_tracts_` files should not be
 used in most cases, unless you know what you are doing. 
@@ -126,6 +163,12 @@ unmapped.
 Tatajuba also outputs some warning messages, usually about a sample with more unmapped HTs than mapped ones. This
 message is harmless to its execution, but it may indicate a missing/poor reference for this sample, or an excess of
 contamination, a mixture of strains or perhaps a plasmid?
+
+# Tutorial
+
+The file [210427.campy_bordetella.ipynb](210427.campy_bordetella.ipynb) contains the `jupyter` notebook for the
+*Campylobacter* and *Bordetella* homopolymer tract analyses for the manuscript
+https://doi.org/10.1101/2021.06.02.446710. 
 
 ## Mutation effect
 
