@@ -77,6 +77,7 @@ files end with `fastq.gz` then this will be the suffix. Only the variable part o
 Furthermore, for paired samples (where we have e.g. `file_1.fq.gz` and `file_2.fq.gz` sequencially) tatajuba only keeps
 tract of the first file name. This means that (1) if output only refers to one of them in the pair, the same applies to the
 other; and (2) the `_1` will likely also be part of the suffix and thus removed.
+
 Some files can be quite large and we suggest compressing them afterwards. 
 
 All files have columns separated by tabs, and please pay attention to missing values (represented by consecutive tabs). 
@@ -131,15 +132,15 @@ tract in all samples have same length and very little variability within it). It
 
 column | description
 -------|-------------
-`tract_id`  | tract ID, which can be compared across files for the same run
-`contig_name` | contig (or chromosome, genome) name, as given by fASTA file (and same as in GFF file)
-`feature_type` | feature type, as given by GFF file (if several are present, as in `gene`, then `CD` has priority)
-`feature`  | freature name (e.g. gene name), identifier given in GFF file (or `unannotated`)
-`location_in_contig` | zero-based location of the beginning (leftmost) of the homopolymer; if homopolymer is not found in reference, then the midpoint location between samples is used
-`max_tract_length`   | largest HT length across samples 
-`ref_tract_length`   | HT length in reference (zero if HT not found in reference)
-`tract`              | string representation of HT, in same strand as in reference, of most similar amongst samples.
-`ref_tract`          | string representation of HT in reference, or equivalent region if HT missing from reference.
+tract_id  | tract ID, which can be compared across files for the same run
+contig_name | contig (or chromosome, genome) name, as given by fASTA file (and same as in GFF file)
+feature_type | feature type, as given by GFF file (if several are present, as in `gene`, then `CD` has priority)
+feature  | freature name (e.g. gene name), identifier given in GFF file (or `unannotated`)
+location_in_contig | zero-based location of the beginning (leftmost) of the homopolymer; if homopolymer is not found in reference, then the midpoint location between samples is used
+max_tract_length   | largest HT length across samples 
+ref_tract_length   | HT length in reference (zero if HT not found in reference)
+tract              | string representation of HT, in same strand as in reference, of most similar amongst samples.
+ref_tract         | string representation of HT in reference, or equivalent region if HT missing from reference.
 
 The string representation of HT includes the left flanking region, the tract compressed to length one (i.e. just the
 base), followed by the right flanking region, as in:
