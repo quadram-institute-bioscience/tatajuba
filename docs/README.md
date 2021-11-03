@@ -61,8 +61,8 @@ file name      |    description
 `per_sample_average_length.tsv`   |  feature matrix with average HT length
 `per_sample_proportional_coverage.tsv` | feature matrix of "proportional coverage depth" of HT
 `per_sample_modal_frequency.tsv`  | feature matrix with histogram bar length of modal tract length  
-`selected_tracts_annotated.tsv`   | debug file with relative difference stats per tract, for tracts in annotated regions 
-`selected_tracts_unknown.tsv`     | debug file with relative difference stats per tract, for tracts outside annotated regions
+`selected_tracts_annotated.tsv`   | debug file with difference stats per tract, for tracts in annotated regions 
+`selected_tracts_unknown.tsv`     | debug file with difference stats per tract, for tracts outside annotated regions
 `tract_list.tsv`                  | list of all HTs found, even those constant across samples
 `variable_tracts.bed`             | BED file with tract locations
 
@@ -146,6 +146,32 @@ TCCAATTCCGTATTCTCAACAGCTCCAA.G.CCAGCGGTACGTGCCACGCGTGCCCAAG
 The HT in `tract` is the most similar amongst samples and reads, for that particular HT. (See above for explanation of
 possibility of several HTs mapping to same region in reference).
 If the HT is not found in reference genome, then the string representation is the genomic region as detected by the BWA-aln algorithm. 
+
+### `selected_tracts_` files for debugging
+These files have summary information about tracts over samples. They are currently used only for debug purposes,
+since they have the descriptive statistics between samples which are used to describe a tract as variable. A short description of the
+columns (assumes familiarity with code details):
+
+column | description
+-------|-------------
+tract_id  | tract ID
+begin_context | location in reference contig of the beginning of the **context** (not homopolymer, as usually); notice that the contig info is missing 
+n_genomes | number of genomes where this tracat is found 
+lev_distance  | maximum edit (Levenstein) distance between read segments belonging to this HT
+rd_frequency  | absolute difference (MAX-MIN) between modal frequencies 
+rd_avge_tract_length | absolute difference between average tract lengths 
+rd_coverage | absolute difference between proportional coverages (coverage is depth of most frequent context across the genome)
+rd_context_covge | absolute difference between average coverage per context (`integral/n_context`)
+rd_entropy | absolute difference between entropies
+
+This output is under constant development, in order to be of value for end users &mdash; they do describe, for instance, the
+maximum differnce in average tract length, which can be used to infer if the samples do differ significantly, and if
+this differnce may imply in an amino-acid indel (if their lengths vary mostly by 3) or if they may lead to frameshifts
+(not multiples of 3). But care must be taken since currently these files are generated _before_ tatajuba selects the
+variable tracts and _before_ tatajuba searches for the tracts in the reference (which modifies the location). 
+Furthermore, the contig/chromosome information is not output and thus the `begin_context` cannot be mapped unless the reference
+is comprised of a single FASTA entry. So if you want to use the information in these files it is better at the moment to merge its info
+with the other files, using the `tract_id` as primary key. 
 
 ### Which files to use, then
 The most commonly used information from these files is probably from files `per_sample_average_length.tsv` (wich can be load and analysed through R) and
