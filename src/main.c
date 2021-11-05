@@ -1,6 +1,6 @@
 #ifndef _tatajuba_main_c_
 #define _tatajuba_main_c_
-#include "genome_set.h"
+#include "analyse_variable_tracts.h"
 #endif
 
 typedef struct
@@ -253,6 +253,7 @@ main (int argc, char **argv)
   g = new_genome_set_from_files (params.fastq->filename, params.fastq->count, opt); 
   print_selected_g_tract_vector (g);
   print_tract_list (g);
+  generate_vcf_files (g);
 
   biomcmc_fprintf_colour (stderr, 0,2, "Internal (threaded) timer::", " %15lf secs to read and generate initial histograms\n", g->secs[0]);
   biomcmc_fprintf_colour (stderr, 0,2, "Internal (threaded) timer::", " %15lf secs to merge and map histograms\n", g->secs[1]);

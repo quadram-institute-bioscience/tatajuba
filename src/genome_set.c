@@ -187,8 +187,11 @@ new_g_tract_vector_from_genomic_context_list (genomic_context_list_t *genome, in
   g_tract_vector_t tract = (g_tract_vector_t) biomcmc_malloc (sizeof (struct g_tract_vector_struct));
   tract->summary = NULL;
   tract->concat = NULL; // big vector with all tracts from all genomes in linear order
-  tract->n_summary = tract->n_concat = 0;
-  g_tract_vector_concatenate_tracts  (tract, genome, n_genome); // updates tract->concat
+  tract->var_initial = NULL;
+  tract->var_final = NULL;
+
+  tract->n_summary = tract->n_concat = tract->n_var = 0;
+  g_tract_vector_concatenate_tracts (tract, genome, n_genome); // updates tract->concat
 
   tract->concat[0]->tract_id = 0;
   for (prev=0, i = 1; i < tract->n_concat; i++) { // overlap() is true if tracts are the same, false if summary 
@@ -217,6 +220,8 @@ del_g_tract_vector (g_tract_vector_t tract)
 {
   if (!tract) return;
   if (tract->concat) free (tract->concat);
+  if (tract->var_initial) free (tract->var_initial);
+  if (tract->var_final)   free (tract->var_final);
   if (tract->summary) {
     for (int i = tract->n_summary - 1; i >= 0; i--) {
       if (tract->summary[i].d1) free (tract->summary[i].d1);
@@ -357,7 +362,7 @@ fill_g_tract_summary_tables (g_tract_s *this, context_histogram_t *concat, int p
 }
 
 void
-print_selected_g_tract_vector (genome_set_t g)
+print_selected_g_tract_vector (genome_set_t g) // called by main.c
 {
   int i, j, *cd_yes, *cd_no, n_yes=0, n_no=0;
   g_tract_s *t;
@@ -601,6 +606,11 @@ describe_statistics_for_genome_set (genome_set_t g)
     if (g->tract->concat[prev]->tract_id != g->tract->concat[i]->tract_id) { // range  = prev, prev+1, ..., i-1  (doesnt include `i`)
       to_print = update_descriptive_stats_for_this_trait (g, prev, i, stats_per_hist, samples_per_trait); 
       if (to_print) {
+        g->tract->var_initial = (int*) biomcmc_realloc ((int*) g->tract->var_initial, (g->tract->n_var + 1) * sizeof (int));
+        g->tract->var_final   = (int*) biomcmc_realloc ((int*) g->tract->var_final,   (g->tract->n_var + 1) * sizeof (int));
+        g->tract->var_initial[g->tract->n_var] = prev; 
+        g->tract->var_final[g->tract->n_var++] = i;
+        
         tid = g->tract->concat[prev]->tract_id;
         print_descriptive_stats_per_sample (g, fout, samples_per_trait, tid);
         // BED file
@@ -616,6 +626,11 @@ describe_statistics_for_genome_set (genome_set_t g)
   }
   to_print = update_descriptive_stats_for_this_trait (g, prev, i, stats_per_hist, samples_per_trait); // last trait
   if (to_print) {
+    g->tract->var_initial = (int*) biomcmc_realloc ((int*) g->tract->var_initial, (g->tract->n_var + 1) * sizeof (int));
+    g->tract->var_final   = (int*) biomcmc_realloc ((int*) g->tract->var_final,   (g->tract->n_var + 1) * sizeof (int));
+    g->tract->var_initial[g->tract->n_var] = prev; 
+    g->tract->var_final[g->tract->n_var++] = i;
+
     tid = g->tract->concat[prev]->tract_id;
     print_descriptive_stats_per_sample (g, fout, samples_per_trait, tid);
     // BED file
@@ -625,6 +640,7 @@ describe_statistics_for_genome_set (genome_set_t g)
   }
 
   fclose(fbed);
+
   for (i = 0; i < N_FNAME_SAMPLE; i++) fclose (fout[i]);
   if (stats_per_hist) free (stats_per_hist);
   if (samples_per_trait) free (samples_per_trait);

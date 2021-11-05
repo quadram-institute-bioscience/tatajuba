@@ -43,6 +43,7 @@ struct g_tract_vector_struct
   g_tract_s *summary; // summary of tracts over genomes
   context_histogram_t *concat; // tracts pooled over genomes, which can be found in reference
   int n_summary, n_concat;
+  int *var_initial, *var_final, n_var; // stores indices of _variable_ tracts, created by describe_statistics_for_genome_set(); same usage as in idx_initial in hopo_counter 
 };
 
 struct genome_set_struct 

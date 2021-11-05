@@ -42,7 +42,7 @@ struct context_histogram_struct
 struct genomic_context_list_struct
 {
   context_histogram_t *hist;
-  char *name;
+  char *name; /*! \brief simplified sample name, excluding prefix (directory) and suffix (e.g. ".fastq.gz") */
   tatajuba_options_t opt;
   int n_hist, coverage, ref_start;  /*! \brief ref_start is index of first hist found on ref genome (all before were not found) */
 };
@@ -52,6 +52,8 @@ int distance_between_context_histogram_and_hopo_context (context_histogram_t ch,
 int distance_between_context_histograms (context_histogram_t c1, context_histogram_t c2, double *result);
 int compare_context_histogram_for_qsort (const void *a, const void *b);
 bool context_histograms_overlap (context_histogram_t c1, context_histogram_t c2, int *distance, tatajuba_options_t opt);
+/*! \brief store lengths of prefix and suffix in common into l[]. Returns true if seqs are distinct, false o.w. */
+bool common_prefix_suffix_lengths_from_strings (char *s1, size_t n1, char *s2, size_t n2, int *l);
 
 void del_context_histogram (context_histogram_t ch);
 void print_debug_genomic_context_hist (genomic_context_list_t genome);

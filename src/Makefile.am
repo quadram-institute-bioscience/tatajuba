@@ -4,5 +4,6 @@ LDADD = $(top_builddir)/submodules/bwa/libbwa.la $(top_builddir)/@BIOMCMCLIB@/li
 				$(GTKDEPS_LIBS) @ZLIB_LIBS@ @LZMA_LIBS@ $(AM_LDFLAGS)
 
 bin_PROGRAMS = tatajuba 
-tatajuba_SOURCES = main.c kseq.h genome_set.c genome_set.h context_histogram.c context_histogram.h hopo_counter.c hopo_counter.h
+tatajuba_SOURCES = main.c kseq.h genome_set.c genome_set.h context_histogram.c context_histogram.h hopo_counter.c hopo_counter.h \
+									 analyse_variable_tracts.c analyse_variable_tracts.h
 tatajuba_LDADD = $(LDADD)

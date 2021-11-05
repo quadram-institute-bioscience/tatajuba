@@ -109,6 +109,20 @@ context_histograms_overlap (context_histogram_t c1, context_histogram_t c2, int 
   return false;
 }
 
+bool
+common_prefix_suffix_lengths_from_strings (char *s1, size_t n1, char *s2, size_t n2, int *l) // l[2] is length of prefix, suffix from extremity
+{
+  int i, j, length = (int) BIOMCMC_MIN (n1, n2);
+  l[0] = l[1] = 0;
+  for (i = 0; (i < length) && (s1[i] == s2[i]); i++, l[0]++);
+  if (i == length) {
+    if (n1 == n2) return false; // identical 
+    else          return true;  // l[0] is smallest of the two and l[1] is zero
+  }
+  for (i = (int) n1-1, j = (int) n2-1; (i >= l[0]) && (j >= l[0]) && (s1[i] == s2[j]); i--, j--, l[1]++);
+  return true;
+} 
+
 void
 add_new_context_histogram_from_hopo_elem (genomic_context_list_t genome, hopo_element he, char *name)
 { 
