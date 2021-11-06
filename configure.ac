@@ -1,5 +1,5 @@
-AC_INIT([tatajuba], [1.0.4], [leomrtns@gmail.com],[], [https://github.com/quadram-institute-bioscience/tatajuba])
-AC_CONFIG_HEADER([biomcmc-lib/lib/config.h])
+AC_INIT([tatajuba],[1.0.4],[leomrtns@gmail.com],[],[https://github.com/quadram-institute-bioscience/tatajuba])
+AC_CONFIG_HEADERS([biomcmc-lib/lib/config.h])
 AC_CONFIG_AUX_DIR([.])
 
 AC_CONFIG_SRCDIR([src/main.c])
@@ -15,11 +15,11 @@ AM_MAINTAINER_MODE
 dnl must be called after AC_USE_SYSTEM_EXTENSIONS (new restriction in autoconf2.68) 
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 
-AC_LANG_C
+AC_LANG([C])
 AC_PROG_CC
 AC_PROG_INSTALL
-AC_GNU_SOURCE # directs the libc header files to provide the standard GNU system interfaces including all GNU extensions
-AC_PROG_LIBTOOL # Libtool (for library): in lib/Makefile.am, we include an "abstract" libfoo.la
+AC_USE_SYSTEM_EXTENSIONS # directs the libc header files to provide the standard GNU system interfaces including all GNU extensions
+LT_INIT # Libtool (for library): in lib/Makefile.am, we include an "abstract" libfoo.la
 
 # M4 macros for checking of CPU features from kalign3
 m4_include([m4/ax_gcc_x86_avx_xgetbv.m4])
@@ -54,7 +54,12 @@ AC_SEARCH_LIBS([BZ2_bzlibVersion], [bz2]) #  unlike AC_CHECK_LIB, does not defin
 dnl a few checks below that are used by biomcmc in fact
 AC_SEARCH_LIBS([sqrt], [m])  # modern equivalent of AC_CHECK_LIB ([m],[main])
 AC_SEARCH_LIBS([clock_gettime],[rt])#  clock_gettime function in rt library (linking with -lrt if found)
-AC_HEADER_STDC # Check for the 15 Standard C (ANSI-C/ISO-C) headers
+
+#AC_HEADER_STDC # Check for the 15 Standard C (ANSI-C/ISO-C) headers (obsolete, according to autoupdate)
+# Autoupdate added the next two lines to ensure that your configure script's behavior did not change.  They are probably safe to remove.
+AC_CHECK_INCLUDES_DEFAULT
+AC_PROG_EGREP
+
 AC_CHECK_HEADERS(unistd.h sys/time.h sys/times.h) # Check for additional headers
 dnl will add lines #define SIZEOF_INT to config.h etc.
 AC_CHECK_SIZEOF(int)

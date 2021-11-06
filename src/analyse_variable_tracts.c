@@ -6,6 +6,8 @@
 
 file_compress_t initialise_vcf_file (char *outdir, char *name);
 void update_vcf_file_from_context_histogram (genome_set_t g, context_histogram_t concat, file_compress_t vcf);
+void update_vcf_file_from_context_histogram_new (genome_set_t g, context_histogram_t concat, file_compress_t vcf);
+int find_ref_alt_ht_variants_from_strings (char *ref, char *alt, genome_set_t g, context_histogram_t concat);
 
 void
 generate_vcf_files (genome_set_t g)
@@ -23,7 +25,7 @@ generate_vcf_files (genome_set_t g)
   for (i = 0; i < g->n_genome; i++) vcf[i] = initialise_vcf_file (g->genome[0]->opt.outdir, g->genome[i]->name);
 
   for (i = 0; i < g->tract->n_var; i++) for (j = g->tract->var_initial[i]; j < g->tract->var_final[i]; j++) {
-    update_vcf_file_from_context_histogram (g, g->tract->concat[j], vcf[ g->tract->concat[j]->index ]);
+    update_vcf_file_from_context_histogram_new (g, g->tract->concat[j], vcf[ g->tract->concat[j]->index ]);
   }
 
   for (i = 0; i < g->n_genome; i++) biomcmc_close_compress (vcf[i]);
@@ -128,7 +130,6 @@ update_vcf_file_from_context_histogram (genome_set_t g, context_histogram_t conc
   return;
 }
 
-#ifdef COMMENTED_OUT
 void
 update_vcf_file_from_context_histogram_new (genome_set_t g, context_histogram_t concat, file_compress_t vcf)
 {
@@ -136,11 +137,10 @@ update_vcf_file_from_context_histogram_new (genome_set_t g, context_histogram_t 
   size_t buffer_size = 8196, ref_size = concat->loc2d[2] - concat->loc2d[1] + 1; //last and first positions, inclusive, in ref_contig (which is whole chromosome/genome)
   int position = -1; 
 
-  // TODO: use only right context (since we assume that the HT (or monomer) are aligned)
   // create reference sequence
   ref_contig = g->genome[0]->opt.gff->sequence->string[ g->tract_ref[ concat->tract_id ].fasta_idx ]; // tract_id=tid, fasta_idx=location in char_vector "sequence"
-  ref_sequence = biomcmc_malloc ((query_size + 1) * sizeof (char));
-  memncpy (ref_sequence, ref_contig + concat->loc2d[1], ref_size);
+  ref_sequence = biomcmc_malloc ((ref_size + 1) * sizeof (char));
+  memcpy (ref_sequence, ref_contig + concat->loc2d[1], ref_size);
   ref_sequence[ref_size] = '\0';
   // create query sequence
   alt_sequence = generate_tract_as_string (concat->context + (2 * concat->mode_context_id), concat->base, 
@@ -170,6 +170,27 @@ update_vcf_file_from_context_histogram_new (genome_set_t g, context_histogram_t 
 int
 find_ref_alt_ht_variants_from_strings (char *ref, char *alt, genome_set_t g, context_histogram_t concat)
 {
+  tract_in_reference_s tref = g->tract_ref[ concat->tract_id ];
+  int ht_alt = g->genome[0]->opt.kmer_size, ht_ref = tref.ht_location - concat->loc2d[1];
+  int len_ref = (int)(strlen (ref)) - ht_ref, len_alt = (int)(strlen (alt)) - ht_alt; // HT + right context
+  int i, j, l[2];
+  // ref: ABCDEF  | according to VCF specs this is a special case leading to ref:ABC alt:C starting at one
+  // alt:   CDEF  | but we ignore modifications in left context (we only consider HTs which are kmer positions downstream of genome start)
 
+  // if same HT with same length, then we skip it
+  if ((ref[ht_ref] == alt[ht_alt]) && (tref.tract_length == concat->mode_context_length)) return -1; 
+  // finds identical suffix and prefix (identical sequences were already skipped above, since they would have same HT size)
+  if (!common_prefix_suffix_lengths_from_strings (ref + ht_ref, (size_t) len_ref, alt + ht_alt, (size_t) len_alt, l)) return -1;
+
+  if (l[0] > 0) { // same base, thus an HT or a monomer in ref genome
+    int start = ht_ref + l[0] - 1; // "-1" since we start at last base in common
+    for (j = 0, i = start; i < len_ref - l[1]; j++, i++) ref[j] = ref[i];
+    ref[j] = '\0';
+    start = ht_alt + l[0] - 1; // "-1" since we start at last base in common
+    for (j = 0, i = start; i < len_alt - l[1]; j++, i++) alt[j] = alt[i];
+    alt[j] = '\0';
+    return tref.ht_location + l[0]; // minus one since we start at common base, however vcf is one-based (thus plus one)
+  }
+  printf("DEBUG::diff1:: %s  %s\nDEBUG::diff2:: %s  %s\ttid_%06d\n", ref, ref+ht_ref-1, alt, alt+ht_alt-1, concat->tract_id);
+  return -1;
 }
-#endif

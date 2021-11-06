@@ -544,8 +544,10 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
   // DEBUG // char *s1 = generate_name_from_flanking_contexts (hist->context + 2 * hist->mode_context_id, hist->base, opt.kmer_size, false);
   // DEBUG // printf("%s : %6d DEBUG \n", s1, start_location + opt.kmer_size); free (s1);
   best_id = 0; // in case the same HT (A/T or G/C) is not found
-  for (i = 0; (i < hc->n_elem) && (best_dist > 0); i++) { // we could use bwa's edit distance (used to find hist), but it's safer to use same algo below as for sample HTs...
-    dist = 0xfff;
+  for (i = 0; (i < hc->n_elem) && (best_dist > 0); i++) { // we could use bwa's edit distance (used to find hist), algo below disregards edit distance
+    dist = 0xfff; // FIXME: some cases give distinct HT bases (since disregarding edit distance makes all equally bad?) E.g.
+    // TTTGAAAGAATGCACGGAGGAG.AAA.TCTTTATCCCTAAAATTCCTTCGATGAAA ref (should be aaatcTTTatc ?)
+    // TTTGAAAGAATGCACGGAGGAGAAA.TTTT.CATCCCTAAAATTCCTTCGATGAAA alt 
     if (hist->base == hc->elem[i].base) dist = distance_between_context_kmer_pair (hc->elem[i].context, hist->context + 2 * hist->mode_context_id);
     if (dist < best_dist) { best_dist = dist; best_id = i; }
    /* 
