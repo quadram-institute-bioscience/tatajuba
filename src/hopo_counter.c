@@ -370,22 +370,22 @@ int hopo_counter_histogram_integral (hopo_counter hc, int start) // OBSOLETE
 char*
 generate_tract_as_string (uint64_t *context, int8_t base, int kmer_size, int tract_length, bool neg_strand)
 {
-  int i = 0, j = 0, length = 2 * kmer_size + tract_length + 1;
+  int i = 0, j = 0, length = (2 * kmer_size) + tract_length + 1;
   char *s = (char*) biomcmc_malloc (sizeof (char) * length);
   uint64_t ctx = context[0]; 
 
   if (neg_strand) {
     s[length - 1] = '\0'; // A=00, C=01, G=10, T=11 therefore ~A=T etc. 
-    for (j = length-2, i = 0; i < kmer_size; i++, j--) s[j] = bit_2_dna[ (~(ctx >> (2 * i))) & 3 ]; // left context at the end;
-    for (; i < tract_length; j--, i++) s[j] = bit_2_dna[(~base) & 3]; // homopolymer tract
+    for (j = length-2, i = 0; i < kmer_size; i++, j--) s[j] = bit_2_dna[ (~(ctx >> (2 * i))) & 3ULL ]; // left context at the end;
+    for (i = 0; i < tract_length; j--, i++) s[j] = bit_2_dna[(~base) & 3ULL]; // homopolymer tract
     ctx = context[1];
-    for (i = 0; i < kmer_size; j--, i++) s[j] =  bit_2_dna[ (~(ctx >> (2 * i))) & 3 ]; 
+    for (i = 0; i < kmer_size; j--, i++) s[j] =  bit_2_dna[ (~(ctx >> (2 * i))) & 3ULL ]; 
   }
   else {
-    for (i = 0; i < kmer_size; i++) s[i] = bit_2_dna[ (ctx >> (2 * i)) & 3 ]; // left context
+    for (i = 0; i < kmer_size; i++) s[i] = bit_2_dna[ (ctx >> (2 * i)) & 3ULL ]; // left context
     for (; i < kmer_size + tract_length; i++) s[i] = bit_2_dna[base]; // homopolymer tract
     ctx = context[1]; // right context
-    for (j = 0; j < kmer_size; j++, i++) s[i] =  bit_2_dna[ (ctx >> (2 * j)) & 3 ]; 
+    for (j = 0; j < kmer_size; j++, i++) s[i] =  bit_2_dna[ (ctx >> (2 * j)) & 3ULL ]; 
     s[i] = '\0';
   }
   return s;
@@ -400,16 +400,16 @@ generate_name_from_flanking_contexts (uint64_t *context, int8_t base, int kmer_s
 
   if (neg_strand) {
     s[length - 1] = '\0'; // A=00, C=01, G=10, T=11 therefore ~A=T etc. 
-    for (j = length-2, i = 0; i < kmer_size; i++, j--) s[j] = bit_2_dna[ (~(ctx >> (2 * i))) & 3 ]; // left context at the end;
-    s[j--] = '.'; s[j--] = bit_2_dna[(~base) & 3]; s[j--] = '.';// homopolymer tract represented as "-A-" or "-T-"
+    for (j = length-2, i = 0; i < kmer_size; i++, j--) s[j] = bit_2_dna[ (~(ctx >> (2 * i))) & 3ULL ]; // left context at the end;
+    s[j--] = '.'; s[j--] = bit_2_dna[(~base) & 3ULL]; s[j--] = '.';// homopolymer tract represented as "-A-" or "-T-"
     ctx = context[1];
-    for (i = 0; i < kmer_size; j--, i++) s[j] =  bit_2_dna[ (~(ctx >> (2 * i))) & 3 ]; 
+    for (i = 0; i < kmer_size; j--, i++) s[j] =  bit_2_dna[ (~(ctx >> (2 * i))) & 3ULL ]; 
   }
   else {
-    for (i = 0; i < kmer_size; i++) s[i] = bit_2_dna[ (ctx >> (2 * i)) & 3 ]; // left context
+    for (i = 0; i < kmer_size; i++) s[i] = bit_2_dna[ (ctx >> (2 * i)) & 3ULL ]; // left context
     s[i++] = '.'; s[i++] = bit_2_dna[base]; s[i++] = '.';// homopolymer tract represented as "-A-" or "-T-"
     ctx = context[1];
-    for (j = 0; j < kmer_size; j++, i++) s[i] =  bit_2_dna[ (ctx >> (2 * j)) & 3 ]; 
+    for (j = 0; j < kmer_size; j++, i++) s[i] =  bit_2_dna[ (ctx >> (2 * j)) & 3ULL ]; 
     s[i] = '\0';
   }
   return s;

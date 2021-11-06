@@ -462,7 +462,8 @@ create_tract_in_reference_structure (genome_set_t g)
     g->tract_ref[i].bwa_dist = 0xffe; // 12bits
     g->tract_ref[i].fasta_idx = g->tract_ref[i].ht_location = -1;
     g->tract_ref[i].contig_border[0] = 0xffff; g->tract_ref[i].contig_border[1] = -1; // limits given by BWA for HT+context, do not change afterwards 
-    g->tract_ref[i].contig_name = g->tract_ref[i].tract_name = NULL;
+    g->tract_ref[i].contig_name = NULL;
+    g->tract_ref[i].tract_name = NULL;
   }
 
   /* 3. store information from context_histogram concat[] which will be used in copying reference sequence segments */
