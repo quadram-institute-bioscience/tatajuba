@@ -1,4 +1,14 @@
-20201.04.30
+2021.11.06
+		* todo:
+		. finding ht in reference should use edit distance or bwa result (somehow, dunno details yet). In rare cases, it
+		choses distinct base (i.e. completely different HT). 
+		. new version of VCF uses only right context but still buggy suffix removal
+		. removal of duplicate vcf entries: check if start position same, per sample. However if single vcf for all samples
+		is built, then we may need hash table for existing entries
+		. possibility to create our own protein-translating for each HT in isolation or all HTs from given gene. We can also
+		just check difference in HT lengths per gene (another file, with gene in row per sample in col?). careful to avoid
+		using bwa (since it contains contexts, which may overlap over HTs).
+2021.04.30
 	* idea:
 		. Each concat[] has idx of gene (if anotated, or -1 o.w.). This idx points to genome_set structure containing the
 		sequence itself and its offset on 1D location (i.e. such that concat[i]->location - offset gives location inside
