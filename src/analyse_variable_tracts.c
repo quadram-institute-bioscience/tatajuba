@@ -61,7 +61,7 @@ update_vcf_file_from_context_histogram (genome_set_t g, context_histogram_t conc
 {
   char *ref_contig, *query_sequence;
   size_t query_size, ref_size = concat->loc2d[2] - concat->loc2d[1] + 1; //last and first positions in ref_contig (which is whole chromosome/genome)
-  int l[2]; // l[] = pref/suf lengths
+  int l[2], ht_limit = 0; // l[] = pref/suf lengths
 
   ref_contig = g->genome[0]->opt.gff->sequence->string[ g->tract_ref[ concat->tract_id ].fasta_idx ]; // tract_id=tid, fasta_idx=location in char_vector "sequence"
   query_sequence = generate_tract_as_string (concat->context + (2 * concat->mode_context_id), concat->base, 
@@ -72,9 +72,16 @@ update_vcf_file_from_context_histogram (genome_set_t g, context_histogram_t conc
     if (query_sequence) free (query_sequence);
     return; // seqs are identical
   }
+  ht_limit = g->genome[0]->opt.kmer_size + concat->mode_context_length + 1;
+  if ((l[0] > ht_limit) || (l[1] > ht_limit)) {
+    if (query_sequence) free (query_sequence);
+    return; // modification is on context, not on HT (identical region spans HT in this sample)
+  }
+
+  printf ("DBG %.*s\n    %.*s %4d %4d tid_%06d\n", (int)ref_size, ref_contig+concat->loc2d[1], (int)query_size, query_sequence, l[0], l[1], concat->tract_id);
 
   size_t buffer_size = 8196;
-  int i, last, pos; // pos=position in vcf file (one based)
+  int i, j, last, pos; // pos=position in vcf file (one based)
   char *s = NULL, *altseq = NULL, *refseq = NULL;
   s = biomcmc_malloc (buffer_size * sizeof (char));
   altseq = biomcmc_malloc ((query_size + 2) * sizeof (char));
@@ -98,17 +105,20 @@ update_vcf_file_from_context_histogram (genome_set_t g, context_histogram_t conc
     pos = concat->loc2d[1] + l[0]; // "+1" since vcf is one-based, "-1" since we start at common base
     last = concat->loc2d[2] - l[1] + 1; // even if no suffix in common, we just copy to the end (only case above needs rightmost common base)
 //    printf ("DEBUG2::\t%d\t%d\t%d\t%lu\t%d\t%d\t(%d)\t", concat->loc2d[1], concat->loc2d[2], last, query_size, l[0], l[1], l[1]+l[0]);
-    for (i = pos-1; i < last; i++) refseq[i] = ref_contig[i]; 
-    refseq[i] = '\0';
+    for (j=0, i = pos-1; i < last; j++, i++) refseq[j] = ref_contig[i]; 
+    refseq[j] = '\0';
     last = (int)(query_size) - l[1];
 //    printf ("%d\n", last); // DEBUG
-    for (i = 0; i < last; i++) altseq[i] = query_sequence[i + l[0]]; 
-    altseq[i] = '\0';
+    altseq[0] = ref_contig[pos-1]; // first must be the same
+    for (j = 1, i = l[0]; i < last; j++, i++) altseq[j] = query_sequence[i]; 
+    altseq[j] = '\0';
   }
 
+  // FIXME: check if row is repeated (rare cases might have distinct tids for same location on same sample, but usually it's the same)
+  // some that appear repeated are context changes spanning several HTs eg. two HTs  axcgggacTTTacac and axcGGGactttacac , where x differs
   memset (s, '\0', sizeof (char) * buffer_size);
   //example: "NC_017280 44  . G A . . TID=tid001   GT  1"
-  sprintf (s, "%s\t%d\t.\t%s\t%s\t.\t.\tTID=tid%06d\tGT\t1\n", g->tract_ref[ concat->tract_id ].contig_name, pos, refseq, altseq, concat->tract_id); 
+  sprintf (s, "%s\t%d\t.\t%s\t%s\t.\t.\tTID=tid_%06d\tGT\t1\n", g->tract_ref[ concat->tract_id ].contig_name, pos, refseq, altseq, concat->tract_id); 
   biomcmc_write_compress (vcf, s);
 
   if (query_sequence) free (query_sequence);
