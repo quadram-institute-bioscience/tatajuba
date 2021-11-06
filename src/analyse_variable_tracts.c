@@ -136,6 +136,7 @@ update_vcf_file_from_context_histogram_new (genome_set_t g, context_histogram_t 
   size_t buffer_size = 8196, ref_size = concat->loc2d[2] - concat->loc2d[1] + 1; //last and first positions, inclusive, in ref_contig (which is whole chromosome/genome)
   int position = -1; 
 
+  // TODO: use only right context (since we assume that the HT (or monomer) are aligned)
   // create reference sequence
   ref_contig = g->genome[0]->opt.gff->sequence->string[ g->tract_ref[ concat->tract_id ].fasta_idx ]; // tract_id=tid, fasta_idx=location in char_vector "sequence"
   ref_sequence = biomcmc_malloc ((query_size + 1) * sizeof (char));
