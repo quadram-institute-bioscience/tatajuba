@@ -224,6 +224,29 @@ update_hopo_counter_from_seq (hopo_counter hc, char *seq, int seq_length, int mi
 }
 
 void
+update_hopo_counter_from_seq_all_monomers (hopo_counter hc, char *seq, int seq_length) 
+{ // does not count HTs, but stores all contexts (used in case HT is missing from reference)
+  int i, j, k;
+  uint8_t context[2 * hc->kmer_size], hopo_base_int, reverse_forward_flag = 0; 
+  for (i = hc->kmer_size; i < (seq_length - hc->kmer_size); i++) {
+    if (dna_in_2_bits[(int)seq[i]][0] < dna_in_2_bits[(int)seq[i]][1]) { // A or C : forward strand
+      for (k = 0, j = i - hc->kmer_size; j < i; k++, j++) context[k] = dna_in_2_bits[ (int)seq[j] ][0]; 
+      for (j = i + 1; j <= i + hc->kmer_size; k++, j++) context[k] = dna_in_2_bits[ (int)seq[j] ][0]; 
+      hopo_base_int = dna_in_2_bits[(int)seq[i]][0];
+      reverse_forward_flag = 1;
+    }
+    else if (dna_in_2_bits[(int)seq[i]][0] > dna_in_2_bits[(int)seq[i]][1]) { // T/U or G : reverse strand
+      k = 0; // it would be easier to copy above, but with k--; however I wanna implement rolling hash in future
+      for (j = i + hc->kmer_size; j > i; j--) context[k++] = dna_in_2_bits[ (int)seq[j] ][1]; 
+      for (j = i - 1; j >= i - hc->kmer_size; j--) context[k++] = dna_in_2_bits[ (int)seq[j] ][1]; 
+      hopo_base_int = dna_in_2_bits[(int)seq[i]][1];
+      reverse_forward_flag = 2;
+    } // elsif (dna[0] > dna[1]); notice that if dna[0] == dna[1] then do nothing (not an unambiguous base)
+    add_kmer_to_hopo_counter (hc, context, hopo_base_int, 1, i - hc->kmer_size, reverse_forward_flag);
+  } // for (i in seq[])
+}
+
+void
 add_kmer_to_hopo_counter (hopo_counter hc, uint8_t *context, uint8_t hopo_base_int, int hopo_size, int offset, uint8_t reverse_forward_flag)
 {
   int i;

@@ -504,7 +504,6 @@ create_tract_in_reference_structure (genome_set_t g)
     find_best_context_name_for_reference (&(g->tract_ref[tid]), fasta->string[i], fasta->nchars[i], g->genome[0]->opt, 
                                           g->tract->concat[g->tract_ref[tid].concat_idx]);
   }
-
   /* 5.  accumulate context_histogram from same ref.ht_location (i.e. merge tract_id) TODO */
 }
 
@@ -523,9 +522,11 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
   len = ref_tid->contig_border[1] - ref_tid->contig_border[0] + 2 * extra_borders;
   if (len + start_location > (int) dnacontig_len) len = (int) dnacontig_len - start_location;
 
-  update_hopo_counter_from_seq (hc, dnacontig + start_location, len, min_tract_size); 
   // ht_location will point to beginning of homopolymer (instead of flanking region); for flanking region use contig_border[]
-  if (!hc->n_elem) { // homopolymer not found; store the equivalent region from the reference
+
+  update_hopo_counter_from_seq (hc, dnacontig + start_location, len, min_tract_size); 
+  if (!hc->n_elem) update_hopo_counter_from_seq_all_monomers (hc, dnacontig + start_location, len); // exhaustive monomers within kmers, if no HTs present
+  if (!hc->n_elem) { // homopolymer not found; store the equivalent region from the reference (legacy code: should never happen since we get all monomers above)
     start_location = ref_tid->contig_border[0]; 
     len = ref_tid->contig_border[1] - ref_tid->contig_border[0];
     if (len + start_location > (int) dnacontig_len) len = (int) dnacontig_len - start_location; // never true but just as an assert

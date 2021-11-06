@@ -127,3 +127,48 @@ update_vcf_file_from_context_histogram (genome_set_t g, context_histogram_t conc
   if (altseq) free (altseq);
   return;
 }
+
+#ifdef COMMENTED_OUT
+void
+update_vcf_file_from_context_histogram_new (genome_set_t g, context_histogram_t concat, file_compress_t vcf)
+{
+  char *s = NULL, *ref_contig = NULL, *ref_sequence = NULL, *alt_sequence = NULL; // both _sequences will be modified to keep only region around HT which differ
+  size_t buffer_size = 8196, ref_size = concat->loc2d[2] - concat->loc2d[1] + 1; //last and first positions, inclusive, in ref_contig (which is whole chromosome/genome)
+  int position = -1; 
+
+  // create reference sequence
+  ref_contig = g->genome[0]->opt.gff->sequence->string[ g->tract_ref[ concat->tract_id ].fasta_idx ]; // tract_id=tid, fasta_idx=location in char_vector "sequence"
+  ref_sequence = biomcmc_malloc ((query_size + 1) * sizeof (char));
+  memncpy (ref_sequence, ref_contig + concat->loc2d[1], ref_size);
+  ref_sequence[ref_size] = '\0';
+  // create query sequence
+  alt_sequence = generate_tract_as_string (concat->context + (2 * concat->mode_context_id), concat->base, 
+                                             g->genome[0]->opt.kmer_size, concat->mode_context_length, concat->neg_strand);
+
+  position = find_ref_alt_ht_variants_from_strings (ref_sequence, alt_sequence, g, concat); // modifies strings
+  if (position < 0) {
+    if (ref_sequence) free (ref_sequence);
+    if (alt_sequence) free (alt_sequence);
+    return;
+  }
+
+  // FIXME: check if row is repeated (rare cases might have distinct tids for same location on same sample, but usually it's the same)
+  // some that appear repeated are context changes spanning several HTs eg. two HTs  axcgggacTTTacac and axcGGGactttacac , where x differs
+  s = biomcmc_malloc (buffer_size * sizeof (char));
+  memset (s, '\0', sizeof (char) * buffer_size);
+  //example: "NC_017280 44  . G A . . TID=tid001   GT  1"
+  sprintf (s, "%s\t%d\t.\t%s\t%s\t.\t.\tTID=tid_%06d\tGT\t1\n", g->tract_ref[ concat->tract_id ].contig_name, position, ref_sequence, alt_sequence, concat->tract_id); 
+  biomcmc_write_compress (vcf, s);
+
+  if (ref_sequence) free (ref_sequence);
+  if (alt_sequence) free (alt_sequence);
+  if (s) free (s);
+  return;
+}
+
+int
+find_ref_alt_ht_variants_from_strings (char *ref, char *alt, genome_set_t g, context_histogram_t concat)
+{
+
+}
+#endif
