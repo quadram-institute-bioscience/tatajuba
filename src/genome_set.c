@@ -511,7 +511,7 @@ void
 find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnacontig, size_t dnacontig_len, tatajuba_options_t  opt, context_histogram_t hist)
 {
   int extra_borders, min_tract_size, start_location, len, i, best_id, dist = 0xffff, best_dist = 0xffff; 
-  bool neg_strand;
+  bool neg_strand, need_monomer_search = true;
   hopo_counter hc = new_hopo_counter (opt.kmer_size);
 
   min_tract_size = opt.min_tract_size - 3; 
@@ -523,9 +523,11 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
   if (len + start_location > (int) dnacontig_len) len = (int) dnacontig_len - start_location;
 
   // ht_location will point to beginning of homopolymer (instead of flanking region); for flanking region use contig_border[]
-
   update_hopo_counter_from_seq (hc, dnacontig + start_location, len, min_tract_size); 
-  if (!hc->n_elem) update_hopo_counter_from_seq_all_monomers (hc, dnacontig + start_location, len); // exhaustive monomers within kmers, if no HTs present
+  // if all homopolymers are from different base, or no homopolymer is found, then we assume reference might have a monomer
+  for (i = 0; (i < hc->n_elem) && (need_monomer_search); i++) if (hist->base == hc->elem[i].base) need_monomer_search = false; 
+  if (need_monomer_search) update_hopo_counter_from_seq_all_monomers (hc, dnacontig + start_location, len); // exhaustive monomers within kmers, if no HTs present
+
   if (!hc->n_elem) { // homopolymer not found; store the equivalent region from the reference (legacy code: should never happen since we get all monomers above)
     start_location = ref_tid->contig_border[0]; 
     len = ref_tid->contig_border[1] - ref_tid->contig_border[0];
