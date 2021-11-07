@@ -34,6 +34,7 @@ void fill_g_tract_summary_tables (g_tract_s *this, context_histogram_t *concat, 
 void create_tract_in_reference_structure (genome_set_t g);
 FILE * open_output_file (tatajuba_options_t opt, const char *file);
 void find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnacontig, size_t dnacontig_len, tatajuba_options_t  opt, context_histogram_t hist);
+bool same_hist_base_and_hopo_elem (context_histogram_t hist, hopo_element elem);
 
 void describe_statistics_for_genome_set (genome_set_t g);
 void initialise_files_descriptive_stats (genome_set_t g, FILE **fout);
@@ -510,12 +511,10 @@ create_tract_in_reference_structure (genome_set_t g)
 void
 find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnacontig, size_t dnacontig_len, tatajuba_options_t  opt, context_histogram_t hist)
 {
-  int extra_borders, min_tract_size, start_location, len, i, best_id, dist = 0xffff, best_dist = 0xffff; 
+  int extra_borders, start_location, len, i, best_id = 0, dist = 0xffffff, best_dist = 0xffffff; 
   bool neg_strand, need_monomer_search = true;
   hopo_counter hc = new_hopo_counter (opt.kmer_size);
 
-  min_tract_size = opt.min_tract_size - 3; 
-  if (min_tract_size < 2) min_tract_size = 2;
   extra_borders = opt.min_tract_size + 3; 
   start_location = ref_tid->contig_border[0] - extra_borders; // left shift (allow for mismatches) can even be longer than min tract length
   if (start_location < 0) start_location = 0;                 // since we handle spurious matches by chosing one with best distance
@@ -523,9 +522,10 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
   if (len + start_location > (int) dnacontig_len) len = (int) dnacontig_len - start_location;
 
   // ht_location will point to beginning of homopolymer (instead of flanking region); for flanking region use contig_border[]
-  update_hopo_counter_from_seq (hc, dnacontig + start_location, len, min_tract_size); 
-  // if all homopolymers are from different base, or no homopolymer is found, then we assume reference might have a monomer
-  for (i = 0; (i < hc->n_elem) && (need_monomer_search); i++) if (hist->base == hc->elem[i].base) need_monomer_search = false; 
+  update_hopo_counter_from_seq (hc, dnacontig + start_location, len, 2); // min_tract_size is always 2 (or monomer, if not found) 
+  need_monomer_search = true; // line below is commented out since we can always improve by considering monomers
+  // if all homopolymers are from different base, or no homopolymer is found, then we assume reference might have a monomer (commented out)
+  // for (i = 0; (i < hc->n_elem) && (need_monomer_search); i++) if (same_hist_base_and_hopo_elem (hist, hc->elem[i])) need_monomer_search = false; 
   if (need_monomer_search) update_hopo_counter_from_seq_all_monomers (hc, dnacontig + start_location, len); // exhaustive monomers within kmers, if no HTs present
 
   if (!hc->n_elem) { // homopolymer not found; store the equivalent region from the reference (legacy code: should never happen since we get all monomers above)
@@ -533,7 +533,7 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
     len = ref_tid->contig_border[1] - ref_tid->contig_border[0];
     if (len + start_location > (int) dnacontig_len) len = (int) dnacontig_len - start_location; // never true but just as an assert
     ref_tid->tract_name = (char*) biomcmc_malloc (sizeof (char) * (len + 1));
-    strncpy (ref_tid->tract_name, dnacontig + start_location, len);
+    strncpy (ref_tid->tract_name, dnacontig + start_location, len); // just copies the DNA string at location
     ref_tid->tract_name[len] = '\0';
     // points to beginning of where homopolymer should be (skips flanking region); since missing from reference, we assume it's midpoint
     ref_tid->ht_location = ref_tid->contig_border[0] + (int)(len/2);
@@ -541,20 +541,18 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
     del_hopo_counter (hc);
     return;
   }
-  // DEBUG // char *s1 = generate_name_from_flanking_contexts (hist->context + 2 * hist->mode_context_id, hist->base, opt.kmer_size, false);
-  // DEBUG // printf("%s : %6d DEBUG \n", s1, start_location + opt.kmer_size); free (s1);
-  best_id = 0; // in case the same HT (A/T or G/C) is not found
+  //char *s1 = generate_name_from_flanking_contexts (hist->context + 2 * hist->mode_context_id, hist->base, opt.kmer_size, false); // DEBUG 
+  //printf("%s : %6d (%s) base:%1d neg:%1d DEBUG \n", s1, start_location + opt.kmer_size, need_monomer_search? "monomer":"polymer", hist->base, hist->neg_strand); free (s1);     // DEBUG
+  best_id = 0; best_dist = 0xffffff;// in case the same HT (A/T or G/C) is not found
   for (i = 0; (i < hc->n_elem) && (best_dist > 0); i++) { // we could use bwa's edit distance (used to find hist), algo below disregards edit distance
-    dist = 0xfff; // FIXME: some cases give distinct HT bases (since disregarding edit distance makes all equally bad?) E.g.
-    // TTTGAAAGAATGCACGGAGGAG.AAA.TCTTTATCCCTAAAATTCCTTCGATGAAA ref (should be aaatcTTTatc ?)
-    // TTTGAAAGAATGCACGGAGGAGAAA.TTTT.CATCCCTAAAATTCCTTCGATGAAA alt 
-    if (hist->base == hc->elem[i].base) dist = distance_between_context_kmer_pair (hc->elem[i].context, hist->context + 2 * hist->mode_context_id);
+    dist = 0xffffff; // FIXME: some cases give distinct HT bases (since disregarding edit distance makes all equally bad?)
+    //if (same_hist_base_and_hopo_elem (hist, hc->elem[i])) dist = distance_between_context_kmer_pair (hc->elem[i].context, hist->context + 2 * hist->mode_context_id);
+    if (same_hist_base_and_hopo_elem (hist, hc->elem[i])) dist = distance_between_context_kmer_pair_with_edit_shift (hc->elem[i].context, hist->context + 2 * hist->mode_context_id, NULL);
     if (dist < best_dist) { best_dist = dist; best_id = i; }
-   /* 
+    
     // BEGIN DEBUG
-    s1 = generate_name_from_flanking_contexts (hc->elem[i].context, hc->elem[i].base, opt.kmer_size, false); 
-    printf("%s :: score %6d\n", s1, dist); free(s1);
-    */
+    //s1 = generate_name_from_flanking_contexts (hc->elem[i].context, hc->elem[i].base, opt.kmer_size, false);       // DEBUG 
+    //printf("%s :: score %6d base:%1d canon:%1d\n", s1, dist, hc->elem[i].base, hc->elem[i].canon_flag); free(s1);  // DEBUG
   }
   ref_tid->tract_length = hc->elem[best_id].length;
   ref_tid->ht_location = start_location + hc->elem[best_id].read_offset + opt.kmer_size; // corrects read-based location by ref-based location; 
@@ -562,6 +560,17 @@ find_best_context_name_for_reference (tract_in_reference_s *ref_tid, char *dnaco
   else neg_strand = false; // stored order is same as reference genome (contexts are always stored in canonical)
   ref_tid->tract_name = generate_name_from_flanking_contexts (hc->elem[best_id].context, hc->elem[best_id].base, opt.kmer_size, neg_strand);
   del_hopo_counter (hc);
+}
+
+bool
+same_hist_base_and_hopo_elem (context_histogram_t hist, hopo_element elem)
+{ /* hist (from sample) has info about being found in forward or reverse strand of reference; elem.canon_flag was not checked yet against reference 
+     thus has only "cannonical" (A, C) or non-cannonical (T,G); (elem.rev_strand does have bwa's info but not here since we already have reference genome).
+     Here we know all elems are forward strand, but still we cannot compare reference A with context T (both are stored in canonical "A") */
+  if (hist->base != elem.base) return false; // one is A/T and the other is G/C
+  if ((elem.canon_flag == 1) && (!hist->neg_strand)) return true; // elem is storing "forward" and context_histogram relates to forward
+  if ((elem.canon_flag == 2) && (hist->neg_strand)) return true; // elem is storing "negative" (i.e. in string it;s non-canonical) and context_histogram relates to reverse
+  return false;
 }
 
 void

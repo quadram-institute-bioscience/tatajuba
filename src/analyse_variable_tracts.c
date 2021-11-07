@@ -7,6 +7,7 @@
 file_compress_t initialise_vcf_file (char *outdir, char *name);
 void update_vcf_file_from_context_histogram (genome_set_t g, context_histogram_t concat, file_compress_t vcf);
 void update_vcf_file_from_context_histogram_new (genome_set_t g, context_histogram_t concat, file_compress_t vcf);
+int  get_next_ht_location_from_same_contig (genome_set_t g, context_histogram_t concat);
 int find_ref_alt_ht_variants_from_strings (char *ref, char *alt, genome_set_t g, context_histogram_t concat);
 
 void
@@ -135,16 +136,24 @@ update_vcf_file_from_context_histogram_new (genome_set_t g, context_histogram_t 
 {
   char *s = NULL, *ref_contig = NULL, *ref_sequence = NULL, *alt_sequence = NULL; // both _sequences will be modified to keep only region around HT which differ
   size_t buffer_size = 8196, ref_size = concat->loc2d[2] - concat->loc2d[1] + 1; //last and first positions, inclusive, in ref_contig (which is whole chromosome/genome)
-  int position = -1; 
+  int position = -1, next_ht_length = 0; 
 
-  // create reference sequence
+  // 1. create reference and query strings
   ref_contig = g->genome[0]->opt.gff->sequence->string[ g->tract_ref[ concat->tract_id ].fasta_idx ]; // tract_id=tid, fasta_idx=location in char_vector "sequence"
   ref_sequence = biomcmc_malloc ((ref_size + 1) * sizeof (char));
   memcpy (ref_sequence, ref_contig + concat->loc2d[1], ref_size);
   ref_sequence[ref_size] = '\0';
-  // create query sequence
+  // 1.1. create query string
   alt_sequence = generate_tract_as_string (concat->context + (2 * concat->mode_context_id), concat->base, 
                                              g->genome[0]->opt.kmer_size, concat->mode_context_length, concat->neg_strand);
+  // 2. stop at next HT (as given by distance from end of string)
+  next_ht_length = concat->loc2d[2] + 1 - get_next_ht_location_from_same_contig(g, concat); // how many bases, from end, overlap with next HT
+  printf("DEBUG:: %s\nDEBUG:: %s\ttid_%06d %4d BEFORE\n", ref_sequence, alt_sequence, concat->tract_id, next_ht_length);
+  if (next_ht_length > 0) { // if negative then next HT starts after end of right context
+    ref_size -= next_ht_length;
+    ref_sequence[ref_size] = '\0'; // afterl null char is ignored
+    alt_sequence[ strlen(alt_sequence) - next_ht_length ] = '\0';
+  }
 
   position = find_ref_alt_ht_variants_from_strings (ref_sequence, alt_sequence, g, concat); // modifies strings
   if (position < 0) {
@@ -153,6 +162,7 @@ update_vcf_file_from_context_histogram_new (genome_set_t g, context_histogram_t 
     return;
   }
 
+  // TODO: stop at next HT (based on next tract_ref[])
   // FIXME: check if row is repeated (rare cases might have distinct tids for same location on same sample, but usually it's the same)
   // some that appear repeated are context changes spanning several HTs eg. two HTs  axcgggacTTTacac and axcGGGactttacac , where x differs
   s = biomcmc_malloc (buffer_size * sizeof (char));
@@ -165,6 +175,19 @@ update_vcf_file_from_context_histogram_new (genome_set_t g, context_histogram_t 
   if (alt_sequence) free (alt_sequence);
   if (s) free (s);
   return;
+}
+
+int 
+get_next_ht_location_from_same_contig (genome_set_t g, context_histogram_t concat)
+{
+  int i;
+  for (i = concat->tract_id + 1; 
+       (i < g->tract->n_concat) && 
+       (g->tract_ref[i].fasta_idx == g->tract_ref[concat->tract_id].fasta_idx) && 
+       (g->tract_ref[i].ht_location == g->tract_ref[concat->tract_id].ht_location);
+       i++);
+  if((i < g->tract->n_concat) && (g->tract_ref[i].fasta_idx == g->tract_ref[concat->tract_id].fasta_idx)) return g->tract_ref[i].ht_location;
+  return concat->loc2d[2] + 1; // default is to say it's after end of right context (remember that loc2d[2] is _inclusive_, i.e. last base _in_ context
 }
 
 int
@@ -182,6 +205,7 @@ find_ref_alt_ht_variants_from_strings (char *ref, char *alt, genome_set_t g, con
   // finds identical suffix and prefix (identical sequences were already skipped above, since they would have same HT size)
   if (!common_prefix_suffix_lengths_from_strings (ref + ht_ref, (size_t) len_ref, alt + ht_alt, (size_t) len_alt, l)) return -1;
 
+  printf("DEBUG:: %s  %s\nDEBUG:: %s  %s\ttid_%06d %4d %4d\n", ref, ref+ht_ref-1, alt, alt+ht_alt-1, concat->tract_id, l[0], l[1]);
   if (l[0] > 0) { // same base, thus an HT or a monomer in ref genome
     int start = ht_ref + l[0] - 1; // "-1" since we start at last base in common
     for (j = 0, i = start; i < len_ref - l[1]; j++, i++) ref[j] = ref[i];
@@ -191,6 +215,5 @@ find_ref_alt_ht_variants_from_strings (char *ref, char *alt, genome_set_t g, con
     alt[j] = '\0';
     return tref.ht_location + l[0]; // minus one since we start at common base, however vcf is one-based (thus plus one)
   }
-  printf("DEBUG::diff1:: %s  %s\nDEBUG::diff2:: %s  %s\ttid_%06d\n", ref, ref+ht_ref-1, alt, alt+ht_alt-1, concat->tract_id);
   return -1;
 }

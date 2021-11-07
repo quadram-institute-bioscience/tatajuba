@@ -62,6 +62,8 @@ int compare_hopo_element_decreasing (const void *a, const void *b);
 int compare_hopo_context (hopo_element a, hopo_element b);
 int distance_between_single_context_kmer (uint64_t *c1, uint64_t *c2, int max_dist);
 int distance_between_context_kmer_pair (uint64_t *c1, uint64_t *c2);
+/*! \brief short edit distance between contexts by bitwise shift of contexts; stores best shift operation per context */
+int distance_between_context_kmer_pair_with_edit_shift (uint64_t *c1, uint64_t *c2, int *best_shift); 
 
 void print_tatajuba_options (tatajuba_options_t opt);
 hopo_counter new_hopo_counter (int kmer_size);

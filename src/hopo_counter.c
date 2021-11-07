@@ -78,6 +78,40 @@ distance_between_context_kmer_pair (uint64_t *c1, uint64_t *c2)
   return dist;
 }
 
+int // pointer *c1 since we look at both flanking contexts
+distance_between_context_kmer_pair_with_edit_shift (uint64_t *c1, uint64_t *c2, int *best_shift)
+{
+  uint64_t d = c1[0] ^ c2[0];  
+  uint64_t shift[][3] = {{0,0,0},{0,2,2},{0,4,4},{0,6,6},{2,0,2},{4,0,4},{6,0,6}}; // shift of c1, c2, and mask to be applied (max shift); notice two bits each shift
+  int i, best1 = 0xffffff, best2 = 0xffffff, dist = 0, n_shift = 7;
+
+  for (i = 0; (i < n_shift) && (best1 > 0); i++) { // left context
+    dist  = 0;
+    d = ((c1[0] >> shift[i][0]) ^ (c2[0] >> shift[i][1])) & (~0ULL >> shift[i][3]); // XOR is one if bits are different, zero o.w. 
+    while (d) { if (d & 3) dist++; d >>= 2; } // every two bits, check if there is any difference
+    if (best1 > dist) {
+      best1 = dist;
+      if (best_shift) {
+        best_shift[0] = (int) shift[i][0]/2; // store best shifts for use by VCF for instance
+        best_shift[1] = (int) shift[i][1]/2; // shift is in bits (2 bits = one base), but best_shift is in chars (bases)
+      }
+    }
+  }
+  for (i = 0; (i < n_shift) && (best2 > 0); i++) { // right context
+    dist  = 0;
+    d = ((c1[1] >> shift[i][0]) ^ (c2[1] >> shift[i][1])) & (~0ULL >> shift[i][3]); // XOR is one if bits are different, zero o.w. 
+    while (d) { if (d & 3) dist++; d >>= 2; } // every two bits, check if there is any difference
+    if (best2 > dist) {
+      best2 = dist;
+      if (best_shift) {
+        best_shift[2] = (int) shift[i][0]/2; // store best shifts for use by VCF for insance
+        best_shift[3] = (int) shift[i][1]/2; // shift is in bits (2 bits = one base), but best_shift is in chars (bases)
+      }
+    }
+  }
+  return best1 + best2;
+}
+
 void
 print_tatajuba_options (tatajuba_options_t opt)
 {
@@ -229,20 +263,22 @@ update_hopo_counter_from_seq_all_monomers (hopo_counter hc, char *seq, int seq_l
   int i, j, k;
   uint8_t context[2 * hc->kmer_size], hopo_base_int, reverse_forward_flag = 0; 
   for (i = hc->kmer_size; i < (seq_length - hc->kmer_size); i++) {
-    if (dna_in_2_bits[(int)seq[i]][0] < dna_in_2_bits[(int)seq[i]][1]) { // A or C : forward strand
-      for (k = 0, j = i - hc->kmer_size; j < i; k++, j++) context[k] = dna_in_2_bits[ (int)seq[j] ][0]; 
-      for (j = i + 1; j <= i + hc->kmer_size; k++, j++) context[k] = dna_in_2_bits[ (int)seq[j] ][0]; 
-      hopo_base_int = dna_in_2_bits[(int)seq[i]][0];
-      reverse_forward_flag = 1;
-    }
-    else if (dna_in_2_bits[(int)seq[i]][0] > dna_in_2_bits[(int)seq[i]][1]) { // T/U or G : reverse strand
-      k = 0; // it would be easier to copy above, but with k--; however I wanna implement rolling hash in future
-      for (j = i + hc->kmer_size; j > i; j--) context[k++] = dna_in_2_bits[ (int)seq[j] ][1]; 
-      for (j = i - 1; j >= i - hc->kmer_size; j--) context[k++] = dna_in_2_bits[ (int)seq[j] ][1]; 
-      hopo_base_int = dna_in_2_bits[(int)seq[i]][1];
-      reverse_forward_flag = 2;
-    } // elsif (dna[0] > dna[1]); notice that if dna[0] == dna[1] then do nothing (not an unambiguous base)
-    add_kmer_to_hopo_counter (hc, context, hopo_base_int, 1, i - hc->kmer_size, reverse_forward_flag);
+    if ((seq[i] != seq[i-1]) && (seq[i] != seq[i+1])) {
+      if (dna_in_2_bits[(int)seq[i]][0] < dna_in_2_bits[(int)seq[i]][1]) { // A or C : forward strand
+        for (k = 0, j = i - hc->kmer_size; j < i; k++, j++) context[k] = dna_in_2_bits[ (int)seq[j] ][0]; 
+        for (j = i + 1; j <= i + hc->kmer_size; k++, j++) context[k] = dna_in_2_bits[ (int)seq[j] ][0]; 
+        hopo_base_int = dna_in_2_bits[(int)seq[i]][0];
+        reverse_forward_flag = 1;
+      }
+      else if (dna_in_2_bits[(int)seq[i]][0] > dna_in_2_bits[(int)seq[i]][1]) { // T/U or G : reverse strand
+        k = 0; // it would be easier to copy above, but with k--; however I wanna implement rolling hash in future
+        for (j = i + hc->kmer_size; j > i; j--) context[k++] = dna_in_2_bits[ (int)seq[j] ][1]; 
+        for (j = i - 1; j >= i - hc->kmer_size; j--) context[k++] = dna_in_2_bits[ (int)seq[j] ][1]; 
+        hopo_base_int = dna_in_2_bits[(int)seq[i]][1];
+        reverse_forward_flag = 2;
+      } // elsif (dna[0] > dna[1]); notice that if dna[0] == dna[1] then do nothing (not an unambiguous base)
+      add_kmer_to_hopo_counter (hc, context, hopo_base_int, 1, i - hc->kmer_size, reverse_forward_flag);
+    } // if seq[i] not a polymer (o.w. we use standard function) 
   } // for (i in seq[])
 }
 

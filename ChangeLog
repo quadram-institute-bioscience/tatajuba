@@ -1,7 +1,8 @@
 2021.11.06
 		* todo:
-		. finding ht in reference should use edit distance or bwa result (somehow, dunno details yet). In rare cases, it
-		choses distinct base (i.e. completely different HT). 
+		. finding ht in reference should use edit distance or bwa result (instead of scanning as hopo_counter perhaps?). 
+			currently it uses canon X rev_strand info combination to make sure only same base is considered, but ideally
+			distance_between_contexts can have a bitwise shift (still faster than NW/Levenshtein for one or two shifts?)
 		. new version of VCF uses only right context but still buggy suffix removal
 		. removal of duplicate vcf entries: check if start position same, per sample. However if single vcf for all samples
 		is built, then we may need hash table for existing entries
