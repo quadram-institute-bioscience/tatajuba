@@ -5,8 +5,8 @@
 #include "analyse_variable_tracts.h"
 
 file_compress_t initialise_vcf_file (char *outdir, char *name);
+void update_vcf_file_from_context_histogram_pilot (genome_set_t g, context_histogram_t concat, file_compress_t vcf);
 void update_vcf_file_from_context_histogram (genome_set_t g, context_histogram_t concat, file_compress_t vcf);
-void update_vcf_file_from_context_histogram_new (genome_set_t g, context_histogram_t concat, file_compress_t vcf);
 int  get_next_ht_location_from_same_contig (genome_set_t g, context_histogram_t concat);
 int find_ref_alt_ht_variants_from_strings (char *ref, char *alt, genome_set_t g, context_histogram_t concat);
 
@@ -26,7 +26,7 @@ generate_vcf_files (genome_set_t g)
   for (i = 0; i < g->n_genome; i++) vcf[i] = initialise_vcf_file (g->genome[0]->opt.outdir, g->genome[i]->name);
 
   for (i = 0; i < g->tract->n_var; i++) for (j = g->tract->var_initial[i]; j < g->tract->var_final[i]; j++) {
-    update_vcf_file_from_context_histogram_new (g, g->tract->concat[j], vcf[ g->tract->concat[j]->index ]);
+    update_vcf_file_from_context_histogram (g, g->tract->concat[j], vcf[ g->tract->concat[j]->index ]);
   }
 
   for (i = 0; i < g->n_genome; i++) biomcmc_close_compress (vcf[i]);
@@ -59,8 +59,8 @@ initialise_vcf_file (char *outdir, char *name)
   return vcf;
 }
 
-void
-update_vcf_file_from_context_histogram (genome_set_t g, context_histogram_t concat, file_compress_t vcf)
+void  // first version, superseded by one below
+update_vcf_file_from_context_histogram_pilot (genome_set_t g, context_histogram_t concat, file_compress_t vcf)
 {
   char *ref_contig, *query_sequence;
   size_t query_size, ref_size = concat->loc2d[2] - concat->loc2d[1] + 1; //last and first positions in ref_contig (which is whole chromosome/genome)
@@ -132,7 +132,7 @@ update_vcf_file_from_context_histogram (genome_set_t g, context_histogram_t conc
 }
 
 void
-update_vcf_file_from_context_histogram_new (genome_set_t g, context_histogram_t concat, file_compress_t vcf)
+update_vcf_file_from_context_histogram (genome_set_t g, context_histogram_t concat, file_compress_t vcf)
 {
   char *s = NULL, *ref_contig = NULL, *ref_sequence = NULL, *alt_sequence = NULL; // both _sequences will be modified to keep only region around HT which differ
   size_t buffer_size = 8196, ref_size = concat->loc2d[2] - concat->loc2d[1] + 1; //last and first positions, inclusive, in ref_contig (which is whole chromosome/genome)
@@ -204,7 +204,7 @@ find_ref_alt_ht_variants_from_strings (char *ref, char *alt, genome_set_t g, con
   // finds identical suffix and prefix (identical sequences were already skipped above, since they would have same HT size)
   if (!common_prefix_suffix_lengths_from_strings (ref + ht_ref, (size_t) len_ref, alt + ht_alt, (size_t) len_alt, l)) return -1;
 
-  printf("DEBUG:: %s  %s\nDEBUG:: %s  %s\ttid_%06d %4d %4d\n", ref, ref+ht_ref-1, alt, alt+ht_alt-1, concat->tract_id, l[0], l[1]);
+  //printf("DEBUG:: %s  %s\nDEBUG:: %s  %s\ttid_%06d %4d %4d\n", ref, ref+ht_ref-1, alt, alt+ht_alt-1, concat->tract_id, l[0], l[1]);
   if (l[0] > 0) { // same base, thus an HT or a monomer in ref genome
     int start = ht_ref + l[0] - 1; // "-1" since we start at last base in common
     for (j = 0, i = start; j < len_ref - l[1]; j++, i++) ref[j] = ref[i];

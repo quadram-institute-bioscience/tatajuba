@@ -8,7 +8,8 @@ typedef struct
   struct arg_lit  *help;
   struct arg_lit  *version;
   struct arg_lit  *paired;
-  struct arg_lit  *nobias;
+  struct arg_lit  *keepbias;
+  struct arg_lit  *vcf;
   struct arg_int  *kmer;
   struct arg_int  *minsize;
   struct arg_int  *minread;
@@ -32,23 +33,24 @@ arg_parameters
 get_parameters_from_argv (int argc, char **argv)
 {
   arg_parameters params = {
-    .help    = arg_litn("h","help",0, 1, "print a longer help and exit"),
-    .version = arg_litn("v","version",0, 1, "print version and exit"),
-    .paired  = arg_litn("p","paired", 0, 1, "paired end (pairs of) files"),
-    .nobias  = arg_litn("b","remove_bias", 0, 1, "remove biased tracts, i.e. present in reverse or forward strains only (default=keep all)"),
-    .kmer    = arg_int0("k","kmer","{2,...,32}", "kmer size flanking each side of homopolymer (default=25)"),
-    .minsize = arg_int0("m","minsize","{1,...,32}", "minimum homopolymer tract length to be compared (default=4)"),
-    .minread = arg_int0("i","minreads",NULL, "minimum number of reads for tract+context to be considered (default=5)"),
-    .maxdist = arg_int0("d","maxdist",NULL, "maximum distance between kmers of a flanking region to merge them into one context (default=1)"),
-    .leven   = arg_int0("l","leven",NULL, "levenshtein distance between flanking regions to merge them into one context (after ref genome mapping)"),
-    .threads = arg_int0("t","nthreads",NULL, "suggested number of threads (default is to let system decide; I may not honour your suggestion btw)"),
-    .gff     = arg_file1("g", "gff", "<genome.gff3|genome.gff3.gz>", "reference genome file in GFF3, preferencially with sequence"),
-    .fna     = arg_file0(NULL, "fasta", "<genome.fna|genome.fna.gz>", "reference genome file in fasta format, if absent from GFF3"),
-    .fastq   = arg_filen(NULL, NULL, "<fastq files>", 1, 0xffff, "fastq file with reads (weirdly, fasta also possible as long as contains all reads and not only contigs)"),
-    .outdir  = arg_file0("o", "outdir", NULL, "output directory, or 'random' for generating random dir name (default=current dir '.')"),
-    .end     = arg_end(10) // max number of errors it can store (o.w. shows "too many errors")
+    .help     = arg_litn("h","help",0, 1, "print a longer help and exit"),
+    .version  = arg_litn("v","version",0, 1, "print version and exit"),
+    .paired   = arg_litn("p","paired", 0, 1, "paired end (pairs of) files"),
+    .keepbias = arg_litn("b","keep_bias", 0, 1, "keep biased tracts, i.e. present only in reverse or only in forward strains (default=remove)"),
+    .vcf      = arg_litn("V","vcf", 0, 1, "generate VCF files for each sample, around the HT regions (EXPERIMENTAL) (default=not to save)"),
+    .kmer     = arg_int0("k","kmer","{2,...,32}", "kmer size flanking each side of homopolymer (default=25)"),
+    .minsize  = arg_int0("m","minsize","{1,...,32}", "minimum homopolymer tract length to be compared (default=4)"),
+    .minread  = arg_int0("i","minreads",NULL, "minimum number of reads for tract+context to be considered (default=5)"),
+    .maxdist  = arg_int0("d","maxdist",NULL, "maximum distance between kmers of a flanking region to merge them into one context (default=1)"),
+    .leven    = arg_int0("l","leven",NULL, "levenshtein distance between flanking regions to merge them into one context (after ref genome mapping)"),
+    .threads  = arg_int0("t","nthreads",NULL, "suggested number of threads (default is to let system decide; I may not honour your suggestion btw)"),
+    .gff      = arg_file1("g","gff", "<genome.gff3|genome.gff3.gz>", "reference genome file in GFF3, preferencially with sequence"),
+    .fna      = arg_file0("f","fasta", "<genome.fna|genome.fna.gz>", "reference genome file in fasta format, if absent from GFF3"),
+    .fastq    = arg_filen(NULL, NULL, "<fastq files>", 1, 0xffff, "fastq file with reads (weirdly, fasta also possible as long as contains all reads and not only contigs)"),
+    .outdir   = arg_file0("o", "outdir", NULL, "output directory, or 'random' for generating random dir name (default=current dir '.')"),
+    .end      = arg_end(10) // max number of errors it can store (o.w. shows "too many errors")
   };
-  void* argtable[] = {params.help, params.version, params.paired, params.nobias, params.kmer, params.minsize, params.minread, params.maxdist, params.leven, 
+  void* argtable[] = {params.help, params.version, params.paired, params.keepbias, params.vcf, params.kmer, params.minsize, params.minread, params.maxdist, params.leven, 
     params.threads, params.gff, params.fna, params.fastq, params.outdir, params.end};
   params.argtable = argtable; 
   params.kmer->ival[0]    = 25; // default values must be before parsing
@@ -68,7 +70,8 @@ del_arg_parameters (arg_parameters params)
   if (params.help)    free (params.help);
   if (params.version) free (params.version);
   if (params.paired)  free (params.paired);
-  if (params.nobias)  free (params.nobias);
+  if (params.keepbias)free (params.keepbias);
+  if (params.vcf)     free (params.vcf);
   if (params.kmer)    free (params.kmer);
   if (params.minsize) free (params.minsize);
   if (params.minread) free (params.minread);
@@ -104,11 +107,12 @@ print_usage (arg_parameters params, char *progname)
     printf ("  that is, R1 and R2 should be consecutive. A GFF3 reference genome must also be supplied, and bwa will create a series of index files\n");
     printf ("  if tatajuba can find the DNA sequences at end of GFF3 file, after pragma '##FASTA'\n\n");
     printf ("You can also supply a fasta file, e.g. when you download GFF3 from NCBI it may lack the DNA genome at the end --- then downloading the\n");
-    printf ("  associated fna may work (untested). The internal library updates the GFF3 structure with provided fasta sequences (so a fasta file may\n");
+    printf ("  associated fna may work. The internal library updates the GFF3 structure with provided fasta sequences (so a fasta file may\n");
     printf ("  overwrite DNA sequences present in the GFF3 file. If you modify the fasta file please delete the index files generated by the BWA library\n");
     printf ("  so that they can be regenerated with the updated information.\n\n");
     printf ("Notice that tatajuba creates files with same prefix and in same location as the GFF3 file, which may overwrite existing ones.\n");
     printf ("  On the other hand, as suggested above, you can recreate all the generated files by deleting them and running tatajuba again.\n\n");
+    printf ("The generation of the VCF files is still experimental, but seems to be accepted by snpEff. \n\n");
     printf ("The default values are as following:\nkmer=%3d\t minsize=%3d\t minread=%3d\t maxdist=%3d\n",
     params.kmer->ival[0], params.minsize->ival[0], params.minread->ival[0], params.maxdist->ival[0]);
   }
@@ -145,7 +149,8 @@ get_options_from_argtable (arg_parameters params)
   if (s) free (s);
 
   opt.paired_end = (params.paired->count? true: false);
-  opt.remove_biased = (params.nobias->count? true: false);
+  opt.save_vcf   = (params.vcf->count? true: false);
+  opt.remove_biased = (params.keepbias->count? false: true); // if set, then do not remove bias; default is to remove
   opt.n_samples = (params.paired->count? params.fastq->count/2: params.fastq->count);
   if (opt.n_samples < 2) {
     del_gff3_t (opt.gff);
@@ -252,7 +257,7 @@ main (int argc, char **argv)
 
   g = new_genome_set_from_files (params.fastq->filename, params.fastq->count, opt); 
   print_selected_g_tract_vector (g);
-  print_tract_list (g);
+  if (opt.save_vcf) print_tract_list (g);
   generate_vcf_files (g);
 
   biomcmc_fprintf_colour (stderr, 0,2, "Internal (threaded) timer::", " %15lf secs to read and generate initial histograms\n", g->secs[0]);

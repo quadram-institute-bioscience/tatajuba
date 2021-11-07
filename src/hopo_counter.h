@@ -20,7 +20,7 @@ typedef struct hopo_counter_struct* hopo_counter;
 typedef struct 
 {
   char *reference_fasta_filename, *outdir; 
-  bool paired_end, remove_biased;
+  bool paired_end, remove_biased, save_vcf;
   gff3_t gff;
   int max_distance_per_flank, 
       kmer_size,
