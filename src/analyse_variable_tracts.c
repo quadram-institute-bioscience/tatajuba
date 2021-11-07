@@ -148,7 +148,7 @@ update_vcf_file_from_context_histogram_new (genome_set_t g, context_histogram_t 
                                              g->genome[0]->opt.kmer_size, concat->mode_context_length, concat->neg_strand);
   // 2. stop at next HT (as given by distance from end of string)
   next_ht_length = concat->loc2d[2] + 1 - get_next_ht_location_from_same_contig(g, concat); // how many bases, from end, overlap with next HT
-  printf("DEBUG:: %s\nDEBUG:: %s\ttid_%06d %4d BEFORE\n", ref_sequence, alt_sequence, concat->tract_id, next_ht_length);
+  //printf("DEBUG:: %s\nDEBUG:: %s\ttid_%06d %4d BEFORE\n", ref_sequence, alt_sequence, concat->tract_id, next_ht_length);
   if (next_ht_length > 0) { // if negative then next HT starts after end of right context
     ref_size -= next_ht_length;
     ref_sequence[ref_size] = '\0'; // afterl null char is ignored
@@ -162,7 +162,6 @@ update_vcf_file_from_context_histogram_new (genome_set_t g, context_histogram_t 
     return;
   }
 
-  // TODO: stop at next HT (based on next tract_ref[])
   // FIXME: check if row is repeated (rare cases might have distinct tids for same location on same sample, but usually it's the same)
   // some that appear repeated are context changes spanning several HTs eg. two HTs  axcgggacTTTacac and axcGGGactttacac , where x differs
   s = biomcmc_malloc (buffer_size * sizeof (char));
@@ -208,10 +207,10 @@ find_ref_alt_ht_variants_from_strings (char *ref, char *alt, genome_set_t g, con
   printf("DEBUG:: %s  %s\nDEBUG:: %s  %s\ttid_%06d %4d %4d\n", ref, ref+ht_ref-1, alt, alt+ht_alt-1, concat->tract_id, l[0], l[1]);
   if (l[0] > 0) { // same base, thus an HT or a monomer in ref genome
     int start = ht_ref + l[0] - 1; // "-1" since we start at last base in common
-    for (j = 0, i = start; i < len_ref - l[1]; j++, i++) ref[j] = ref[i];
+    for (j = 0, i = start; j < len_ref - l[1]; j++, i++) ref[j] = ref[i];
     ref[j] = '\0';
     start = ht_alt + l[0] - 1; // "-1" since we start at last base in common
-    for (j = 0, i = start; i < len_alt - l[1]; j++, i++) alt[j] = alt[i];
+    for (j = 0, i = start; j < len_alt - l[1]; j++, i++) alt[j] = alt[i];
     alt[j] = '\0';
     return tref.ht_location + l[0]; // minus one since we start at common base, however vcf is one-based (thus plus one)
   }

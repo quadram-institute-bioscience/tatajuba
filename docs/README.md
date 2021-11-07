@@ -149,7 +149,17 @@ TCCAATTCCGTATTCTCAACAGCTCCAA.G.CCAGCGGTACGTGCCACGCGTGCCCAAG
 ```
 The HT in `tract` is the most similar amongst samples and reads, for that particular HT. (See above for explanation of
 possibility of several HTs mapping to same region in reference).
-If the HT is not found in reference genome, then the string representation is the genomic region as detected by the BWA-aln algorithm. 
+We call the flanking regions "context" in tatajuba.
+
+It is worth remembering that only HTs that are mapped to the reference genome (or genomes, contigs, or chromosomes) are
+analysed by tatajuba.
+Therefore we know that there is a genomic segment with significant similarity to the HT (as defined by the "left context
++ homopolymer + right context").
+However, once we look at the corresponding (mapped) region in the reference genome, we might not find a perfect patch,
+or even the same homopolymer.
+Therefore when seaching for the exact location of the homopolymer in the reference, we include "monomers" (i.e. in the
+reference, the tract may have a length of one base).
+
 
 ### `selected_tracts_` files for debugging
 These files have summary information about tracts over samples. They are currently used only for debug purposes,
@@ -217,23 +227,35 @@ With exception of `bcftools csq`, which supports only ENSEMBL GFF3 files, we rec
 For `snpEff`, see instructions on using your own GFF3 file [from biostars](https://www.biostars.org/p/50963/) and from 
 [its site](https://pcingola.github.io/SnpEff/se_buildingreg/#option-1-using-a-gff-file), where you'll have to build a database 
 (directory with reference files). 
+You can [download the configuration database](snpEff_config.txz) we created for analysing the _Campylobacter_ and
+_Bordetella_ data sets, and use it as a starting point for your own analysis.
+
+
 For VEP, instructions can be found [at the ENSEMBL site](https://www.ensembl.org/info/docs/tools/vep/script/vep_cache.html) &mdash; this software seems
 to work better with GFF3 provided through [bp_genbank2gff3](https://metacpan.org/dist/BioPerl/view/bin/bp_genbank2gff3) (that is, converted from the full 
 genbank file and removing the embedded FASTA entries at the end) than with GFF3 files downloaded directly from RefSeq...
 
 The VCF files can be generated from the BAM/SAM files, i.e. using reference-based assembly programs like [minimap2](https://github.com/lh3/minimap2) or [bwa](https://github.com/lh3/bwa).
 I particularly like [snippy](https://github.com/tseemann/snippy), which generates not only the BAM alignment and its corresponding `snps.filt.vcf` files, as it annotates the predicted effects with
-`snpEff` into the `snps.vcf` files. Although the directories from the indivudal samples have relevant information,
-please keep in mind that the "core SNPs" and [further analyses from snippy-multi](https://github.com/tseemann/snippy#core-snp-phylogeny) by design will exclude most information from the HTs.
+`snpEff` into the `snps.vcf` files. 
+Although the directories from the indivudal samples have relevant information, 
+please keep in mind that the "core SNPs" and [further analyses from snippy-multi](https://github.com/tseemann/snippy#core-snp-phylogeny) 
+by design will exclude most information from the HTs (which are indels). 
 
-Tatajuba outputs a BED file with the genomic regions of interest (i.e. HTs variable across samples). 
-Tatajuba cannot be used as a variant caller
-or aligner since (1) it does not use the full information available on the `fastq` files, focusing only on HTs and
+Tatajuba outputs a BED file with the genomic regions of interest (i.e. HTs variable across samples).
+Tatajuba cannot be used as a variant caller or aligner since (1) it does not use the full information available on 
+the `fastq` files, focusing only on HTs and
 neglecting many SNPs; (2) it processes and splits the reads before mapping to the reference genome &mdash; in particular 
 one read segment can belong to several HTs (as part of their flanking region, for instance), and one HT can contain
 variable segments (flanking regions _and_ HT length). 
 
-However incorporating tatajuba in your pipeline will help pinpointing variable HTs across samples, excluding potentially
+Having said that, tatajuba does offer the possiblity of generating a minimalist VCF files for each sample, based on the HT results. It does
+not contain all variants, as explained above, and it does not use a `pileup` strategy (it uses the HT to "anchor" the
+sample to the reference), but it can be used to extract the variant effect around the HT regions (with the tools
+described above).
+The VCF files in tatajuba are still experimental, but we have been successful in using it as input to `snpEff`.
+
+In any case, incorporating tatajuba in your pipeline will help pinpointing variable HTs across samples, excluding potentially
 artefactual ones. It also estimates how many of those are in coding and non-coding regions, from which their length
 differences w.r.t to the reference genome can be used as a proxy to estimate their translational effects. 
 
