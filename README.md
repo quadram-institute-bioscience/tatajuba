@@ -120,8 +120,11 @@ better install the above libs via conda as well (or, you know, updating environm
 The `zlib` library is mandatory, while `liblzma-dev` and `libbz2-dev` are called, respectively, `xz` and `bzip2` on a strict conda environment.
 
 ## Documentation 
-Currently there is a tutorial on the diretory `docs` in jupyter notebook format: [docs/210427.campy_bordetella.ipynb](docs/210427.campy_bordetella.ipynb).
+You can find the documentation on its usage in the [`docs` folder](docs/README.md).
+
 The program gives summary help with `tatajuba` (without arguments) and detailed help with `tatajuba -h`.
+Please feel free [to report any issues](https://github.com/quadram-institute-bioscience/tatajuba/issues) or to request
+clarification if anything is not clear. 
 
 ## Model
 At the lowest level (C `struct`), the homopolymeric tracts are stored as the two flanking k-mers (called "context" here) and the base
@@ -186,6 +189,8 @@ outdated. Here is a list of common pitfalls.
   `per_sample*` or `tract_llist.tsv`). 
 * As of 2020.08.01, the conda/singularity versions (1.0.3) use a lot of memory. This has been fixed if you use the source
   code.
+
+Please use github [to report any issues](https://github.com/quadram-institute-bioscience/tatajuba/issues).
 
 ## License
 SPDX-License-Identifier: GPL-3.0-or-later
