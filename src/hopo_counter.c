@@ -86,7 +86,7 @@ distance_between_context_kmer_pair_with_edit_shift (uint64_t *c1, uint64_t *c2, 
   int i, best1 = 0xffffff, best2 = 0xffffff, dist = 0, n_shift = 7;
 
   for (i = 0; (i < n_shift) && (best1 > 0); i++) { // left context
-    dist  = 0;
+    dist  = (int) shift[i][3]/2; // edit cost of shift
     d = ((c1[0] >> shift[i][0]) ^ (c2[0] >> shift[i][1])) & (~0ULL >> shift[i][3]); // XOR is one if bits are different, zero o.w. 
     while (d) { if (d & 3) dist++; d >>= 2; } // every two bits, check if there is any difference
     if (best1 > dist) {
@@ -98,7 +98,7 @@ distance_between_context_kmer_pair_with_edit_shift (uint64_t *c1, uint64_t *c2, 
     }
   }
   for (i = 0; (i < n_shift) && (best2 > 0); i++) { // right context
-    dist  = 0;
+    dist  = (int) shift[i][3]/2; // edit cost of shift
     d = ((c1[1] >> shift[i][0]) ^ (c2[1] >> shift[i][1])) & (~0ULL >> shift[i][3]); // XOR is one if bits are different, zero o.w. 
     while (d) { if (d & 3) dist++; d >>= 2; } // every two bits, check if there is any difference
     if (best2 > dist) {
