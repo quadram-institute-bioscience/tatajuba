@@ -33,6 +33,11 @@ Tatajuba (_Bagassa guianensis_) is a South American tree, also known as Tatajub√
 It means "yellow fire" in [Tupi](https://en.wikipedia.org/wiki/Tupi_language).
 
 ## Installation
+
+Currently the software has been tested exclusively on linux systems, but hopefully you can run it on other systems through the [singularity](#singularity)
+and [docker](#docker) containers. 
+If you have any tips for successfull usage in other systems, [do let us know](https://github.com/quadram-institute-bioscience/tatajuba/issues).
+
 ### Conda
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/tatajuba/badges/platforms.svg)](https://anaconda.org/bioconda/tatajuba)
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/tatajuba/badges/latest_release_date.svg)](https://anaconda.org/bioconda/tatajuba)
@@ -177,12 +182,13 @@ outdated. Here is a list of common pitfalls.
 * tatajuba relies on OpenMP 4.5, which is supported [on GCC6 or newer](https://www.openmp.org/resources/openmp-compilers-tools/). 
   This means that [even the conda version might fail if your system library is older than that
 ](https://stackoverflow.com/questions/62098781/is-it-possible-to-use-a-different-gcc-version-inside-a-conda-environment#comment109969669_62098781).
+* We have tested it exclusively on linux systems, and making it more portable to Mac or Windows is not a priority.
 * the program will refuse to run on only one sample (since it compares differences between samples). However, it will
   run if more samples are given but only one has mapped HTs &mdash; in practice, equivalent to running on one sample since
   it discards samples without any HTs mapped to the reference. In this case the program will fail at the very end (you
   may have some output). I am treating this as a bug.
 * The program should produce error messages; however I've seen it failing without notice. One particular case is when it
-  runs out of memory (it is killed by the system).
+  runs out of memory (it is killed by the system). It needs at least 8GB of memory. 
 * The files `selected_tracts_{annotated/unknown}.tsv` are being used for debug purposes, but will be soon replaced by a
   more useful `per_sample`-like file. In particular the locations do not correspond to the `tract_id` locations &mdash; if you
   currently want to use these files, please use the `tract_id` for mapping to the correct locations (available in files

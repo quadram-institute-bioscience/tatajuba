@@ -37,7 +37,7 @@ initialise_vcf_file (char *outdir, char *name)
 {
   file_compress_t vcf = NULL;
   size_t buffer_size = 8192;
-  char *s = biomcmc_malloc (buffer_size * sizeof (char));
+  char *ps, *s = biomcmc_malloc (buffer_size * sizeof (char));
 
   memset (s, '\0', sizeof (char) * buffer_size); // strcat starts at first null char 
   strcpy (s, outdir);
@@ -46,6 +46,7 @@ initialise_vcf_file (char *outdir, char *name)
 #ifdef HAVE_ZLIB
   strcat (s, ".gz"); // by adding suffix create_compress() can guess the library to use
 #endif
+  for (ps = s; *ps != '\0'; ps++) if ((*ps == '/') || (*ps == '"') || (*ps == '\'') || (*ps == ' ') || (*ps == '\\')) *ps = '_'; 
   vcf = biomcmc_create_compress_from_suffix (s); 
 
   memset (s, '\0', sizeof (char) * buffer_size);
@@ -204,13 +205,15 @@ find_ref_alt_ht_variants_from_strings (char *ref, char *alt, genome_set_t g, con
   // finds identical suffix and prefix (identical sequences were already skipped above, since they would have same HT size)
   if (!common_prefix_suffix_lengths_from_strings (ref + ht_ref, (size_t) len_ref, alt + ht_alt, (size_t) len_alt, l)) return -1;
 
-  printf("DEBUG:: %s  %s\nDEBUG:: %s  %s\ttid_%06d %4d %4d\n", ref, ref+ht_ref-1, alt, alt+ht_alt-1, concat->tract_id, l[0], l[1]);
+  //printf("DEBUG:: %s  %s\nDEBUG:: %s  %s\ttid_%06d %4d %4d\n", ref, ref+ht_ref-1, alt, alt+ht_alt-1, concat->tract_id, l[0], l[1]);
   if (l[0] > 0) { // same base, thus an HT or a monomer in ref genome
-    int start = ht_ref + l[0] - 1; // "-1" since we start at last base in common
-    for (j = 0, i = start; i < (ht_ref + len_ref - l[1]); j++, i++) ref[j] = ref[i];
+    int start = ht_ref + l[0] - 1, // "-1" since we start at last base in common
+        end = ht_ref + len_ref - l[1];
+    for (j = 0, i = start; i < end; j++, i++) ref[j] = ref[i];
     ref[j] = '\0';
     start = ht_alt + l[0] - 1; // "-1" since we start at last base in common
-    for (j = 0, i = start; i < (ht_alt + len_alt - l[1]); j++, i++) alt[j] = alt[i];
+    end   = ht_alt + len_alt - l[1];
+    for (j = 0, i = start; i < end; j++, i++) alt[j] = alt[i];
     alt[j] = '\0';
     return tref.ht_location + l[0]; // minus one since we start at common base, however vcf is one-based (thus plus one)
   }
