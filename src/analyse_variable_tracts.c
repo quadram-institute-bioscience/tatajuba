@@ -46,7 +46,8 @@ initialise_vcf_file (char *outdir, char *name)
 #ifdef HAVE_ZLIB
   strcat (s, ".gz"); // by adding suffix create_compress() can guess the library to use
 #endif
-  for (ps = s; *ps != '\0'; ps++) if ((*ps == '/') || (*ps == '"') || (*ps == '\'') || (*ps == ' ') || (*ps == '\\')) *ps = '_'; 
+  // replace dir structure by "_" AFTER outdir 
+  for (ps = s + strlen(outdir); *ps != '\0'; ps++) if ((*ps == '/') || (*ps == '"') || (*ps == '\'') || (*ps == ' ') || (*ps == '\\')) *ps = '_'; 
   vcf = biomcmc_create_compress_from_suffix (s); 
 
   memset (s, '\0', sizeof (char) * buffer_size);
