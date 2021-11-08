@@ -4,7 +4,7 @@
 
 #include "analyse_variable_tracts.h"
 
-file_compress_t initialise_vcf_file (char *outdir, char *name);
+file_compress_t initialise_vcf_file (char *outdir, char *name, genome_set_t g);
 void update_vcf_file_from_context_histogram_pilot (genome_set_t g, context_histogram_t concat, file_compress_t vcf);
 void update_vcf_file_from_context_histogram (genome_set_t g, context_histogram_t concat, file_compress_t vcf);
 int  get_next_ht_location_from_same_contig (genome_set_t g, context_histogram_t concat);
@@ -23,7 +23,7 @@ generate_vcf_files (genome_set_t g)
   biomcmc_warning ("ZLIB library not installed, will sabe VCF files uncompressed\n");
 #endif
 
-  for (i = 0; i < g->n_genome; i++) vcf[i] = initialise_vcf_file (g->genome[0]->opt.outdir, g->genome[i]->name);
+  for (i = 0; i < g->n_genome; i++) vcf[i] = initialise_vcf_file (g->genome[0]->opt.outdir, g->genome[i]->name, g);
 
   for (i = 0; i < g->tract->n_var; i++) for (j = g->tract->var_initial[i]; j < g->tract->var_final[i]; j++) {
     update_vcf_file_from_context_histogram (g, g->tract->concat[j], vcf[ g->tract->concat[j]->index ]);
@@ -33,11 +33,14 @@ generate_vcf_files (genome_set_t g)
 }
 
 file_compress_t
-initialise_vcf_file (char *outdir, char *name)
+initialise_vcf_file (char *outdir, char *name, genome_set_t g)
 {
   file_compress_t vcf = NULL;
   size_t buffer_size = 8192;
   char *ps, *s = biomcmc_malloc (buffer_size * sizeof (char));
+  char   **contig_id = g->genome[0]->opt.gff->seqname->string; // contig names and lengths, for bcftools 
+  size_t *contig_len = g->genome[0]->opt.gff->sequence->nchars;
+  int i;
 
   memset (s, '\0', sizeof (char) * buffer_size); // strcat starts at first null char 
   strcpy (s, outdir);
@@ -53,6 +56,14 @@ initialise_vcf_file (char *outdir, char *name)
   memset (s, '\0', sizeof (char) * buffer_size);
   sprintf (s, "##fileformat=VCFv4.2\n##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n##INFO=<ID=TID,Number=A,Type=String,Description=\"tract ID\">\n");
   biomcmc_write_compress (vcf, s);
+
+  //bcftools complains of missing  ##contig=<ID=chr1,length=135006516>
+  for (i = 0; i < g->genome[0]->opt.gff->sequence->nstrings; i++) {
+    memset (s, '\0', sizeof (char) * buffer_size);
+    sprintf (s, "##contig=<ID=%s,length=%zu>\n", contig_id[i], contig_len[i]);
+    biomcmc_write_compress (vcf, s);
+  }
+
   memset (s, '\0', sizeof (char) * buffer_size);
   sprintf (s, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t%s\n",name);
   biomcmc_write_compress (vcf, s);

@@ -16,3 +16,4 @@ libtool
 install-sh
 **/Makefile
 **/Makefile.in*
+docs/example_tutorial/*

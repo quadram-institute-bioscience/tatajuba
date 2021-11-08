@@ -196,7 +196,8 @@ outdated. Here is a list of common pitfalls.
 * As of 2020.08.01, the conda/singularity versions (1.0.3) use a lot of memory. This has been fixed if you use the source
   code.
 
-Please use github [to report any issues](https://github.com/quadram-institute-bioscience/tatajuba/issues).
+Please use github [to report any issues](https://github.com/quadram-institute-bioscience/tatajuba/issues), and to see
+which issues are being addressed.
 
 ## License
 SPDX-License-Identifier: GPL-3.0-or-later

@@ -141,7 +141,24 @@ the HTs using `snpEff` ([more on that below](#mutational-effect)).
 The VCF file is minimalistic, since it does not have most information one would expect (for that, as [we explain below](#mutational-effect),
 please use well-known, traditional tools). 
 It is also not very economical in describing the changes, since it may include the right flanking region (if it contains
-SNPs. for instance).
+SNPs for instance). 
+I believe `bcftools norm -m` can fix this.
+
+The VCF files are compressed with the zlib library (which produces standard gzipped files), but keep in mind that `bcftools` 
+requires its own BGZF library, which is an extension of zlib. 
+You can interconvert them with `bgzip`, and currently [this is flagged as an issue](https://github.com/quadram-institute-bioscience/tatajuba/issues/3),
+although I do not plan on importing the BGZF library to tatajuba. 
+By the way tatajuba only generates gzipped files if the library can be found, otherwise it creates uncompressed, text
+files. 
+
+Also, the rows in the VCF file might be out of
+order (for overlapping HTs, for instance). This can be fixed with `bcftools norm` or by hand with something like
+
+```
+(head -n 5 in.vcf && tail -n +5 in.vcf | sort -nk 2) > out.file  # skipping first 5 or so lines that we don't want sorted
+```
+
+But again, even with these bcftools-related issues, the VCF files work with `snpEff`.
 
 ### list of HTs
 The file `tract_list.tsv` contains information regarding all tracts, even those that are constant across samples (i.e.
@@ -207,10 +224,14 @@ Furthermore, the contig/chromosome information is not output and thus the `begin
 is comprised of a single FASTA entry. So if you want to use the information in these files it is better at the moment to merge its info
 with the other files, using the `tract_id` as primary key. 
 
-### Which files to use, then
+## Final comments on output 
 The most commonly used information from these files is probably from files `per_sample_average_length.tsv` (wich can be load and analysed through R) and
 `variable_tracts.bed` (to integrate tatajuba in bioinformatic pipelines). The `selected_tracts_` files should not be
 used in most cases, unless you know what you are doing. 
+
+The variable tracts are those whose length or distribution depart from the reference, are variable enough between the samples, or are absent from at least one sample.
+Thus even if all tracts have same length as the reference, they may be marked as "variable" (thus appearing in BED file and `per_sample_` tables). 
+The VCF file will skip them, however, since there is no variant to report for that sample! 
 
 There is some important information which is output to the terminal, like how many HTs could be mapped to the reference
 genome. So it is suggested to capture this putput to a file:
@@ -225,6 +246,13 @@ message is harmless to its execution, but it may indicate a missing/poor referen
 contamination, a mixture of strains or perhaps a plasmid?
 
 # Tutorial
+
+[Here is a hands-on tutorial](tutorial.md) on how to run tatajuba, and how to analyse its output. 
+You can also download all files necessary for this example on [example_tutorial.txz](example_tutorial.txz).
+It is archived with `tar+xz`, that is after downloading you need to 
+```
+tar Jxvf example_tutorial.txz
+```
 
 The file [210427.campy_bordetella.ipynb](210427.campy_bordetella.ipynb) contains the `jupyter` notebook for the
 *Campylobacter* and *Bordetella* homopolymer tract analyses for the manuscript
@@ -258,7 +286,7 @@ genbank file and removing the embedded FASTA entries at the end) than with GFF3 
 The VCF files can be generated from the BAM/SAM files, i.e. using reference-based assembly programs like [minimap2](https://github.com/lh3/minimap2) or [bwa](https://github.com/lh3/bwa).
 I particularly like [snippy](https://github.com/tseemann/snippy), which generates not only the BAM alignment and its corresponding `snps.filt.vcf` files, as it annotates the predicted effects with
 `snpEff` into the `snps.vcf` files. 
-Although the directories from the indivudal samples have relevant information, 
+Although the directories from the individual samples have relevant information, 
 please keep in mind that the "core SNPs" and [further analyses from snippy-multi](https://github.com/tseemann/snippy#core-snp-phylogeny) 
 by design will exclude most information from the HTs (which are indels). 
 
