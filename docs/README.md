@@ -1,3 +1,17 @@
+# Tutorial
+
+[Here is a hands-on tutorial](tutorial.md) on how to run tatajuba, and how to analyse its output. 
+You can also download all files necessary for this example on [example_tutorial.txz](example_tutorial.txz).
+It is archived with `tar+xz`, that is after downloading you need to 
+```
+tar Jxvf example_tutorial.txz
+```
+
+The file [210427.campy_bordetella.ipynb](210427.campy_bordetella.ipynb) contains the `jupyter` notebook for the
+*Campylobacter* and *Bordetella* homopolymer tract analyses for the manuscript
+https://doi.org/10.1101/2021.06.02.446710. 
+
+The [main README file](../README.txt) contains installation instructions. 
 
 # Usage
 
@@ -244,19 +258,6 @@ unmapped.
 Tatajuba also outputs some warning messages, usually about a sample with more unmapped HTs than mapped ones. This
 message is harmless to its execution, but it may indicate a missing/poor reference for this sample, or an excess of
 contamination, a mixture of strains or perhaps a plasmid?
-
-# Tutorial
-
-[Here is a hands-on tutorial](tutorial.md) on how to run tatajuba, and how to analyse its output. 
-You can also download all files necessary for this example on [example_tutorial.txz](example_tutorial.txz).
-It is archived with `tar+xz`, that is after downloading you need to 
-```
-tar Jxvf example_tutorial.txz
-```
-
-The file [210427.campy_bordetella.ipynb](210427.campy_bordetella.ipynb) contains the `jupyter` notebook for the
-*Campylobacter* and *Bordetella* homopolymer tract analyses for the manuscript
-https://doi.org/10.1101/2021.06.02.446710. 
 
 ## Mutational effect
 
