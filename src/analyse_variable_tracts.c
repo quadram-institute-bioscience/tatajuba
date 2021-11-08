@@ -207,10 +207,10 @@ find_ref_alt_ht_variants_from_strings (char *ref, char *alt, genome_set_t g, con
   //printf("DEBUG:: %s  %s\nDEBUG:: %s  %s\ttid_%06d %4d %4d\n", ref, ref+ht_ref-1, alt, alt+ht_alt-1, concat->tract_id, l[0], l[1]);
   if (l[0] > 0) { // same base, thus an HT or a monomer in ref genome
     int start = ht_ref + l[0] - 1; // "-1" since we start at last base in common
-    for (j = 0, i = start; j < len_ref - l[1]; j++, i++) ref[j] = ref[i];
+    for (j = 0, i = start; j < len_ref - l[1] -1; j++, i++) ref[j] = ref[i];
     ref[j] = '\0';
     start = ht_alt + l[0] - 1; // "-1" since we start at last base in common
-    for (j = 0, i = start; j < len_alt - l[1]; j++, i++) alt[j] = alt[i];
+    for (j = 0, i = start; j < len_alt - l[1] -1; j++, i++) alt[j] = alt[i];
     alt[j] = '\0';
     return tref.ht_location + l[0]; // minus one since we start at common base, however vcf is one-based (thus plus one)
   }
