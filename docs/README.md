@@ -2,7 +2,7 @@
 
 [Here is a hands-on tutorial](tutorial.md) on how to run tatajuba, and how to analyse its output. 
 You can also download all files necessary for this example on [example_tutorial.txz](example_tutorial.txz).
-It is archived with `tar+xz`, that is after downloading you need to 
+It is archived with `tar` and `xz`, which means that after downloading you need to 
 ```
 tar Jxvf example_tutorial.txz
 ```
