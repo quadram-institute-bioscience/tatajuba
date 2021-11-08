@@ -204,13 +204,13 @@ find_ref_alt_ht_variants_from_strings (char *ref, char *alt, genome_set_t g, con
   // finds identical suffix and prefix (identical sequences were already skipped above, since they would have same HT size)
   if (!common_prefix_suffix_lengths_from_strings (ref + ht_ref, (size_t) len_ref, alt + ht_alt, (size_t) len_alt, l)) return -1;
 
-  //printf("DEBUG:: %s  %s\nDEBUG:: %s  %s\ttid_%06d %4d %4d\n", ref, ref+ht_ref-1, alt, alt+ht_alt-1, concat->tract_id, l[0], l[1]);
+  printf("DEBUG:: %s  %s\nDEBUG:: %s  %s\ttid_%06d %4d %4d\n", ref, ref+ht_ref-1, alt, alt+ht_alt-1, concat->tract_id, l[0], l[1]);
   if (l[0] > 0) { // same base, thus an HT or a monomer in ref genome
     int start = ht_ref + l[0] - 1; // "-1" since we start at last base in common
-    for (j = 0, i = start; j < len_ref - l[1] -1; j++, i++) ref[j] = ref[i];
+    for (j = 0, i = start; i < (ht_ref + len_ref - l[1]); j++, i++) ref[j] = ref[i];
     ref[j] = '\0';
     start = ht_alt + l[0] - 1; // "-1" since we start at last base in common
-    for (j = 0, i = start; j < len_alt - l[1] -1; j++, i++) alt[j] = alt[i];
+    for (j = 0, i = start; i < (ht_alt + len_alt - l[1]); j++, i++) alt[j] = alt[i];
     alt[j] = '\0';
     return tref.ht_location + l[0]; // minus one since we start at common base, however vcf is one-based (thus plus one)
   }

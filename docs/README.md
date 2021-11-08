@@ -164,9 +164,12 @@ base), followed by the right flanking region, as in:
 ```
 TCCAATTCCGTATTCTCAACAGCTCCAA.G.CCAGCGGTACGTGCCACGCGTGCCCAAG
 ```
-The HT in `tract` is the most similar amongst samples and reads, for that particular HT. (See above for explanation of
+The HT in `tract` is the most similar amongst samples and reads, for that particular HT, and may not be the most common
+(highest coverage) for any sample. (See above for explanation of
 possibility of several HTs mapping to same region in reference).
-We call the flanking regions "context" in tatajuba.
+Thus in theory you may find a case where `tract` and `ref_tract` are identical in file `tract_list.tsv`, however the most common HTs are different for 
+some samples (or even all samples, if the identical version is a "minor variant").
+We call the flanking regions "context" in tatajuba (thus you may see both terms interchangeably used).
 
 It is worth remembering that only HTs that are mapped to the reference genome (or genomes, contigs, or chromosomes) are
 analysed by tatajuba.
