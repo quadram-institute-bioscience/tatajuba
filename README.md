@@ -30,7 +30,7 @@ bioRxiv 2021.06.02.446710; doi: https://doi.org/10.1101/2021.06.02.446710
 
 #### Name
 Tatajuba (_Bagassa guianensis_) is a South American tree, also known as Tatajubá, Tatajuva, Garrote, Totajuba.
-It means "yellow fire" in [Tupi](https://en.wikipedia.org/wiki/Tupi_language).
+It means "yellow fire" (_tataîub_) or "fire tree" (_tataýua_) in [Tupi](https://en.wikipedia.org/wiki/Tupi_language).
 
 ## Installation
 
