@@ -152,27 +152,31 @@ depicted in the figure below.
 
 <img src="recipe/200322_002.png" height="160" alt="context-histogram" align="middle">
 
-Once this histogram is complete we search for this tract (i.e. homopolymer plus flanking regions) on the reference
+Once this histogram is complete we search for this homopolymeric tract (HT, i.e. homopolymer plus flanking regions) on the reference
 genome, by using a typical length (a typical length would be _3_ for the figure above).
-Tatajubá also tries to merge histograms if they may represent the same tract both before and after the reference genome
-mapping.
+Tatajubá also tries to merge histograms if they represent the same tract both before and after the reference genome
+mapping and are still similar enough.
 *Before* mapping it tries to find contexts that are quite similar (and thus could represent the same tract). 
 The parameter `maxdist` will control up to how may mismatches (per flanking region) are considered the same context.
 *After* mapping we may notice very close tracts, which may in fact be the same tract but with indels in the flanking
-regions. 
+regions.
+
 The parameter `leven` decides the maximum Levenshtein distance between contexts for such neighbouring tracts to be
-considered the same. 
-If in your results you see tracts just a few bases apart, try increasing the `leven` value. My suggestion is that both
-parameters are kept as low as possible (less than two). 
+considered the same.
+If in your results you see overlapping tracts, i.e. mapped to the same reference location, you can try increasing the `leven` value. 
+However my advice is to keep both parameters are kept as low as possible (less than two), since it is better for you to
+be able to pinpoint locations with more variability than to have everything lumped into one HT. (tatajuba does not
+report on the variability in contexts).
 As a side note, the Levenshtein distance is slower to calculate, while the pre-mapping mismatch has to be done between
-all pairs and not only neighbours.
+all pairs and not only neighbours (_n_<sup>2</sup> instead of _n_). But both are still pretty fast in the grand scheme
+of things.
 
 By the way, histograms with very low frequency (representing contexts+tracts observed very rarely in the fastq file) are
 excluded, assuming they represent sequencing errors. This is controlled by the parameter `minreads`. The default is
 currenlty _3_ (any tract observed in less than _3_ reads is discarded).
 
-Currently our measure of dispersion (used to find tracts most variable across genomes) is the *relative difference of
-ranges* (similar to the coefficient of range), defined here as (MAX-MIN)/MAX.
+Currently our measures of dispersion (used to find tracts most variable across genomes) are the *absolute* and *relative difference of
+ranges* (similar to the coefficient of range), defined here as (MAX-MIN) and (MAX-MIN)/MAX respectively.
 
 ## Troubleshooting
 
