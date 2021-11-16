@@ -91,12 +91,12 @@ to define a directory where all output files will reside. Thus your command woul
 
 ```bash
 tatajuba -p -g reference.gff -f reference.fasta -o outdir -k 28 -i 8 -V \
-  sampleA_forw.fastq.gz sampleA_rev.fastq.gz \
-  sampleB_forw.fastq.gz sampleB_rev.fastq.gz \
-  sampleC_forw.fastq.gz sampleC_rev.fastq.gz \
+                             sampleA_forw.fastq.gz sampleA_rev.fastq.gz \
+                             sampleB_forw.fastq.gz sampleB_rev.fastq.gz \
+                             sampleC_forw.fastq.gz sampleC_rev.fastq.gz
 ```
 
-I am also asking tatajuba to generate individual VCF files. All output will go into the directory `outdir/`.
+This command also asks tatajuba to generate individual VCF files (`-V`). All output will go into the directory `outdir/`.
 You should never use the option `-b` (`--keep_bias`) unless you know what you are doing, since it will keep even the
 tracts that were sequenced only in one strand and never in the other (a strong indicator that the tract length may be
 spurious).
