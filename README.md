@@ -139,7 +139,13 @@ checking for library containing BZ2_bzlibVersion... no
 ```
 
 ## Documentation 
-You can find the documentation on its usage in the [`docs` folder](docs/README.md).
+
+You can find the documentation in the [`docs` folder](docs/). In particular:
+
+* [general user instructions and detailed description of output files](docs/README.md).
+* [a tutorial using an example data set](docs/tutorial.md).
+* [a Jupyter notebook showing how to analyse its output](docs/211108.figures_snippy_comparison.ipynb).
+
 
 The program gives summary help with `tatajuba` (without arguments) and detailed help with `tatajuba -h`.
 Please feel free [to report any issues](https://github.com/quadram-institute-bioscience/tatajuba/issues) or to request
