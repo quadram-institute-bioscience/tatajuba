@@ -1,4 +1,6 @@
-# Tutorial
+# Usage instructions
+
+### See also: Tutorial
 
 [Here is a hands-on tutorial](tutorial.md) on how to run tatajuba, and how to analyse its output. 
 You can also download all files necessary for this example on [example_tutorial.txz](example_tutorial.txz).
@@ -7,9 +9,15 @@ It is archived with `tar` and `xz`, which means that after downloading you need 
 tar Jxvf example_tutorial.txz
 ```
 
-The file [210427.campy_bordetella.ipynb](210427.campy_bordetella.ipynb) contains the `jupyter` notebook for the
-*Campylobacter* and *Bordetella* homopolymer tract analyses for the manuscript
+### See also: Supplementary material for the manuscript 
+
+The file [211108.figures_snippy_comparison.ipynb](211108.figures_snippy_comparison.ipynb) contains the `jupyter` notebook for the
+updated *Campylobacter* and *Bordetella* homopolymer tract analyses initially for the manuscript
 https://doi.org/10.1101/2021.06.02.446710. 
+You must also download [211108.supplementary_material.txz](211108.supplementary_material.txz) to obtain the output
+files, extra files, and the supplementary tables with the accession IDs of the `fastq` files used in this work.
+
+### See also: Installation instructions
 
 The [main README file](../README.txt) contains installation instructions. 
 
