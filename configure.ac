@@ -57,8 +57,8 @@ AC_SEARCH_LIBS([clock_gettime],[rt])#  clock_gettime function in rt library (lin
 
 #AC_HEADER_STDC # Check for the 15 Standard C (ANSI-C/ISO-C) headers (obsolete, according to autoupdate)
 # Autoupdate added the next two lines to ensure that your configure script's behavior did not change.  They are probably safe to remove.
-AC_CHECK_INCLUDES_DEFAULT
-AC_PROG_EGREP
+#AC_CHECK_INCLUDES_DEFAULT
+#AC_PROG_EGREP
 
 AC_CHECK_HEADERS(unistd.h sys/time.h sys/times.h) # Check for additional headers
 dnl will add lines #define SIZEOF_INT to config.h etc.

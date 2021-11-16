@@ -154,7 +154,7 @@ In this example we are annotating all variants, across all samples since we are 
 above](#merging-all-variants-from-the-vcf-file).
 
 
-## Concatenating all variants from the VCF file
+## Concatenating all variants from the VCF files
 
 In this example we assume you want to have a summary of all variants across all samples (to get all possible mutational
 effects, for instance). 
