@@ -124,6 +124,20 @@ The libraries rely on `pkg-config` to find their location: if your `pkg-config` 
 better install the above libs via conda as well (or, you know, updating environmental variables etc).
 The `zlib` library is mandatory, while `liblzma-dev` and `libbz2-dev` are called, respectively, `xz` and `bzip2` on a strict conda environment.
 
+The output below shows an excerpt of `configure`'s output, where we can see that the `zlib` library was found, but not `liblzma-dev` (`LZMA`) 
+or `libbz2-dev` (`bzlib.h`):
+
+```
+checking for ZLIB... yes
+checking for LZMA... no
+configure: optional lzma headers not found
+checking bzlib.h usability... no
+checking bzlib.h presence... no
+checking for bzlib.h... no
+configure: optional bzip2 headers not found
+checking for library containing BZ2_bzlibVersion... no
+```
+
 ## Documentation 
 You can find the documentation on its usage in the [`docs` folder](docs/README.md).
 
