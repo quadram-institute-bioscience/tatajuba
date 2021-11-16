@@ -136,8 +136,8 @@ and is estimated if the HT cannot be found.
 
 It is possible for more than one HT (as defined by its `tid_`) to share the same location, if tatajuba finds more than
 one set of HTs (i.e. tract+contexts) mapping to the same reference genome but which are deemed too dissimilar (by the
-edit distance between them). One example is the HT `CCGG`<b>AAAAA</b>`TTCC` (track represented in bold, only fraction of
-context is shown) found in both the reference and some samples. However some samples may furthermore have  a HT `CCGG`<b>AAA</b>`TAAATTCC`, 
+edit distance between them). One example is the HT _CCGG<b>AAAAA</b>TTCC_ (track represented in bold, only fraction of
+context is shown) found in both the reference and some samples. However some samples may furthermore have  a HT _CCGG<b>AAA</b>TAAATTCC_, 
 which maps (aligns optimally) to same HT as before, but which cannot be merged since the flanking region is quite different (and we have an insertion 
 within the tract). Tatajuba conservatively treats them as distinct HTs sharing the same location in the reference.
 
