@@ -251,12 +251,12 @@ And finally it outputs the timings accumulated over threads (i.e. how much it wo
 The first thing we notice is that the BWA library generated a few index files based on the fasta file:
 ```console
 ubuntu@local$ ls -l GCF_000148705.1_ASM14870v1_genomic.fna*
-lrwxrwxrwx 1 deolivl QIB_fr005      23 Nov  8 09:47 GCF_000148705.1_ASM14870v1_genomic.fna -> data/campy/sequences.fa
--rw-r--r-- 1 deolivl QIB_fr005      12 Nov  8 10:07 GCF_000148705.1_ASM14870v1_genomic.fna.amb
--rw-r--r-- 1 deolivl QIB_fr005      96 Nov  8 10:07 GCF_000148705.1_ASM14870v1_genomic.fna.ann
--rw-r--r-- 1 deolivl QIB_fr005 1616748 Nov  8 10:07 GCF_000148705.1_ASM14870v1_genomic.fna.bwt
--rw-r--r-- 1 deolivl QIB_fr005  404164 Nov  8 10:07 GCF_000148705.1_ASM14870v1_genomic.fna.pac
--rw-r--r-- 1 deolivl QIB_fr005  808376 Nov  8 10:07 GCF_000148705.1_ASM14870v1_genomic.fna.sa
+lrwxrwxrwx 1 ubuntu ubuntu      23 Nov  8 09:47 GCF_000148705.1_ASM14870v1_genomic.fna -> data/campy/sequences.fa
+-rw-r--r-- 1 ubuntu ubuntu      12 Nov  8 10:07 GCF_000148705.1_ASM14870v1_genomic.fna.amb
+-rw-r--r-- 1 ubuntu ubuntu      96 Nov  8 10:07 GCF_000148705.1_ASM14870v1_genomic.fna.ann
+-rw-r--r-- 1 ubuntu ubuntu 1616748 Nov  8 10:07 GCF_000148705.1_ASM14870v1_genomic.fna.bwt
+-rw-r--r-- 1 ubuntu ubuntu  404164 Nov  8 10:07 GCF_000148705.1_ASM14870v1_genomic.fna.pac
+-rw-r--r-- 1 ubuntu ubuntu  808376 Nov  8 10:07 GCF_000148705.1_ASM14870v1_genomic.fna.sa
 ```
 These can be safely ignored, just keep in mind that although they are generated whenever they are missing, there are no clever checks:
 1) if you modify the FASTA file, delete all the index files; 
@@ -270,18 +270,18 @@ The interesting output will be on the directory defined by `--outdir`:
 ```console
 ubuntu@local$ ls -l output_dir/
 total 25876
--rw-r--r-- 1 deolivl QIB_fr005      553 Nov 17 12:22 1.vcf.gz
--rw-r--r-- 1 deolivl QIB_fr005      363 Nov 17 12:22 2.vcf.gz
--rw-r--r-- 1 deolivl QIB_fr005      611 Nov 17 12:22 4.vcf.gz
--rw-r--r-- 1 deolivl QIB_fr005      644 Nov 17 12:22 5.vcf.gz
--rw-r--r-- 1 deolivl QIB_fr005      590 Nov 17 12:22 7.vcf.gz
--rw-r--r-- 1 deolivl QIB_fr005  2889267 Nov 17 12:22 per_sample_average_length.tsv
--rw-r--r-- 1 deolivl QIB_fr005  2889264 Nov 17 12:22 per_sample_modal_frequency.tsv
--rw-r--r-- 1 deolivl QIB_fr005  3333041 Nov 17 12:22 per_sample_proportional_coverage.tsv
--rw-r--r-- 1 deolivl QIB_fr005  4646987 Nov 17 12:22 selected_tracts_annotated.tsv
--rw-r--r-- 1 deolivl QIB_fr005   324805 Nov 17 12:22 selected_tracts_unknown.tsv
--rw-r--r-- 1 deolivl QIB_fr005 10453789 Nov 17 12:22 tract_list.tsv
--rw-r--r-- 1 deolivl QIB_fr005  1921778 Nov 17 12:22 variable_tracts.bed
+-rw-r--r-- 1 ubuntu ubuntu      553 Nov 17 12:22 1.vcf.gz
+-rw-r--r-- 1 ubuntu ubuntu      363 Nov 17 12:22 2.vcf.gz
+-rw-r--r-- 1 ubuntu ubuntu      611 Nov 17 12:22 4.vcf.gz
+-rw-r--r-- 1 ubuntu ubuntu      644 Nov 17 12:22 5.vcf.gz
+-rw-r--r-- 1 ubuntu ubuntu      590 Nov 17 12:22 7.vcf.gz
+-rw-r--r-- 1 ubuntu ubuntu  2889267 Nov 17 12:22 per_sample_average_length.tsv
+-rw-r--r-- 1 ubuntu ubuntu  2889264 Nov 17 12:22 per_sample_modal_frequency.tsv
+-rw-r--r-- 1 ubuntu ubuntu  3333041 Nov 17 12:22 per_sample_proportional_coverage.tsv
+-rw-r--r-- 1 ubuntu ubuntu  4646987 Nov 17 12:22 selected_tracts_annotated.tsv
+-rw-r--r-- 1 ubuntu ubuntu   324805 Nov 17 12:22 selected_tracts_unknown.tsv
+-rw-r--r-- 1 ubuntu ubuntu 10453789 Nov 17 12:22 tract_list.tsv
+-rw-r--r-- 1 ubuntu ubuntu  1921778 Nov 17 12:22 variable_tracts.bed
 ```
 First we have the VCF files, one per sample, in **standard** gzip format (which does not have the BGZF extension needed by bcftools).
 
