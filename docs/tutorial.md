@@ -87,14 +87,12 @@ tatajuba (and its documentation) use these words interchangeably.
 As described in the [installation instructions](../README.md) you may have installed tatajuba with conda or from the
 source code. You may even have both, in which case you need to find which one you are using:
 
-```shell
-# show possible locations of the executable
-$ locate bin/tatajuba 
+```console
+ubuntu@home$ locate bin/tatajuba # show possible locations of the executable
 /home/ubuntu/local/bin/tatajuba
 /home/ubuntu/miniconda3/bin/tatajuba
-
-# show which executable is default (i.e. which one is called if you just type "tatajuba")
-$ which tatajuba 
+ubuntu@home$ # show which executable is default (i.e. which one is called if you just type "tatajuba")
+ubuntu@home$ which tatajuba 
 /home/ubuntu/miniconda3/bin/tatajuba
 ```
 
