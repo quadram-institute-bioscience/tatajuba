@@ -344,6 +344,7 @@ tid_000007      158     cds-WP_014516875.1      4       4.00            4.00    
 tid_000008      168     cds-WP_014516875.1      7       7.00            7.00    7.00    7.00
 ```
 
+To see how these files can be further analysed, please take a look at [this jupyter notebook in R](211108.figures_snippy_comparison.ipynb).
 
 # Downstream analyses 
 
