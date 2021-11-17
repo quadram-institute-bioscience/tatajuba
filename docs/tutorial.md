@@ -191,7 +191,7 @@ Non-threaded timing      ::       16.337782 secs
 ```
 
 #### Interpreting the screen output
-```
+```console
 [warning] File 'outdir/' already exists; I'll assume it's a directory. Contents will be overwritten
 [warning] Decreasing number of threads to match number of samples
 ```
@@ -199,7 +199,8 @@ We are first warned that the output directory already exists and therefore the c
 Since we only have five samples and this machine has more than 5 cores, it adjusted the number of threads.
 This is followed by a description of the parameters used, and thus it starts reading the read files in parallel (i.e.
 using several threads). 
-```
+
+```console
 processing file reads/ERR1701029.fastq
 [bwa_aln_from_vector] 24.46399 sec
 reads/ERR1701029.fastq:  21402 found and   7571 context+tracts were not found in reference
@@ -208,7 +209,7 @@ Each sample (single or paired read files) will generate something like the 3 lin
 the file(s), then to let us know that it ran BWA-aln (this output is legacy from the original code), and finally how
 many HTs it found in the reference genomes and how many were not found (and thus will be discarded). 
 If less than half of the detected HTs were mapped to the reference genomes, then a warning is given:
-```
+```console
 [warning] 123423 out of 215558 (more than half) context+tracts were not found in reference for sample  reads/ERR999999.fastq
 ```
 In which case you may want to check if you can add another reference for that sample, or if you want to remove it
@@ -220,6 +221,16 @@ processing paired files ERR1701022_1.fastq.gz and ERR1701022_2.fastq.gz
 ```
 And you can verify if tatajuba is using them in the desired order.
 
+```console
+Modifying sample names: Removing prefix 'reads/ERR17010' from sample names.
+Modifying sample names: Removing suffix '9.fastq' from sample names.
+From 63473 tracts, 46969 interesting ones are annotated and 4058 interesting ones are not annotated
+```
+Tatajuba recognises that all files share a prefix and a suffix, and thus removes them.
+The final samples are thus labelled `1`,`2`,`4`,`5`, and `7`, which are the distinct name parts.
+It also describes the total number of HTs, as well as the variable ones (using debug functions).
+
+And finally it outputs the timings accumulated over threads (i.e. how much it would take using one thread) and the real, experienced clock timing.
 
 
 ## The output
