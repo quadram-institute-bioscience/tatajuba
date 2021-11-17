@@ -346,6 +346,68 @@ tid_000008      168     cds-WP_014516875.1      7       7.00            7.00    
 
 To see how these files can be further analysed, please take a look at [this jupyter notebook in R](211108.figures_snippy_comparison.ipynb).
 
+#### Information about a particular tract
+When we looked at the VCF file for sample `1` (originally `ERR1701019.fastq` file), the first HT was
+```console
+#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  1
+NC_017280.1     74439   .       T       TT      .       .       TID=tid_002700  GT      1
+```
+This means that the HT `tid_002700` describes a variant from `T` in the reference to a `TT` in the sample. In other
+words, an insertion.
+By the way, the label `tid_002700` makes sense only within this run.
+
+
+If we want to see how this HT looks like in other samples:
+```console
+ubuntu@local$ head -1 output_dir/per_sample_average_length.tsv && grep tid_002700 output_dir/per_sample_average_length.tsv
+tract_id        location        feature reference       1       2       4       5       7
+tid_002700      74435   unannotated     4       5.00            5.00            5.00
+```
+This means that the tract has length 4 in the reference, and length 5 in samples `1`, `4`, and `7`. It is missing from
+samples `2` and `5`. 
+Notice that the start of the HT is on position 74435 but the VCF reports the modification starting on site 74438 (74439
+minus one if we make it zero-based) which makes sense since the first 4 bases of the homopolymer match.
+
+And what does it look like, in context?
+```console
+ubuntu@local$ head -1 output_dir/tract_list.tsv && grep tid_002700 output_dir/tract_list.tsv
+tract_id        contig_name     feature_type    feature location_in_contig      max_tract_length        ref_tract_length                tract   ref_tract
+tid_002700      NC_017280.1     nc      unannotated     74435   5       4       GTATTTTTAGAGAATAAAATAATAG.T.ATAAATAAATTTTAAAAAATGTATA   GTATTTTTAGAGAATAAAATAATAG.T.ATAAATAAATTTTAAAAAATGTATA
+```
+It is outside a gene (`unannotated`), and the most similar HT (with flanking regions) has the same DNA sequence as the
+reference (last two columns). The longest lenght amongst samples is 5 while the reference has length 4. 
+Actually if we want to find HTs which have distinct flanking regions from the reference, we can:
+```console
+ubuntu@local$ gawk '{if ($8!=$9){print $0}}' output_dir/tract_list.tsv  | head
+tract_id        contig_name     feature_type    feature location_in_contig      max_tract_length        ref_tract_length                tract   ref_tract
+tid_000229      NC_017280.1     nc      unannotated     6573    5       5       ATTTAAATAATTGATTATATTAATC.T.GATTAAAAAAATTAATTATTTTTAT   ATTTAAATAATTGATTATATTAATC.T.GATTAAAAAATTTAATTATTTTTAT
+tid_000230      NC_017280.1     nc      unannotated     6582    7       6       ATTGATTATATTAATCTTTTTGATT.A.TTAATTATTTTTATAATTTTGCATA   ATTGATTATATTAATCTTTTTGATT.A.TTTAATTATTTTTATAATTTTGCAT
+tid_000231      NC_017280.1     nc      unannotated     6596    5       5       TCTTTTTGATTAAAAAAATTAATTA.T.ATAATTTTGCATATTAAAATAAAAT   TCTTTTTGATTAAAAAATTTAATTA.T.ATAATTTTGCATATTAAAATAAAAT
+tid_000232      NC_017280.1     nc      unannotated     6605    4       4       TTAAAAAAATTAATTATTTTTATAA.T.GCATATTAAAATAAAATCATTATAT   TTAAAAAATTTAATTATTTTTATAA.T.GCATATTAAAATAAAATCATTATAT
+tid_002152      NC_017280.1     CDS     cds-CJM1_RS00215        60683   4       4       CAACCACAAAAGAAATAAGCCCTGC.A.CCAAATTGCACCGTTCCAAGCACCG   CAACCACAAAAGAAATAAGCCCTGC.A.CCAAATTGCACCGTTCAAAGCACCG
+tid_002469      NC_017280.1     CDS     cds-CJM1_RS00245        68265   4       4       AAAATTTAACAGAAGAGTTAAATAT.A.GATAAAAAAAACCAAGATAGTTTAA   AAAATTTAACAGAAGAGTTAAATAT.A.GATAAAAAAACCAAGATAGTTTAAA
+tid_002698      NC_017280.1     nc      unannotated     74413   5       5       CGATATAAATTATTTTTATATCGTA.T.AGAGAATAAAATAATAGTTTTTATA   CGATATAAATTATTTTTATATCGTA.T.AGAGAATAAAATAATAGTTTTATAA
+tid_002699      NC_017280.1     nc      unannotated     74425   4       4       TTTTTATATCGTATTTTTAGAGAAT.A.TAATAGTTTTTATAAATAAATTTTA   TTTTTATATCGTATTTTTAGAGAAT.A.TAATAGTTTTATAAATAAATTTTAA
+tid_002701      NC_017280.1     nc      unannotated     74448   4       4       TAAAATAATAGTTTTTATAAATAAA.T.AAAAAATGTATAAAATTTTAACCAA   ATAAAATAATAGTTTTATAAATAAA.T.AAAAAATGTATAAAATTTTAACCAA
+```
+It is hard to visualise from these rows, but if we align the sample and reference for the first HT described (`tid_000229`), we have
+<pre>
+ATTTAAATAATTGATTATATTAATC.T.GATTAAAAAA<b>A</b>TTAATTATTTTTAT <br>
+ATTTAAATAATTGATTATATTAATC.T.GATTAAAAAA<b>T</b>TTAATTATTTTTAT
+</pre>
+
+and for the second (`tid_000230`):
+<pre>
+ATTGATTATATTAATCTTTTTGATT.A.<b>A</b>TTAATTATTTTTATAATTTTGCATA<br>
+ATTGATTATATTAATCTTTTTGATT.A.TTTAATTATTTTTATAATTTTGCAT
+</pre>
+
+Where we can see that they overlap: the right context of `tid_000229` contains the HT `tid_000230`, and the substitution can
+be seen there. 
+Equivalently, the length change in `tid_000230` (from 7 in a sample to 6 in the reference) can be described by the
+substituion from `T` to `A` we've seen in the previous HT. 
+
+
 # Downstream analyses 
 
 ## Annotating the VCF files with variant effect information
