@@ -81,7 +81,9 @@ database on NCBI, since I need both the genomic GFF and the FASTA files with cor
 The [RefSeq](https://www.ncbi.nlm.nih.gov/nuccore/NC_022529.1) database also provides this, as well as obviously prokka
 output.
 The GFF format talks about contigs or chromosomes, which are the genomic FASTA sequences (genome or plasmid). Thus
-tatajuba (and its documentation) use these words interchangeably. 
+tatajuba (and its documentation) use these words interchangeably.
+If you want to use more than one reference genome, you can just concatenate the fasta files into one. For the GFF files
+you may need to remove the first row with the header, and the last row with the `###` when concatenating the files.  
 
 #### The command line
 As described in the [installation instructions](../README.md) you may have installed tatajuba with conda or from the
@@ -188,14 +190,35 @@ Internal (threaded) timer::        0.569195 secs to compare with reference
 Non-threaded timing      ::       16.337782 secs
 ```
 
-#### interpreting the screen output
-
-If you have paired reads, the output lines would look something like
+#### Interpreting the screen output
+```
+[warning] File 'outdir/' already exists; I'll assume it's a directory. Contents will be overwritten
+[warning] Decreasing number of threads to match number of samples
+```
+We are first warned that the output directory already exists and therefore the contents may be overwritten.
+Since we only have five samples and this machine has more than 5 cores, it adjusted the number of threads.
+This is followed by a description of the parameters used, and thus it starts reading the read files in parallel (i.e.
+using several threads). 
+```
+processing file reads/ERR1701029.fastq
+[bwa_aln_from_vector] 24.46399 sec
+reads/ERR1701029.fastq:  21402 found and   7571 context+tracts were not found in reference
+```
+Each sample (single or paired read files) will generate something like the 3 lines above: first to tell it is reading
+the file(s), then to let us know that it ran BWA-aln (this output is legacy from the original code), and finally how
+many HTs it found in the reference genomes and how many were not found (and thus will be discarded). 
+If less than half of the detected HTs were mapped to the reference genomes, then a warning is given:
+```
+[warning] 123423 out of 215558 (more than half) context+tracts were not found in reference for sample  reads/ERR999999.fastq
+```
+In which case you may want to check if you can add another reference for that sample, or if you want to remove it
+(rememering that a tract not present in all samples is automatically considered "variable"). 
+If you have paired reads, the idescriptive line above would look something like
 
 ```console
-processing paired files ERR1701022/ERR1701022_1.fastq.gz and ERR1701022/ERR1701022_2.fastq.gz
+processing paired files ERR1701022_1.fastq.gz and ERR1701022_2.fastq.gz
 ```
-And you can check them to see if tatajuba is using them in the desired order. 
+And you can verify if tatajuba is using them in the desired order.
 
 
 
