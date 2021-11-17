@@ -98,7 +98,13 @@ Here is an example of its installation, please modify to better suit your needs:
 ```
 If it works, you should have `tatajuba` installed in the `${HOME}/local/bin` directory, in the example above (or
 whatever you set as the `-prefix`).
-You may want to [add this path to your `$PATH` variable](https://unix.stackexchange.com/questions/26047/how-to-correctly-add-a-path-to-path).
+You may want to [add this path to your `$PATH` variable](https://unix.stackexchange.com/questions/26047/how-to-correctly-add-a-path-to-path), 
+in file `~/.bashrc` or `~/.profile` if you use _bash_:
+
+```bash
+export PATH="${HOME}/local/bin:${PATH}"
+export LD_LIBRARY_PATH="${HOME}/local/lib:${LD_LIBRARY_PATH}" # currently not needed for tatajuba, but if you have the folder...
+```
 
 If you want, you can optionally check the installation by running a battery of unit and integration tests for both tatajuba and biomcmc-lib (the low-level C library `tatajuba` relies on):
 
@@ -107,6 +113,8 @@ If you want, you can optionally check the installation by running a battery of u
 /home/simpson/$ # conda install -c conda-forge check  # alternative to apt-get get above, using conda
 /home/simpson/$ make check
 ```
+
+### missing libraries
 
 If `configure` complains about a missing library (usually `libcheck` or `zlib`), you'll need to install them before 
 running `configure` again.
@@ -138,6 +146,34 @@ configure: optional bzip2 headers not found
 checking for library containing BZ2_bzlibVersion... no
 ```
 
+If the program installed successfully, you can check if the program can access the dynamic libraries with
+
+```bash
+$ which tatajuba     # where is the actual location of the executable file
+/home/ubuntu/local/bin/tatajuba
+
+$ ldd /home/ubuntu/local/bin/tatajuba    # returns the location of all libraries it found in the system
+   linux-vdso.so.1 (0x00007ffe60dfc000)
+   libz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007f907c6b7000)
+   liblzma.so.5 => /lib/x86_64-linux-gnu/liblzma.so.5 (0x00007f907c491000)
+   libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f907c0f3000)
+   libbz2.so.1.0 => /lib/x86_64-linux-gnu/libbz2.so.1.0 (0x00007f907bee3000)
+   libgomp.so.1 => /usr/lib/x86_64-linux-gnu/libgomp.so.1 (0x00007f907bcb4000)
+   libpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x00007f907ba95000)
+   libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f907b6a4000)
+   libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007f907b4a0000)
+   /lib64/ld-linux-x86-64.so.2 (0x00007f907c8d4000)
+```
+
+If it reports a missing library (i.e. nothing after the arrow), it means that the program can run but it may fail
+if/when it needs this particular library.
+If you know where this library can be found (usually a file ending in `.so`), then you can export its directory 
+using the `LD_LIBRARY_PATH` environmental variable as described above, or add it directly to the command line:
+
+```
+LD_LIBRARY_PATH="${HOME}/some/weird/location/lib/:${LD_LIBRARY_PATH}"
+```
+
 ## Documentation 
 
 You can find the documentation in the [`docs` folder](docs/). In particular:
@@ -153,19 +189,20 @@ clarification if anything is not clear.
 
 ## Model
 At the lowest level (C `struct`), the homopolymeric tracts are stored as the two flanking k-mers (called "context" here) and the base
-comprising the homopolymer in th middle, as seen  in the figure below. 
+comprising the homopolymer in the middle, as seen in the figure below. 
 
 <img src="recipe/200322_001.png" height="160" alt="context_struct" align="middle">
 
 We define the canonical form based on the homopolymer &mdash; in the figure above the same flanking regions `CCG` and
 `GAT` are stored as a completely different context b/c they flank a distinct homopolymer base. The three contextualised
-tracts above are displayed by tatajubá as
+tracts above are stored internally by tatajubá as
 ```
-CCG-A-GAT
-ATC-A-CCG
-CCG-C-GAT
+CCG.A.GAT
+ATC.A.CCG
+CCG.C.GAT
 ```
-due to the canon, we always observe the side of the homopolymers with `A` or with `C`.
+due to the canon, we always store the strand of the homopolymers with `A` or with `C`.
+(They are shown to the user, however, in the same strand as in their reference fasta/GFF file)
 
 Scanning through the fastq files, we now can, for each sample, generate the histograms of contextualised homopolymeric tract lengths as
 depicted in the figure below.
@@ -183,20 +220,23 @@ regions.
 
 The parameter `leven` decides the maximum Levenshtein distance between contexts for such neighbouring tracts to be
 considered the same.
-If in your results you see overlapping tracts, i.e. mapped to the same reference location, you can try increasing the `leven` value. 
-However my advice is to keep both parameters are kept as low as possible (less than two), since it is better for you to
-be able to pinpoint locations with more variability than to have everything lumped into one HT. (tatajuba does not
-report on the variability in contexts).
-As a side note, the Levenshtein distance is slower to calculate, while the pre-mapping mismatch has to be done between
-all pairs and not only neighbours (_n_<sup>2</sup> instead of _n_). But both are still pretty fast in the grand scheme
-of things.
+If in your results you see overlapping tracts, i.e. different HTs mapped to the same reference location, you can try 
+increasing the `leven` value to see if they are then merged. 
+However the advice is to keep both parameters `--maxdist` and `--leven`as low as possible (less than two), 
+since it is better for you to be able to pinpoint locations with more variability than to have everything lumped into one HT. 
+(tatajuba does not report on the variability in contexts).
+As a side note, the Levenshtein distance is slower to calculate, while the pre-mapping mismatch has to be done between 
+all pairs and not only neighbours (_n_<sup>2</sup> instead of _n_). 
+But both are still pretty fast in the grand scheme of things.
 
 By the way, histograms with very low frequency (representing contexts+tracts observed very rarely in the fastq file) are
 excluded, assuming they represent sequencing errors. This is controlled by the parameter `minreads`. The default is
-currenlty _3_ (any tract observed in less than _3_ reads is discarded).
+currenlty _5_ (any tract observed in less than _5_ reads is discarded).
 
 Currently our measures of dispersion (used to find tracts most variable across genomes) are the *absolute* and *relative difference of
 ranges* (similar to the coefficient of range), defined here as (MAX-MIN) and (MAX-MIN)/MAX respectively.
+These are use solely to determine if a tract is variable or not, but are output to the debug files `selected_tracts_*`
+(curerntly useful mostly for code debug/development).
 
 ## Troubleshooting
 

@@ -83,6 +83,23 @@ output.
 The GFF format talks about contigs or chromosomes, which are the genomic FASTA sequences (genome or plasmid). Thus
 tatajuba (and its documentation) use these words interchangeably. 
 
+### The command line
+As described in the [installation instructions](../README.md) you may have installed tatajuba with conda or from the
+source code. You may even have both, in which case you need to find which one you are using:
+
+```bash
+# show possible locations of the executable
+$ locate bin/tatajuba 
+/home/ubuntu/local/bin/tatajuba
+/home/ubuntu/miniconda3/bin/tatajuba
+
+# show which executable is default (i.e. which one is called if you just type "tatajuba")
+$ which tatajuba 
+/home/ubuntu/miniconda3/bin/tatajuba
+```
+
+## The output
+
 # Downstream analyses 
 
 ## Annotating the VCF files with variant effect information
