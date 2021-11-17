@@ -392,14 +392,14 @@ tid_002701      NC_017280.1     nc      unannotated     74448   4       4       
 ```
 It is hard to visualise from these rows, but if we align the sample and reference for the first HT described (`tid_000229`), we have
 <pre>
-ATTTAAATAATTGATTATATTAATC.T.GATTAAAAAA<u><b>A</b></u>TTAATTATTTTTAT
-ATTTAAATAATTGATTATATTAATC.T.GATTAAAAAA<u><b>T</b></u>TTAATTATTTTTAT
+ATTTAAATAATTGATTATATTAATC.T.GATTAAAAAA<u><b>A</b></u>TTAATTATTTTTAT (sample)
+ATTTAAATAATTGATTATATTAATC.T.GATTAAAAAA<u><b>T</b></u>TTAATTATTTTTAT (reference)
 </pre>
 
 and for the second (`tid_000230`):
 <pre>
-ATTGATTATATTAATCTTTTTGATT.A.<u> </u>TTAATTATTTTTATAATTTTGCATA
-ATTGATTATATTAATCTTTTTGATT.A.<u><b>T</b></u>TTTAATTATTTTTATAATTTTGCAT
+ATTGATTATATTAATCTTTTTGATT.A.<u> </u>TTAATTATTTTTATAATTTTGCATA (sample)
+ATTGATTATATTAATCTTTTTGATT.A.<u><b>T</b></u>TTAATTATTTTTATAATTTTGCAT (reference)
 </pre>
 
 Where we can see that they overlap: the right context of `tid_000229` contains the HT `tid_000230`, and the substitution can
