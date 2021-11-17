@@ -12,7 +12,7 @@ If you download the [example_tutorial.txz](example_tutorial.txz) file and expand
 tar Jxvf example_tutorial.txz
 ```
 It will generate a structure similar to below:
-```
+```console
 example_tutorial
 ├── data
 │   ├── borde
@@ -36,8 +36,6 @@ example_tutorial
 │   ├── 4.vcf.gz
 │   ├── 5.vcf.gz
 │   ├── 7.vcf.gz
-│   ├── 8.vcf.gz
-│   ├── 9.vcf.gz
 │   ├── per_sample_average_length.tsv
 │   ├── per_sample_modal_frequency.tsv
 │   ├── per_sample_proportional_coverage.tsv
@@ -62,9 +60,11 @@ The `data` directory and the `snpEff.config` file are for _snpEff_. The `reads` 
 read files to be used in this tutorial. The `GCF_000148705.1_ASM14870v1_genomic.*` files are the GFF and FASTA files
 used as the reference genome.
 
+This data set is a small subset of the [_Campylobacter_ data used in the manuscript](211108.figures_snippy_comparison.ipynb).
+
 ## Running tatajuba
 
-### The reference genome files
+#### The reference genome files
 Tatajuba implements the [BWA](https://github.com/lh3/bwa) library for reference mapping, which relies on index
 files it generates from the FASTA file *if they are missing*.
 That is, tatajuba does not overwrite the `.amb`, `.ann`, `.bwt` etc. files every time it runs, therefore if you modify
@@ -83,18 +83,121 @@ output.
 The GFF format talks about contigs or chromosomes, which are the genomic FASTA sequences (genome or plasmid). Thus
 tatajuba (and its documentation) use these words interchangeably. 
 
-### The command line
+#### The command line
 As described in the [installation instructions](../README.md) you may have installed tatajuba with conda or from the
 source code. You may even have both, in which case you need to find which one you are using:
 
 ```console
-ubuntu@home$ locate bin/tatajuba # show possible locations of the executable
+ubuntu@local$ locate bin/tatajuba # show possible locations of the executable
 /home/ubuntu/local/bin/tatajuba
 /home/ubuntu/miniconda3/bin/tatajuba
-ubuntu@home$ # show which executable is default (i.e. which one is called if you just type "tatajuba")
-ubuntu@home$ which tatajuba 
+ubuntu@local$  # show which executable is default (i.e. which one is called if you just type "tatajuba")
+ubuntu@local$ which tatajuba 
 /home/ubuntu/miniconda3/bin/tatajuba
 ```
+If you want to choose explicitly the executable, you only need to write its full path:
+
+```console
+ubuntu@local$ /home/ubuntu/bin/tatajuba
+Error when reading arguments from command line:
+tatajuba: missing option -g|--gff=<genome.gff3|genome.gff3.gz>
+tatajuba: missing option <fastq files>
+
+tatajuba 1.0.4
+Compare histograms of homopolymeric tract lengths, within context.
+The complete syntax is:
+
+ tatajuba  [-h|--help] [-v|--version] [-p|--paired] [-b|--keep_bias] [-V|--vcf] [-k|--kmer={2,...,32}] [-m|--minsize={1,...,32}] [-i|--minreads=<int>] [-d|--maxdist=<int>] [-l|--leven=<int>] [-t|--nthreads=<int>] -g|--gff=<genome.gff3|genome.gff3.gz> [-f|--fasta=<genome.fna|genome.fna.gz>] <fastq files> [<fastq files>]... [-o|--outdir=<file>]
+
+  -h, --help                       print a longer help and exit
+  -v, --version                    print version and exit
+  -p, --paired                     paired end (pairs of) files
+  -b, --keep_bias                  keep biased tracts, i.e. present only in reverse or only in forward strains (default=remove)
+  -V, --vcf                        generate VCF files for each sample, around the HT regions (EXPERIMENTAL) (default=not to save)
+  -k, --kmer={2,...,32}            kmer size flanking each side of homopolymer (default=25)
+  -m, --minsize={1,...,32}         minimum homopolymer tract length to be compared (default=4)
+  -i, --minreads=<int>             minimum number of reads for tract+context to be considered (default=5)
+  -d, --maxdist=<int>              maximum distance between kmers of a flanking region to merge them into one context (default=1)
+  -l, --leven=<int>                levenshtein distance between flanking regions to merge them into one context (after ref genome mapping)
+  -t, --nthreads=<int>             suggested number of threads (default is to let system decide; I may not honour your suggestion btw)
+  -g, --gff=<genome.gff3|genome.gff3.gz> reference genome file in GFF3, preferencially with sequence
+  -f, --fasta=<genome.fna|genome.fna.gz> reference genome file in fasta format, if absent from GFF3
+  <fastq files>                    fastq file with reads (weirdly, fasta also possible as long as contains all reads and not only contigs)
+  -o, --outdir=<file>              output directory, or 'random' for generating random dir name (default=current dir '.')
+```
+
+In the example above it is complaining that you need at least to provide a GFF3 file and the fastq files with the
+samples' reads.
+So if we provide the GFF3 file and the reads, it will complain that the sequences are missing from this particular GFF3 file:
+```console
+ubuntu@local$ /home/ubuntu/bin/tatajuba -g GCF_000148705.1_ASM14870v1_genomic.gff reads/ERR17010*
+[ error ] No fasta provided and GFF3 file doesn't contain sequences
+ You must provide a fasta file with reference genome sequence(s) that match the GFF3 features, or you should find a GFF3 file with a '##FASTA' section at the end.
+
+[note to developers] If you want to debug me, set a breakpoint on function biomcmc_error()
+```
+Which we already knew is quite common. Luckily we also have the fasta file (`GCF_000148705.1_ASM14870v1_genomic.fna`). 
+The reads used in this tutorial are single reads (and thus the `-p` option is not needed), and since they are a small
+subsample of the original files we will decresase the minimum HT coverage to 3 reads (`-i 3`).
+We also define the output directory to be `outdir` and we ask tatajuba to generate VCF files (`-V`).
+The full command would be:
+
+```console
+ubuntu@local$ /home/ubuntu/bin/tatajuba -g GCF_000148705.1_ASM14870v1_genomic.gff -V \
+              -f GCF_000148705.1_ASM14870v1_genomic.fna -o outdir -i 3  reads/ERR17010*
+[warning] File 'outdir/' already exists; I'll assume it's a directory. Contents will be overwritten
+[warning] Decreasing number of threads to match number of samples
+tatajuba 1.0.4
+Reference genome fasta file: GCF_000148705.1_ASM14870v1_genomic.fna
+Reference GFF3 file prefix:  GCF_000148705.1_ASM14870v1_genomic
+Output directory:            outdir/
+Number of samples:               5 (single-end)
+Max distance per flanking k-mer:       1
+Levenshtein distance for merging:      2
+Flanking k-mer size (context):        25
+Min tract length to consider:          4
+Min depth of tract lengths:            3
+Remove biased tracts:             yes
+Number of threads (requested or optimised):   5
+Assuming single-end samples
+Read GFF3 reference genome in        0.088360 secs
+
+processing file reads/ERR1701019.fastq
+processing file reads/ERR1701059.fastq
+processing file reads/ERR1701079.fastq
+processing file reads/ERR1701049.fastq
+processing file reads/ERR1701029.fastq
+[bwa_aln_from_vector] 24.46399 sec
+reads/ERR1701029.fastq:  21402 found and   7571 context+tracts were not found in reference
+[bwa_aln_from_vector] 42.52276 sec
+reads/ERR1701019.fastq:  47628 found and   3250 context+tracts were not found in reference
+[bwa_aln_from_vector] 48.69241 sec
+[bwa_aln_from_vector] 48.57682 sec
+reads/ERR1701079.fastq:  51177 found and   2558 context+tracts were not found in reference
+reads/ERR1701059.fastq:  54123 found and   1953 context+tracts were not found in reference
+[bwa_aln_from_vector] 54.10467 sec
+reads/ERR1701049.fastq:  52852 found and   2257 context+tracts were not found in reference
+Modifying sample names: Removing prefix 'reads/ERR17010' from sample names.
+Modifying sample names: Removing suffix '9.fastq' from sample names.
+From 63473 tracts, 46969 interesting ones are annotated and 4058 interesting ones are not annotated
+Will save VCF files with gzipped compression
+Internal (threaded) timer::        2.054656 secs to read and generate initial histograms
+Internal (threaded) timer::       59.129513 secs to merge and map histograms
+Internal (threaded) timer::        0.079142 secs to compare across sample genomes
+Internal (threaded) timer::        0.569195 secs to compare with reference
+Non-threaded timing      ::       16.337782 secs
+```
+
+#### interpreting the screen output
+
+If you have paired reads, the output lines would look something like
+
+```console
+processing paired files ERR1701022/ERR1701022_1.fastq.gz and ERR1701022/ERR1701022_2.fastq.gz
+```
+And you can check them to see if tatajuba is using them in the desired order. 
+
+
 
 ## The output
 
