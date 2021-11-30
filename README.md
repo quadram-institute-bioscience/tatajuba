@@ -54,8 +54,10 @@ After installing [Singularity](https://sylabs.io/guides/3.0/user-guide/quick_sta
 container with:
 ```bash
 # check https://cloud.sylabs.io/library/leomrtns/default/tatajuba for most recent tag)
-singularity pull --arch amd64 library://leomrtns/default/tatajuba:1.0.3 
+singularity pull --arch amd64 library://leomrtns/default/tatajuba:1.0.4 
 ```
+You can check the [container library](https://cloud.sylabs.io/library/leomrtns/default/tatajuba) for the most recent tag
+(version).
 As with conda above, the container might not have the latest improvements. In case you want the most recent version, you can
 use the singularity definition file [recipe/tatajuba.def](recipe/tatajuba.def) to generate a container as in 
 
@@ -67,9 +69,10 @@ If you build the container as above, the software will be up-to-date since it wi
 ### Docker
 ```bash
 # check https://quay.io/repository/biocontainers/tatajuba?tab=tags for most recent tag 
-docker pull quay.io/biocontainers/tatajuba:1.0.3--h82fb495_0
+docker pull quay.io/biocontainers/tatajuba:1.0.4--h5bf99c6_0
 ```
-This is generated from bioconda, so same caveats apply.
+Please check [the biocontainers](https://quay.io/repository/biocontainers/tatajuba?tab=tags) for most recent tag.
+This container is generated from bioconda, so the same caveats apply.
 
 ### Compiling from source
 If installing through conda/singularity is not an option, or if you want the latest version of the 
