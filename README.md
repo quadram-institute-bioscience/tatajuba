@@ -67,10 +67,16 @@ sudo singularity build tatajuba.sif recipe/tatajuba.def
 If you build the container as above, the software will be up-to-date since it will download from github and compile.
 
 ### Docker
+To run tatajuba from the docker container, the commands to pull and use the container would look like
 ```bash
 # check https://quay.io/repository/biocontainers/tatajuba?tab=tags for most recent tag 
 docker pull quay.io/biocontainers/tatajuba:1.0.4--h5bf99c6_0
-```
+# run the command "tatajuba -h" using the current directory
+docker run -v `pwd`:`pwd` -w `pwd` quay.io/biocontainers/tatajuba:1.0.4--h5bf99c6_0  tatajuba -h
+````
+The docker options `-v` and `-w` mount your current directory (shell command `pwd`) and set it as the working directory
+inside the container, respectively.
+
 Please check [the biocontainers](https://quay.io/repository/biocontainers/tatajuba?tab=tags) for most recent tag.
 This container is generated from bioconda, so the same caveats apply.
 
