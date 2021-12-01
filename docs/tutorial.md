@@ -203,6 +203,12 @@ ubuntu@local$ nohup /home/ubuntu/bin/tatajuba -g GCF_000148705.1_ASM14870v1_geno
 ```
 All output will then go to the file `nohup.out` instead of the terminal screen.
 
+If you downloaded ("pulled") a docker container, you can run tatajuba with 
+```console
+# replace "1.0.4--h5bf99c6_0" with the appropriate version
+ubuntu@local$ docker run -v `pwd`:`pwd` -w `pwd` quay.io/biocontainers/tatajuba:1.0.4--h5bf99c6_0 tatajuba \
+    -g GCF_000148705.1_ASM14870v1_genomic.gff -V -f GCF_000148705.1_ASM14870v1_genomic.fna -o output_dir -i 3  reads/ERR17010*
+```
 
 #### Interpreting the screen output
 ```console
