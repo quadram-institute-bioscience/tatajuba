@@ -65,6 +65,11 @@ use the singularity definition file [recipe/tatajuba.def](recipe/tatajuba.def) t
 sudo singularity build tatajuba.sif recipe/tatajuba.def
 ```
 If you build the container as above, the software will be up-to-date since it will download from github and compile.
+In both cases, you will end up with a file `tatajuba*.sif` which can be quite large (>500MB). This file can be used to
+run the singularity image
+```bash
+singularity exec tatajuba.sif tatajuba --help
+```
 
 ### Docker
 To run tatajuba from the docker container, the commands to pull and use the container would look like
@@ -73,14 +78,18 @@ To run tatajuba from the docker container, the commands to pull and use the cont
 docker pull quay.io/biocontainers/tatajuba:1.0.4--h5bf99c6_0
 # run the command "tatajuba -h" using the current directory
 docker run -v `pwd`:`pwd` -w `pwd` quay.io/biocontainers/tatajuba:1.0.4--h5bf99c6_0  tatajuba -h
-````
+```
+
 The docker options `-v` and `-w` mount your current directory (shell command `pwd`) and set it as the working directory
 inside the container, respectively.
 
 Please check [the biocontainers](https://quay.io/repository/biocontainers/tatajuba?tab=tags) for most recent tag.
 This container is generated from bioconda, so the same caveats apply.
 
+Notice also that singularity can [run docker images](https://sylabs.io/guides/2.6/user-guide/singularity_and_docker.html).
+
 ### Compiling from source
+
 If installing through conda/singularity is not an option, or if you want the latest version of the 
 software, you can download it and compile it yourself. 
 Tatajuba relies on GCC6 or newer due to assuming *OpenMP 4.5*.

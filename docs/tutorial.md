@@ -210,6 +210,14 @@ ubuntu@local$ docker run -v `pwd`:`pwd` -w `pwd` quay.io/biocontainers/tatajuba:
               -o output_dir -i 3  reads/ERR17010*
 # replace "1.0.4--h5bf99c6_0" with the appropriate version
 ```
+and equivalently if you have a singularity container you can run it with:
+```
+ubuntu@local$ singularity exec ~/Downloads/tatajuba1.0.4.sif tatajuba \ 
+              -g GCF_000148705.1_ASM14870v1_genomic.gff -V -f GCF_000148705.1_ASM14870v1_genomic.fna \
+              -o output_dir -i 3  reads/ERR17010*
+```
+Notice that, unlike docker, I'm providing the path to the container file I've built or downloaded, in this case
+`~/Downloads/tatajuba1.0.4.sif`.
 
 #### Interpreting the screen output
 ```console
