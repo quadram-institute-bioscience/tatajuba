@@ -25,8 +25,10 @@ variability), and it can discard homopolymers absent in reverse or forward reads
 
 #### Paper and citation
 "Tatajuba ― Exploring the distribution of homopolymer tracts", 
-Leonardo de Oliveira Martins, Samuel Bloomfield, Emily Stoakes, Andrew Grant, Andrew J Page, Alison E Mather, (2021),
-bioRxiv 2021.06.02.446710; doi: https://doi.org/10.1101/2021.06.02.446710
+Leonardo de Oliveira Martins, Samuel Bloomfield, Emily Stoakes, Andrew Grant, Andrew J Page, Alison E Mather,
+*NAR Genomics and Bioinformatics*, Volume 4, Issue 1, March **2022**, lqac003, https://doi.org/10.1093/nargab/lqac003
+
+(a previous version is available as a bioRxiv preprint https://doi.org/10.1101/2021.06.02.446710)
 
 #### Name
 Tatajuba (_Bagassa guianensis_) is a South American tree, also known as Tatajubá, Tatajuva, Garrote, Totajuba.
