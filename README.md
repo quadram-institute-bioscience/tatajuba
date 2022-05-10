@@ -149,7 +149,8 @@ You will also need the `autotools` environment before running the configuration 
 /home/simpson/$ apt-get install zlib1g-dev libomp-dev libbz2-dev check liblzma-dev
 ```
 The libraries rely on `pkg-config` to find their location: if your `pkg-config` was installed through conda then you'd
-better install the above libs via conda as well (or, you know, updating environmental variables etc).
+better install the above libs via conda as well (or, you know, checking and updating your
+`$PKG_CONFIG_PATH` environmental variable).
 The `zlib` library is mandatory, while `liblzma-dev` and `libbz2-dev` are called, respectively, `xz` and `bzip2` on a strict conda environment.
 
 The output below shows an excerpt of `configure`'s output, where we can see that the `zlib` library was found, but not `liblzma-dev` (`LZMA`) 
