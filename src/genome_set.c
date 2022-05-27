@@ -253,6 +253,8 @@ g_tract_vector_concatenate_tracts (g_tract_vector_t tract, genomic_context_list_
   new_h = tract->concat;
   n_new_h = tract->n_concat;
 
+  // TODO: this can be replaced by a simple concatenation (location < 0 have been deleted already) and then sorting
+  //       This would reduce memory footprint
   /* 2. concat[] will be new_h and genome[i]->hist merged, in order (both are ordered) */
   for (i = 1; i < n_genome; i++) {
     tract->n_concat = n_new_h + genome[i]->n_hist; // sum of lengths
