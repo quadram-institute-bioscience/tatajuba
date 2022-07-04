@@ -266,22 +266,24 @@ These are use solely to determine if a tract is variable or not, but are output 
 As mentioned, this software is still under development; in particular the conda/singularity/docker versions might be
 outdated. Here is a list of common pitfalls.
 
-* tatajuba relies on OpenMP 4.5, which is supported [on GCC6 or newer](https://www.openmp.org/resources/openmp-compilers-tools/). 
+* Tatajuba relies on OpenMP 4.5, which is supported [on GCC6 or newer](https://www.openmp.org/resources/openmp-compilers-tools/). 
   This means that [even the conda version might fail if your system library is older than that
 ](https://stackoverflow.com/questions/62098781/is-it-possible-to-use-a-different-gcc-version-inside-a-conda-environment#comment109969669_62098781).
 * We have tested it exclusively on linux systems, and making it more portable to Mac or Windows is not a priority.
-* the program will refuse to run on only one sample (since it compares differences between samples). However, it will
-  run if more samples are given but only one has mapped HTs &mdash; in practice, equivalent to running on one sample since
-  it discards samples without any HTs mapped to the reference. In this case the program will fail at the very end (you
-  may have some output). I am treating this as a bug.
+* The program will run even with only one sample, but we do not condone such usage. Its main usage is to compare differences between samples. 
+  If several samples are given but only one has quality HTs mapped, tatajuba will report only about this one sample. 
+  It discards samples without any qualty HTs mapped to the reference (quality means observed in depth, on both strands). 
+  The results may be of limited utility in such cases. 
 * The program should produce error messages; however I've seen it failing without notice. One particular case is when it
-  runs out of memory (it is killed by the system). It needs at least 8GB of memory. 
-* The files `selected_tracts_{annotated/unknown}.tsv` are being used for debug purposes, but will be soon replaced by a
-  more useful `per_sample`-like file. In particular the locations do not correspond to the `tract_id` locations &mdash; if you
+  runs out of memory (it is killed by the system). It needs at least 8GB of memory, and it's not unusual to need a
+  machine with more than 16GB or 32GB. 
+* The files `selected_tracts_{annotated/unknown}.tsv` are being used for debug purposes and are not for final
+  consumption.
+  In particular the locations do not correspond to the `tract_id` locations &mdash; if you
   currently want to use these files, please use the `tract_id` for mapping to the correct locations (available in files
   `per_sample*` or `tract_llist.tsv`). 
-* As of 2020.08.01, the conda/singularity versions (1.0.3) use a lot of memory. This has been fixed if you use the source
-  code.
+* Versions 1.0.3 and older use a lot of memory, and may take forever on some datasets. This has been fixed in version v1.0.4 
+  (available on conda), please upgrade to it.
 
 Please use github [to report any issues](https://github.com/quadram-institute-bioscience/tatajuba/issues), and to see
 which issues are being addressed.
