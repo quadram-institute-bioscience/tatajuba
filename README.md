@@ -48,7 +48,9 @@ After you install [miniconda](https://conda.io/en/latest/miniconda.html), simply
 ```[bash]
 conda install -c bioconda tatajuba
 ```
-The software tatajuba is still under development, thus the conda version may be outdated.
+The software tatajuba is still under development, thus the conda version (v1.0.4) may be outdated.
+We're working on v1.0.5 which gives better warnings if HTs are not found, and tries to work with a single sample
+(results may not make sense, though...). 
 
 ### Singularity
 

@@ -18,7 +18,7 @@ generate_vcf_files (genome_set_t g)
 
   vcf = (file_compress_t*) biomcmc_malloc (g->n_genome * sizeof (file_compress_t));
 #ifdef HAVE_ZLIB
-  printf ("Will save VCF files with gzipped compression\n");
+  printf ("Will save VCF files with standard gzip compression (_not_ the bgzip format expected by bcftools)\n");
 #else
   biomcmc_warning ("ZLIB library not installed, will sabe VCF files uncompressed\n");
 #endif

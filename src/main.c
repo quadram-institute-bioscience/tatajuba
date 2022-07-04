@@ -153,8 +153,7 @@ get_options_from_argtable (arg_parameters params)
   opt.remove_biased = (params.keepbias->count? false: true); // if set, then do not remove bias; default is to remove
   opt.n_samples = (params.paired->count? params.fastq->count/2: params.fastq->count);
   if (opt.n_samples < 2) {
-    del_gff3_t (opt.gff);
-    biomcmc_error ("More than one sample is needed, since this program is based on differences between samples\n");
+    biomcmc_warning ("More than one sample is needed, since this program is based on differences between samples; Proceed at your own peril.");
   }
   opt.kmer_size = params.kmer->ival[0];
   opt.min_tract_size = params.minsize->ival[0];

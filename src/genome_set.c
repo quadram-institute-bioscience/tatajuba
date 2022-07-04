@@ -134,7 +134,7 @@ remove_empty_genomes (genome_set_t g)
 {
   int i, j;
   for (j = 0, i = 0; i < g->n_genome; i++) if (g->genome[i] != NULL) g->genome[j++] = g->genome[i];
-  if (!j) { del_genome_set (g); biomcmc_error ("No sample has tracts mapped to reference genomel I can't proceed"); }
+  if (!j) { del_genome_set (g); biomcmc_error ("No sample has any tract mapped to reference genome: wrong reference or no valid HTs (low coverage, or bias). I will abort."); }
   if (j < i) biomcmc_warning ("Only %d out of %d genomes have mapped HTs and will thus be analysed", j, i);
 
   g->n_genome = j;
@@ -146,15 +146,21 @@ simplify_genome_names (genomic_context_list_t *genome, int n_genome)
 {
   int i, j;
   size_t n_i , n_j, n_small, pre, suf, min_pre = 0xffffff, min_suf = 0xffffff;
-  if (n_genome < 2) biomcmc_warning ("Will not try to simplify sample names since only one sample available");
-  for (i = 0; i < n_genome; i++) {
+  if (n_genome < 2) { biomcmc_warning ("Will not try to simplify sample names since only one sample available"); return; }
+  for (i = 0; i < n_genome-1; i++) {
     n_i = strlen (genome[i]->name);
-    for (j = 0; j < n_genome; j++) {
+    for (j = i+1; j < n_genome; j++) {
       n_small = n_j = strlen (genome[j]->name);
       if (n_small > n_i) n_small = n_i; // n_small = min (genome[i], genome[j])
 
       for (pre = 0; (pre < n_small) && (genome[i]->name[pre] == genome[j]->name[pre]); pre++);
       for (suf = 0; (suf < n_small) && (genome[i]->name[n_i - suf - 1] == genome[j]->name[n_j - suf - 1]); suf++);
+
+      if (n_small - pre - suf < 1) { // one of samples has name prefix+suffix with nothing in between
+        if (pre) pre--; // last char from current prefix must actually be used
+        else suf--; // notice that one of pre or suf must be positive o.w. n_small would be positive
+      }
+
       if (pre < min_pre) min_pre = pre;
       if (suf < min_suf) min_suf = suf;
     }
@@ -168,12 +174,13 @@ simplify_genome_names (genomic_context_list_t *genome, int n_genome)
                                          "Removing prefix '%.*s' from sample names.\n", min_pre, genome[0]->name);
     if (min_suf) biomcmc_fprintf_colour (stderr, 0, 2, "Modifying sample names: ", 
                                          "Removing suffix '%s' from sample names.\n", genome[0]->name + strlen(genome[0]->name) - min_suf);
-
     for (i = 0; i < n_genome; i++) {
       n_j = strlen (genome[i]->name) - min_pre - min_suf; 
+      fprintf (stderr, "Simplifying sample names: map %s ", genome[i]->name);
       for (pre = 0; pre < n_j; pre++) genome[i]->name[pre] = genome[i]->name[pre+min_pre];
       genome[i]->name[pre] = '\0';
       genome[i]->name = (char*) biomcmc_realloc ((char*) genome[i]->name, n_j + 1);
+      fprintf (stderr, "-> %s\n", genome[i]->name);
     }
   }
   return;

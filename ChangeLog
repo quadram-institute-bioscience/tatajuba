@@ -1,3 +1,8 @@
+2022.07.04 
+		* v1.0.5:
+		. added warnings/exit when no HTs are found or allv fail QC 
+		. fixed file names when single sample passes HQ
+		. tatajuba does not exit if single sample is given, but it warns about non-standard input
 2021.11.06
 		* todo:
 		. finding ht in reference should use edit distance or bwa result (instead of scanning as hopo_counter perhaps?). 

@@ -342,6 +342,12 @@ finalise_hopo_counter (hopo_counter hc)
   hopo_element *pivot, *efreq;
   int i, j, coverage = 0, n1 = 0;
 
+  if (!hc->n_elem) {
+    hc->ref_start = hc->n_elem = 0; // this will make this hc be excluded from genome_set (since no HTs can be found in ref genome)
+    biomcmc_warning ("No HTs were found in sample %s%s, not even before QC. This sample will be excluded.", hc->name, (hc->opt.paired_end?" together with its pair.":"."));
+    return;
+  }
+
   qsort (hc->elem, hc->n_elem, sizeof (hopo_element), compare_hopo_element_decreasing);
   efreq = (hopo_element*) biomcmc_malloc (hc->n_elem * sizeof (hopo_element));
   copy_hopo_element_start_count_at (&(efreq[0]), &(hc->elem[0]), 1);
@@ -366,9 +372,15 @@ finalise_hopo_counter (hopo_counter hc)
   else { // even if we don't care about biased tracts, remove context_tract_lengths seen only once (but keep original depth whenever count > 1) 
     for (i = 0, n1 = 0; i < hc->n_elem; i++) if (efreq[i].count > 1) copy_hopo_element_start_count_at (&(efreq[n1++]), &(efreq[i]), efreq[i].count);
   }
-
+  
+  if (!n1) {
+    hc->ref_start = hc->n_elem = 0; // this will make this hc be excluded from genome_set (since no HTs can be found in ref genome)
+    if (hc->opt.remove_biased) biomcmc_warning ("No HTs found in sample %s after excluding those present only in one strand. This sample will be excluded.", hc->name);
+    else biomcmc_warning ("No HTs found in sample %s %s after excluding those seen only once. This sample will be excluded.", hc->name, (hc->opt.paired_end?"(and pair)":""));
+    return;
+  }
   /* 3.  hc->elem[] will now point to efreq above, that is, non-identical reads with depth > 1 */
-  pivot = hc->elem;
+  pivot = hc->elem; // holds hc->elem since hc->elem will be realloc of EFREQ
   hc->n_alloc = hc->n_elem = n1; 
   hc->elem = (hopo_element*) biomcmc_realloc ((hopo_element*) efreq, hc->n_alloc * sizeof (hopo_element));
   free (pivot); // free original elem[] 
@@ -391,6 +403,12 @@ finalise_hopo_counter (hopo_counter hc)
   for (j = hc->idx_initial[hc->n_idx]; j < i; j++) coverage += hc->elem[j].count;
   if (coverage >= hc->opt.min_coverage) hc->idx_final[hc->n_idx++] = i;
 
+  if (!hc->n_idx) {
+    hc->ref_start = hc->n_elem = 0; // this will make this hc be excluded from genome_set (since no HTs can be found in ref genome)
+    biomcmc_warning ("From the HTs found in sample %s%s, not a single one has coverage higher than %d. This sample will be excluded. Try decreasing the 'Min depth of tract lengths'.", 
+                     hc->name, (hc->opt.paired_end?" (together with its pair)":""), hc->opt.min_coverage);
+    return;
+  }
   hc->idx_initial = (int*) biomcmc_realloc ((int*) hc->idx_initial, hc->n_idx * sizeof (int));
   hc->idx_final   = (int*) biomcmc_realloc ((int*) hc->idx_final,   hc->n_idx * sizeof (int));
 
