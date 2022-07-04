@@ -12,11 +12,11 @@ __Alison Mather<sup>1</sup>__
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-brightgreen.svg)](https://github.com/quadram-institute-bioscience/tatajuba/blob/master/LICENSE)
 
-# Distribution of homopolymeric tracts 
+# Distribution of homopolymeric tracts in microbial populations
 
 Instead of assuming a fixed length for a given homopolymer tract, tatajubá allows for the whole distribution of tract sizes to
 be analysed. 
-The rationale is that 1. our sequence might represent a population of non-identical individuals, with diversity of tract
+The rationale is that 1. our sequence might represent a population of non-identical microbial individuals, with diversity of tract
 lengths, and 2. sequencing errors might be more frequent near or within homopolymers (so we should not remove
 uncertainty prematurely).
 
