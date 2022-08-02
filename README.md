@@ -12,6 +12,9 @@ __Alison Mather<sup>1</sup>__
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-brightgreen.svg)](https://github.com/quadram-institute-bioscience/tatajuba/blob/master/LICENSE)
 
+Latest stable version (conda etc.): v1.0.4
+Current version (source code only): v1.0.5
+
 # Distribution of homopolymeric tracts in microbial populations
 
 Instead of assuming a fixed length for a given homopolymer tract, tatajubá allows for the whole distribution of tract sizes to

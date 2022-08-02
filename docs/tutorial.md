@@ -72,6 +72,7 @@ Tatajuba implements the [BWA](https://github.com/lh3/bwa) library for reference 
 files it generates from the FASTA file *if they are missing*.
 That is, tatajuba does not overwrite the `.amb`, `.ann`, `.bwt` etc. files every time it runs, therefore if you modify
 the fasta file please delete these index files so that tatajuba can reconstruct them.
+These index files _may_ be incompatible with the official BWA software, so please let tatajuba recreate them.
 
 By the way, these index files are generated in the same directory as the fasta file, thus please make sure that the reference
 files are in a directory where you have write permissions. 
@@ -87,6 +88,10 @@ The GFF format talks about contigs or chromosomes, which are the genomic FASTA s
 tatajuba (and its documentation) use these words interchangeably.
 If you want to use more than one reference genome, you can just concatenate the fasta files into one. For the GFF files
 you may need to remove the first row with the header, and the last row with the `###` when concatenating the files.  
+The suggestion is to use distinct enough genomes as references, as for instance from distinct species.
+By using references too similar, the diversity signal from their HTs is lost since each homologue of the HT will be
+treated as a distinct HT.
+
 
 #### The command line
 As described in the [installation instructions](../README.md) you may have installed tatajuba with conda or from the

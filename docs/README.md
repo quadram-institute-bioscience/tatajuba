@@ -145,6 +145,9 @@ within the tract). Tatajuba conservatively treats them as distinct HTs sharing t
 The _feature matrix_ files (`per_sample_`) have all the same structure: the first row is the header with the column names,
 followed by the list of variable tracts, one per row, with values per sample (each column is a sample). The values try
 to represent the variability within each tract per sample, keeping in mind that for each HT and sample we store a histogram of lengths.
+These files only contain information about **variable** tracts, that is, those that differ across samples. If you are
+interested in **all** tracts including those which do not change across samples, please look at the `tract_list.csv`
+file.
 
 The "average HT length" is the mean tract length over all valid HTs, to account for intrapopulation variability. It is
 typically close to the consensus length, as estimated by alignment/assembly software.
@@ -241,8 +244,8 @@ reference, the tract may have a length of one base).
 
 ### `selected_tracts_` files for debugging
 These files have summary information about tracts over samples. They are currently used only for debug purposes,
-since they have the descriptive statistics between samples which are used to describe a tract as variable. A short description of the
-columns (assumes familiarity with code details):
+since they have the descriptive statistics between samples which are used to describe a tract as variable. Please do not rely on them, they might be removed in future versions. 
+A short description of the columns (assumes familiarity with code details):
 
 column | description
 -------|-------------
@@ -262,8 +265,10 @@ this differnce may imply in an amino-acid indel (if their lengths vary mostly by
 (not multiples of 3). But care must be taken since currently these files are generated _before_ tatajuba selects the
 variable tracts and _before_ tatajuba searches for the tracts in the reference (which modifies the location). 
 Furthermore, the contig/chromosome information is not output and thus the `begin_context` cannot be mapped unless the reference
-is comprised of a single FASTA entry. So if you want to use the information in these files it is better at the moment to merge its info
-with the other files, using the `tract_id` as primary key. 
+is comprised of a single FASTA entry. 
+So if you really want to use the information in these files, it is better at the moment to merge its info
+with the other files, using the `tract_id` as primary key.
+But in all likelihood you won't need it. 
 
 ## Final comments on output 
 The most commonly used information from these files is probably from files `per_sample_average_length.tsv` (wich can be load and analysed through R) and
