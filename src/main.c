@@ -256,8 +256,8 @@ main (int argc, char **argv)
 
   g = new_genome_set_from_files (params.fastq->filename, params.fastq->count, opt); 
   print_selected_g_tract_vector (g);
-  if (opt.save_vcf) print_tract_list (g);
-  generate_vcf_files (g);
+  if (opt.save_vcf) generate_vcf_files (g);
+  print_tract_list (g);
 
   biomcmc_fprintf_colour (stderr, 0,2, "Internal (threaded) timer::", " %15lf secs to read and generate initial histograms\n", g->secs[0]);
   biomcmc_fprintf_colour (stderr, 0,2, "Internal (threaded) timer::", " %15lf secs to merge and map histograms\n", g->secs[1]);
