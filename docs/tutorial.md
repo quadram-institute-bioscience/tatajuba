@@ -87,8 +87,9 @@ output.
 The GFF format talks about contigs or chromosomes, which are the genomic FASTA sequences (genome or plasmid). Thus
 tatajuba (and its documentation) use these words interchangeably.
 If you want to use more than one reference genome, you can just concatenate the fasta files into one. For the GFF files
-you may need to remove the first row with the header, and the last row with the `###` when concatenating the files.  
-The suggestion is to use distinct enough genomes as references, as for instance from distinct species.
+you may need to remove the first row with the header, and the last row with the `###` when concatenating the files.
+The `sequence-region` is mandatory before each new contig/chromosome, as output for instance by `prokka` (e.g. `##sequence-region CP012149.1 1 1616662`).
+Our suggestion is to use distinct enough genomes as references, as for instance from distinct species.
 By using references too similar, the diversity signal from their HTs is lost since each homologue of the HT will be
 treated as a distinct HT.
 
