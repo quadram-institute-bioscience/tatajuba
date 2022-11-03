@@ -145,8 +145,7 @@ void
 simplify_genome_names (genomic_context_list_t *genome, int n_genome)
 {
   int i, j;
-  size_t n_i , n_j, n_small, pre, suf, min_pre = 0xffffff, min_suf = 0xffffff;
-  bool empty = false;
+  size_t n_i , n_j, n_small, pre, suf, min_pre = 0xffffff, min_suf = 0xffffff, empty_suf = 0, empty_pre = 0;
   if (n_genome < 2) { biomcmc_warning ("Will not try to simplify sample names since only one sample available"); return; }
   for (i = 0; i < n_genome-1; i++) {
     n_i = strlen (genome[i]->name);
@@ -158,16 +157,18 @@ simplify_genome_names (genomic_context_list_t *genome, int n_genome)
       for (suf = 0; (suf < n_small) && (genome[i]->name[n_i - suf - 1] == genome[j]->name[n_j - suf - 1]); suf++);
 
       if (n_small - pre - suf < 1) { // one of samples has name prefix+suffix with nothing in between
-        empty = true;
-//        printf ("DEBUG: [%d %d] %lu %lu %lu\n%s\n%s\n", i, j, n_small, pre, suf,  genome[i]->name, genome[j]->name);
-//        if (pre) pre--; // last char from current prefix must actually be used
-//        else suf--; // notice that one of pre or suf must be positive o.w. n_small would be positive
-//        printf ("DBG2: %.*s\n", (int) pre, genome[i]->name);
+        if (suf > empty_suf) empty_suf = suf;
+        if (pre > empty_pre) empty_pre = pre;
+        printf ("DBG1: %lu %lu\n", empty_suf, empty_pre);
       }
 
       if (pre < min_pre) min_pre = pre;
       if (suf < min_suf) min_suf = suf;
     }
+  }
+  if ((empty_suf == min_suf) && (empty_pre == min_pre)) { // some file will end up with empty name
+    if (min_suf) min_suf--;
+    else { if (min_pre) min_pre--; }
   }
   if ((min_pre == 0) && (min_suf == 0)) { 
     biomcmc_fprintf_colour (stderr, 0, 2, "Using original file names", " (could not find suffix or prefix in common)\n.");
