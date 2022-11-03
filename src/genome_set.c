@@ -590,7 +590,7 @@ print_tract_list (genome_set_t g)
   context_histogram_t hist;
   fout = open_output_file (g->genome[0]->opt, fixed_fname[FNAME_TRACT_LIST]);
 
-  fprintf (fout, "tract_id\tcontig_name\tfeature_type\tfeature\tlocation_in_contig\tmax_tract_length\tref_tract_length\t\ttract\tref_tract\n");
+  fprintf (fout, "tract_id\tcontig_name\tfeature_type\tfeature\tlocation_in_contig\tmax_tract_length\tref_tract_length\ttract\tref_tract\n");
   for (tid = 0; tid < g->n_tract_ref; tid++) {
     fprintf (fout, "tid_%06d\t", tid); 
     fprintf (fout, "%s\t", g->tract_ref[tid].contig_name); 
