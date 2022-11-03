@@ -146,6 +146,7 @@ simplify_genome_names (genomic_context_list_t *genome, int n_genome)
 {
   int i, j;
   size_t n_i , n_j, n_small, pre, suf, min_pre = 0xffffff, min_suf = 0xffffff;
+  bool empty = false;
   if (n_genome < 2) { biomcmc_warning ("Will not try to simplify sample names since only one sample available"); return; }
   for (i = 0; i < n_genome-1; i++) {
     n_i = strlen (genome[i]->name);
@@ -157,8 +158,11 @@ simplify_genome_names (genomic_context_list_t *genome, int n_genome)
       for (suf = 0; (suf < n_small) && (genome[i]->name[n_i - suf - 1] == genome[j]->name[n_j - suf - 1]); suf++);
 
       if (n_small - pre - suf < 1) { // one of samples has name prefix+suffix with nothing in between
-        if (pre) pre--; // last char from current prefix must actually be used
-        else suf--; // notice that one of pre or suf must be positive o.w. n_small would be positive
+        empty = true;
+//        printf ("DEBUG: [%d %d] %lu %lu %lu\n%s\n%s\n", i, j, n_small, pre, suf,  genome[i]->name, genome[j]->name);
+//        if (pre) pre--; // last char from current prefix must actually be used
+//        else suf--; // notice that one of pre or suf must be positive o.w. n_small would be positive
+//        printf ("DBG2: %.*s\n", (int) pre, genome[i]->name);
       }
 
       if (pre < min_pre) min_pre = pre;
@@ -171,7 +175,7 @@ simplify_genome_names (genomic_context_list_t *genome, int n_genome)
   }
   else {
     if (min_pre) biomcmc_fprintf_colour (stderr, 0, 2, "Modifying sample names: ", 
-                                         "Removing prefix '%.*s' from sample names.\n", min_pre, genome[0]->name);
+                                         "Removing prefix '%.*s' from sample names.\n", (int) min_pre, genome[0]->name);
     if (min_suf) biomcmc_fprintf_colour (stderr, 0, 2, "Modifying sample names: ", 
                                          "Removing suffix '%s' from sample names.\n", genome[0]->name + strlen(genome[0]->name) - min_suf);
     for (i = 0; i < n_genome; i++) {
