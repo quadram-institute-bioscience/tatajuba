@@ -435,11 +435,14 @@ substituion from `T` to `A` we've seen in the previous HT.
 
 As we mention in the [README file](../README.md), there are a few tools available for exploring the functional effect of
 mutations: 
-[bcftools consequence calling](https://samtools.github.io/bcftools/howtos/csq-calling.html), 
+[bcftools consequence calling](https://samtools.github.io/bcftools/howtos/csq-calling.html),
+[vcf-anotator](https://github.com/rpetit3/vcf-annotator),  
 [Ensembl Variant Effect Predictor (VEP)](https://www.ensembl.org/info/docs/tools/vep/index.html), and 
 [snpEff](http://pcingola.github.io/SnpEff/).
-They rely on the VCF file for the samples, together with the GFF3 and FASTA files for the reference genome.
+Most rely on the VCF file for the samples, together with the GFF3 and FASTA files for the reference genome.
 We recommend `snpEff` or `VEP`, since `bcftools csq`, supports only ENSEMBL GFF3 files.
+`vcf-anotator` requires the GenBank file for the reference (instead of GFF3) for annotations, but is an interesting
+alternative.
 
 Ideally the VCF files should be generated from the BAM/SAM files, i.e. using reference-based assembly programs 
 like [minimap2](https://github.com/lh3/minimap2) or [bwa](https://github.com/lh3/bwa).
