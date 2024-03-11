@@ -46,6 +46,7 @@ If you have any tips for successfull usage in other systems, [do let us know](ht
 ### Conda
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/tatajuba/badges/platforms.svg)](https://anaconda.org/bioconda/tatajuba)
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/tatajuba/badges/latest_release_date.svg)](https://anaconda.org/bioconda/tatajuba)
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/tatajuba/badges/downloads.svg)](https://anaconda.org/bioconda/tatajuba)
 
 After you install [miniconda](https://conda.io/en/latest/miniconda.html), simply run
 ```[bash]
